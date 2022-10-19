@@ -1,6 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -17,7 +14,7 @@ var generateCmd = &cobra.Command{
 This command is mainly used for quick debugging.
 It prints the generated regular expression to stdout.
 
-RULE_ID isi the ID of the rule, e.g., 932100, or the data file name.
+RULE_ID is the ID of the rule, e.g., 932100, or the data file name.
 If the rule is a chained rule, RULE_ID must be specified with the
 offset of the chain from the chain starter rule. For example, to
 generate a second level chained rule, RULE_ID would be 932100-chain2.

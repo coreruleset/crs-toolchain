@@ -1,6 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -11,14 +8,18 @@ import (
 
 // updateCmd represents the update command
 var updateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Use:   "update [RULE_ID]",
+	Short: "Update regular expressions in rule files",
+	Long: `Update regular expressions in rule files.
+This command will generate regulare expressions from the data
+files and update the associated rule.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+RULE_ID is the ID of the rule, e.g., 932100, or the data file name.
+If the rule is a chained rule, RULE_ID must be specified with the
+offset of the chain from the chain starter rule. For example, to
+generate a second level chained rule, RULE_ID would be 932100-chain2.`,
+	Args:      cobra.MaximumNArgs(1),
+	ValidArgs: []string{"ruleId"},
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("update called")
 	},
@@ -26,5 +27,6 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
-	updateCmd.PersistentFlags().String("all", "", "A help for foo")
+	updateCmd.PersistentFlags().BoolP("all", "a", false, `Instead of supplying a rule_id, you can tell the script to
+update all rules from their data files`)
 }

@@ -1,7 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
@@ -12,14 +8,21 @@ import (
 
 // compareCmd represents the compare command
 var compareCmd = &cobra.Command{
-	Use:   "compare",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Use:   "compare [RULE_ID]",
+	Short: "Compare generated regular expressions with the contents of associated rules",
+	Long: `Compare generated regular expressions with the contents of associated
+rules.
+This command is mainly used for debugging.
+It prints regular expressions in fixed sized chunks and detects the
+first change.
+You can use this command to quickly check whether any rules are out of
+sync with their data file.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+RULE_ID is the ID of the rule, e.g., 932100, or the data file name.
+If the rule is a chained rule, RULE_ID must be specified with the
+offset of the chain from the chain starter rule. For example, to
+generate a second level chained rule, RULE_ID would be 932100-chain2.`,
+	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("compare called")
 	},
@@ -27,14 +30,6 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(compareCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// compareCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// compareCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	compareCmd.PersistentFlags().BoolP("all", "a", false, `Instead of supplying a rule_id, you can tell the script to
+update all rules from their data files`)
 }
