@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	AssembleInput  string = `^\s*##!=>\s*(.*)$`
+	AssembleInput  string = `^\s*##!=<\s*(.*)$`
 	AssembleOutput string = `^\s*##!=>\s*(.*)$`
 )
 
