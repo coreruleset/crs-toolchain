@@ -4,22 +4,62 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestNormalRuleId(t *testing.T) {
+type CompareTestSuite struct {
+	suite.Suite
+}
+
+func (suite *CompareTestSuite) SetupTest() {
+	rebuildCompareCommand()
+}
+
+func TestRunCompareTestSuite(t *testing.T) {
+	suite.Run(t, new(CompareTestSuite))
+}
+
+func (s *CompareTestSuite) TestCompare_NormalRuleId() {
 	rootCmd.SetArgs([]string{"compare", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
-	assert.Equal(t, "compare", cmd.Name())
+	assert.Equal(s.T(), "compare", cmd.Name())
 
-	args := cmd.Flags().Args()
-	assert.Len(t, args, 1)
-	assert.Equal(t, "123456", args[0])
+	flags := cmd.Flags()
+	args := flags.Args()
+	assert.Len(s.T(), args, 1)
+	assert.Equal(s.T(), "123456", args[0])
+
+	allFlag, err := flags.GetBool("all")
+	if assert.NoError(s.T(), err) {
+		assert.False(s.T(), allFlag)
+	}
 }
 
-func TestNoRuleId(t *testing.T) {
+func (s *CompareTestSuite) TestCompare_AllFlag() {
+	rootCmd.SetArgs([]string{"compare", "--all"})
+	cmd, _ := rootCmd.ExecuteC()
+
+	assert.Equal(s.T(), "compare", cmd.Name())
+
+	flags := cmd.Flags()
+	args := flags.Args()
+	assert.Len(s.T(), args, 0)
+
+	allFlag, err := flags.GetBool("all")
+	if assert.NoError(s.T(), err) {
+		assert.True(s.T(), allFlag)
+	}
+}
+
+func (s *CompareTestSuite) TestCompare_NoRuleIdNoAllFlagReturnsError() {
 	rootCmd.SetArgs([]string{"compare"})
 	_, err := rootCmd.ExecuteC()
+	assert.Error(s.T(), err)
+}
 
-	assert.Error(t, err)
+func (s *CompareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
+	rootCmd.SetArgs([]string{"compare", "123456", "all"})
+	_, err := rootCmd.ExecuteC()
+	assert.Error(s.T(), err)
 }
