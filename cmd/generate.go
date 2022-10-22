@@ -30,7 +30,7 @@ The special token '-' will cause the script to accept input
 from stdin.`,
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("generate called")
+			fmt.Printf("generate called with %v", ruleValues)
 		},
 	}
 }
