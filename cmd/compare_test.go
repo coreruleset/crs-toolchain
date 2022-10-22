@@ -20,7 +20,7 @@ func TestRunCompareTestSuite(t *testing.T) {
 }
 
 func (s *CompareTestSuite) TestCompare_NormalRuleId() {
-	rootCmd.SetArgs([]string{"compare", "123456"})
+	rootCmd.SetArgs([]string{"regex", "compare", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	assert.Equal(s.T(), "compare", cmd.Name())
@@ -37,7 +37,7 @@ func (s *CompareTestSuite) TestCompare_NormalRuleId() {
 }
 
 func (s *CompareTestSuite) TestCompare_AllFlag() {
-	rootCmd.SetArgs([]string{"compare", "--all"})
+	rootCmd.SetArgs([]string{"regex", "compare", "--all"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	assert.Equal(s.T(), "compare", cmd.Name())
@@ -53,13 +53,13 @@ func (s *CompareTestSuite) TestCompare_AllFlag() {
 }
 
 func (s *CompareTestSuite) TestCompare_NoRuleIdNoAllFlagReturnsError() {
-	rootCmd.SetArgs([]string{"compare"})
+	rootCmd.SetArgs([]string{"regex", "compare"})
 	_, err := rootCmd.ExecuteC()
 	assert.Error(s.T(), err)
 }
 
 func (s *CompareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
-	rootCmd.SetArgs([]string{"compare", "123456", "all"})
+	rootCmd.SetArgs([]string{"regex", "compare", "123456", "all"})
 	_, err := rootCmd.ExecuteC()
 	assert.Error(s.T(), err)
 }

@@ -8,8 +8,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const defaultLogLevel = zerolog.ErrorLevel
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = createRootCommand()
+var logger zerolog.Logger
 
 func Execute() {
 	err := rootCmd.Execute()
@@ -19,39 +22,40 @@ func Execute() {
 }
 
 func init() {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(defaultLogLevel)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "03:04:05"})
+	logger = log.With().Str("component", "cmd").Logger()
+
 	buildRootCommand()
 }
 
 func createRootCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "v2",
-		Short: "A brief description of your application",
-		Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-		Args: cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Use:   "crs-toolchain",
+		Short: "The Core Ruleset toolchain",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			logLevelString, err := cmd.Flags().GetString("log-level")
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to read log level from command line")
-				os.Exit(1)
+				logger.Error().Err(err).Msg("Failed to read log level from command line")
+				return err
 			}
 			logLevel, err := zerolog.ParseLevel(logLevelString)
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to parse log level '%s'", logLevelString)
+				logger.Error().Err(err).Msgf("Failed to parse log level '%s'", logLevelString)
+				return err
 			}
-			log.Debug().Msgf("Set log level to '%s'", logLevel)
 			zerolog.SetGlobalLevel(logLevel)
+			logger.Debug().Msgf("Set log level to '%s'", logLevel)
+
+			return nil
 		},
 	}
 }
 
 func buildRootCommand() {
-	rootCmd.PersistentFlags().String("log-level", "error", "Set the application log level. Default is 'error'")
+	rootCmd.PersistentFlags().StringP("log-level", "l", "error",
+		`Set the application log level. Default is 'error'.
+Options: 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic', 'disabled`)
 }
 
 func rebuildRootCommand() {

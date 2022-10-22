@@ -48,14 +48,14 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 }
 
 func buildCompareCommand() {
-	rootCmd.AddCommand(compareCmd)
+	regexCmd.AddCommand(compareCmd)
 	compareCmd.PersistentFlags().BoolP("all", "a", false, `Instead of supplying a rule_id, you can tell the script to
 update all rules from their data files`)
 }
 
 func rebuildCompareCommand() {
 	if compareCmd != nil {
-		rootCmd.RemoveCommand(compareCmd)
+		compareCmd.Parent().RemoveCommand(compareCmd)
 	}
 
 	compareCmd = createCompareCommand()
