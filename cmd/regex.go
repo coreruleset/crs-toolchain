@@ -4,6 +4,7 @@ import (
 	"errors"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -15,6 +16,7 @@ var ruleValues struct {
 	id          string
 	fileName    string
 	chainOffset uint8
+	useStdin    bool
 }
 
 func init() {
@@ -49,6 +51,10 @@ func buildRegexCommand() {
 func rebuildRegexCommand() {
 	if regexCmd != nil {
 		regexCmd.Parent().RemoveCommand(regexCmd)
+		ruleValues.id = ""
+		ruleValues.fileName = ""
+		ruleValues.chainOffset = 0
+		ruleValues.useStdin = false
 	}
 
 	generateCmd = createRegexCommand()
@@ -56,6 +62,15 @@ func rebuildRegexCommand() {
 }
 
 func parseRuleId(idAndChainOffset string) error {
+	// Validation has already occurred, so we know that when the value
+	// is `-`, it's ok.
+	if idAndChainOffset == "-" {
+		ruleValues.useStdin = true
+		return nil
+	}
+
+	ruleValues.useStdin = false
+
 	subs := ruleIdRegex.FindAllStringSubmatch(idAndChainOffset, -1)
 	if subs == nil {
 		return errors.New("failed to match rule ID")
@@ -66,12 +81,16 @@ func parseRuleId(idAndChainOffset string) error {
 	chainOffsetString := subs[0][2]
 
 	chainOffset, err := strconv.ParseUint(chainOffsetString, 10, 8)
-	if err != nil {
+	if err != nil && len(chainOffsetString) > 0 {
 		return errors.New("failed to match chain offset. Value must not be larger than 255")
 	}
 
+	if !strings.HasSuffix(fileName, ".data") {
+		fileName += ".data"
+	}
+
 	ruleValues.id = id
-	ruleValues.fileName = fileName + ".data"
+	ruleValues.fileName = fileName
 	ruleValues.chainOffset = uint8(chainOffset)
 
 	return nil

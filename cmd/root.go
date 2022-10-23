@@ -13,6 +13,10 @@ const defaultLogLevel = zerolog.ErrorLevel
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = createRootCommand()
 var logger zerolog.Logger
+var rootValues struct {
+	output   outputType
+	logLevel logLevel
+}
 
 func Execute() {
 	err := rootCmd.Execute()
@@ -33,32 +37,20 @@ func createRootCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "crs-toolchain",
 		Short: "The Core Ruleset toolchain",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			logLevelString, err := cmd.Flags().GetString("log-level")
-			if err != nil {
-				logger.Error().Err(err).Msg("Failed to read log level from command line")
-				return err
-			}
-			logLevel, err := zerolog.ParseLevel(logLevelString)
-			if err != nil {
-				logger.Error().Err(err).Msgf("Failed to parse log level '%s'", logLevelString)
-				return err
-			}
-			zerolog.SetGlobalLevel(logLevel)
-			logger.Debug().Msgf("Set log level to '%s'", logLevel)
-
-			return nil
-		},
 	}
 }
 
 func buildRootCommand() {
-	rootCmd.PersistentFlags().StringP("log-level", "l", "error",
-		`Set the application log level. Default is 'error'.
+	rootCmd.PersistentFlags().VarP(&rootValues.logLevel, "log-level", "l",
+		`Set the application log level. Default: 'error'.
 Options: 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic', 'disabled`)
+	rootCmd.PersistentFlags().VarP(&rootValues.output, "output", "o", "Output format. One of 'text', 'github'. Default: 'text'")
 }
 
 func rebuildRootCommand() {
 	rootCmd = createRootCommand()
+	rootValues.output = "text"
+	rootValues.logLevel = logLevel(defaultLogLevel.String())
+
 	buildRootCommand()
 }

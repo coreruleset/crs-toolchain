@@ -60,7 +60,14 @@ func (s *UpdateTestSuite) TestUpdate_NoRuleIdNoAllFlagReturnsError() {
 }
 
 func (s *UpdateTestSuite) TestUpdate_BothRuleIdAndAllFlagReturnsError() {
-	rootCmd.SetArgs([]string{"regex", "update", "123456", "all"})
+	rootCmd.SetArgs([]string{"regex", "update", "123456", "--all"})
+	_, err := rootCmd.ExecuteC()
+
+	assert.Error(s.T(), err)
+}
+
+func (s *UpdateTestSuite) TestUpdate_DashReturnsError() {
+	rootCmd.SetArgs([]string{"regex", "update", "-"})
 	_, err := rootCmd.ExecuteC()
 
 	assert.Error(s.T(), err)

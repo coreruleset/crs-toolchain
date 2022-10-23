@@ -63,3 +63,10 @@ func (s *CompareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
 	_, err := rootCmd.ExecuteC()
 	assert.Error(s.T(), err)
 }
+
+func (s *UpdateTestSuite) TestCompare_DashReturnsError() {
+	rootCmd.SetArgs([]string{"regex", "compare", "-"})
+	_, err := rootCmd.ExecuteC()
+
+	assert.Error(s.T(), err)
+}

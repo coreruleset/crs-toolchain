@@ -36,3 +36,13 @@ func (s *GenerateTestSuite) TestGenerate_NoRuleId() {
 
 	assert.Error(s.T(), err)
 }
+
+func (s *GenerateTestSuite) TestGenerate_Dash() {
+	rootCmd.SetArgs([]string{"regex", "generate", "-"})
+	_, err := rootCmd.ExecuteC()
+
+	if assert.NoError(s.T(), err) {
+		assert.True(s.T(), ruleValues.useStdin)
+	}
+
+}

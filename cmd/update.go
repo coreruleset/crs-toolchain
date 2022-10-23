@@ -33,6 +33,8 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 				return errors.New("expected either RULE_ID or flag, found neither")
 			} else if allFlag.Changed && len(args) > 0 {
 				return errors.New("expected either RULE_ID of flag, found both")
+			} else if len(args) == 1 && args[0] == "-" {
+				return errors.New("invalid argument '-'")
 			}
 
 			return nil
