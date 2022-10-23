@@ -28,6 +28,10 @@ func createRegexCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "regex",
 		Short: "Commands that process regular expressions",
+		Long: `The commands in this group all interact with regular expressions.
+For example, they generate regular expressions from data files, update regular expressions
+in rule files, or compare the regular expressions in rule files against what would be
+generated from the current data file.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return nil

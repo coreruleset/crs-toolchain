@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/theseion/regexp-assemble-go/v2/cmd"
+	"github.com/theseion/crs-toolchain/v2/cmd"
 )
 
 func main() {

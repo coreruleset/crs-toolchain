@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// The types in this file satisfythe interface of pflag.Value.
+// The types in this file satisfy the interface of pflag.Value.
 // Using the pflag.Value interface makes it possible to validate
 // flag values at parse time, as opposed to using `persistentPreRunE`,
 // which would also work, except that persistent run functions will run
