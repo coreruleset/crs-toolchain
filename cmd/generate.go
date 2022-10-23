@@ -7,10 +7,17 @@ import (
 )
 
 // generateCmd represents the generate command
-var generateCmd = &cobra.Command{
-	Use:   "generate RULE_ID|-",
-	Short: "Generate regular expression from a data file",
-	Long: `Generate regular expression from a data file.
+var generateCmd = createGenerateCommand()
+
+func init() {
+	buildGenerateCommand()
+}
+
+func createGenerateCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "generate RULE_ID|-",
+		Short: "Generate regular expression from a data file",
+		Long: `Generate regular expression from a data file.
 This command is mainly used for quick debugging.
 It prints the generated regular expression to stdout.
 
@@ -21,15 +28,22 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.
 
 The special token '-' will cause the script to accept input
 from stdin.`,
-	Args:      cobra.ExactArgs(1),
-	ValidArgs: []string{"ruleId"},
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("generate called")
-
-		fmt.Printf("%v", args)
-	},
+		Args: cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("generate called with %v", ruleValues)
+		},
+	}
 }
 
-func init() {
-	rootCmd.AddCommand(generateCmd)
+func buildGenerateCommand() {
+	regexCmd.AddCommand(generateCmd)
+}
+
+func rebuildGenerateCommand() {
+	if generateCmd != nil {
+		generateCmd.Parent().RemoveCommand(generateCmd)
+	}
+
+	generateCmd = createGenerateCommand()
+	buildGenerateCommand()
 }

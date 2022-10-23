@@ -4,22 +4,69 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestNormalRuleId(t *testing.T) {
-	rootCmd.SetArgs([]string{"compare", "123456"})
-	cmd, _ := rootCmd.ExecuteC()
-
-	assert.Equal(t, "compare", cmd.Name())
-
-	args := cmd.Flags().Args()
-	assert.Len(t, args, 1)
-	assert.Equal(t, "123456", args[0])
+type CompareTestSuite struct {
+	suite.Suite
 }
 
-func TestNoRuleId(t *testing.T) {
-	rootCmd.SetArgs([]string{"compare"})
+func (suite *CompareTestSuite) SetupTest() {
+	rebuildCompareCommand()
+}
+
+func TestRunCompareTestSuite(t *testing.T) {
+	suite.Run(t, new(CompareTestSuite))
+}
+
+func (s *CompareTestSuite) TestCompare_NormalRuleId() {
+	rootCmd.SetArgs([]string{"regex", "compare", "123456"})
+	cmd, _ := rootCmd.ExecuteC()
+
+	assert.Equal(s.T(), "compare", cmd.Name())
+
+	flags := cmd.Flags()
+	args := flags.Args()
+	assert.Len(s.T(), args, 1)
+	assert.Equal(s.T(), "123456", args[0])
+
+	allFlag, err := flags.GetBool("all")
+	if assert.NoError(s.T(), err) {
+		assert.False(s.T(), allFlag)
+	}
+}
+
+func (s *CompareTestSuite) TestCompare_AllFlag() {
+	rootCmd.SetArgs([]string{"regex", "compare", "--all"})
+	cmd, _ := rootCmd.ExecuteC()
+
+	assert.Equal(s.T(), "compare", cmd.Name())
+
+	flags := cmd.Flags()
+	args := flags.Args()
+	assert.Len(s.T(), args, 0)
+
+	allFlag, err := flags.GetBool("all")
+	if assert.NoError(s.T(), err) {
+		assert.True(s.T(), allFlag)
+	}
+}
+
+func (s *CompareTestSuite) TestCompare_NoRuleIdNoAllFlagReturnsError() {
+	rootCmd.SetArgs([]string{"regex", "compare"})
+	_, err := rootCmd.ExecuteC()
+	assert.Error(s.T(), err)
+}
+
+func (s *CompareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
+	rootCmd.SetArgs([]string{"regex", "compare", "123456", "all"})
+	_, err := rootCmd.ExecuteC()
+	assert.Error(s.T(), err)
+}
+
+func (s *UpdateTestSuite) TestCompare_DashReturnsError() {
+	rootCmd.SetArgs([]string{"regex", "compare", "-"})
 	_, err := rootCmd.ExecuteC()
 
-	assert.Error(t, err)
+	assert.Error(s.T(), err)
 }

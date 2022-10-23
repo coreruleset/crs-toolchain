@@ -1,3 +1,3 @@
-# regexp-assemble-go
+# crs-toolchain
 
 Based on experiment in Python with rassemble-go backend: https://github.com/theseion/coreruleset/tree/rassemble-backend

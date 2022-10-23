@@ -1,4 +1,4 @@
-module github.com/theseion/regexp-assemble-go/v2
+module github.com/theseion/crs-toolchain/v2
 
 go 1.19
 

@@ -8,30 +8,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "v2",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+const defaultLogLevel = zerolog.ErrorLevel
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		logLevelString, err := cmd.Flags().GetString("log-level")
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to read log level from command line")
-			os.Exit(1)
-		}
-		logLevel, err := zerolog.ParseLevel(logLevelString)
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to parse log level '%s'", logLevelString)
-		}
-		log.Debug().Msgf("Set log level to '%s'", logLevel)
-		zerolog.SetGlobalLevel(logLevel)
-	},
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = createRootCommand()
+var logger zerolog.Logger
+var rootValues struct {
+	output   outputType
+	logLevel logLevel
 }
 
 func Execute() {
@@ -42,7 +26,31 @@ func Execute() {
 }
 
 func init() {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(defaultLogLevel)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "03:04:05"})
+	logger = log.With().Str("component", "cmd").Logger()
 
-	rootCmd.PersistentFlags().String("log-level", "error", "Set the application log level. Default is 'error'")
+	buildRootCommand()
+}
+
+func createRootCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "crs-toolchain",
+		Short: "The Core Ruleset toolchain",
+	}
+}
+
+func buildRootCommand() {
+	rootCmd.PersistentFlags().VarP(&rootValues.logLevel, "log-level", "l",
+		`Set the application log level. Default: 'error'.
+Options: 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic', 'disabled`)
+	rootCmd.PersistentFlags().VarP(&rootValues.output, "output", "o", "Output format. One of 'text', 'github'. Default: 'text'")
+}
+
+func rebuildRootCommand() {
+	rootCmd = createRootCommand()
+	rootValues.output = "text"
+	rootValues.logLevel = logLevel(defaultLogLevel.String())
+
+	buildRootCommand()
 }
