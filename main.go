@@ -4,11 +4,12 @@
 package main
 
 import (
-	"github.com/theseion/crs-toolchain/v2/cmd"
 	"os"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/theseion/crs-toolchain/v2/cmd"
 )
 
 func main() {

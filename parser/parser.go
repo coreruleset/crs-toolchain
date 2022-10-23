@@ -39,6 +39,7 @@ type ParsedLine struct {
 
 // NewParser creates a new parser from a io.Reader.
 func NewParser(reader io.Reader) *Parser {
+	log.Debug().Str("component", "parser").Msgf("creating new parsers")
 	p := &Parser{
 		src:       reader,
 		variables: make(map[string]string),
@@ -67,11 +68,8 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 			text = "something"
 		case IncludeType:
 			// go read the included file and paste text here
-			dest, err := includeFile(parsedLine.includeFile)
-			if err != nil {
-				log.Fatal().Str("component", "parser").Msgf("couldn't include file: %s", parsedLine.includeFile)
-			}
-			text = dest.String()
+			content, _ := includeFile(parsedLine.includeFile)
+			text = content.String()
 		}
 		// err is always nil
 		n, _ := p.dest.WriteString(text)
@@ -118,14 +116,13 @@ func parseLine(line string) ParsedLine {
 }
 
 // includeFile does just a new call to the Parser on the named file.
-func includeFile(filename string) (*bytes.Buffer, error) {
-	var buf bytes.Buffer
+func includeFile(filename string) (*bytes.Buffer, int) {
 	readFile, err := os.Open(filename)
 	if err != nil {
-		return &buf, err
+		log.Fatal().Str("component", "parser").Msgf("cannot open file for inclusion: %v", err.Error())
 	}
 	newP := NewParser(bufio.NewReader(readFile))
-	return newP.dest, err
+	return newP.Parse()
 }
 
 func replaceTemplates(src *bytes.Buffer, variables map[string]string) {

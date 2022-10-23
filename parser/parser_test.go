@@ -6,11 +6,12 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/suite"
 	"io"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type parserTestSuite struct {
@@ -58,7 +59,9 @@ func (s *parserIncludeTestSuite) SetupSuite() {
 	var err error
 	s.includeFile, err = os.CreateTemp(os.TempDir(), "test.data")
 	s.NoError(err, "couldn't create %s file", s.includeFile.Name())
-	s.includeFile.WriteString("This data comes from the included file.\n")
+	n, err := s.includeFile.WriteString("This data comes from the included file.\n")
+	s.NoError(err, "writing temp include file failed")
+	s.Equal(len("This data comes from the included file.\n"), n)
 	s.reader = strings.NewReader(fmt.Sprintf("##!> include %s\n##! This is a comment line.\n", s.includeFile.Name()))
 }
 
@@ -70,7 +73,7 @@ func (s *parserIncludeTestSuite) TearDownSuite() {
 func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
 	parser := NewParser(s.reader)
 	actual, n := parser.Parse()
-	expected := bytes.NewBufferString("##! This is a comment line.\n")
+	expected := bytes.NewBufferString("This data comes from the included file.\n##! This is a comment line.\n")
 
 	s.Equal(expected.String(), actual.String())
 	s.Equal(expected.Len(), n)
