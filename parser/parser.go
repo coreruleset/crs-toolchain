@@ -9,12 +9,16 @@ package parser
 import (
 	"bufio"
 	"bytes"
+	"github.com/imdario/mergo"
+	"github.com/rs/zerolog/log"
+	"github.com/theseion/crs-toolchain/v2/processors"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
-
-	"github.com/rs/zerolog/log"
 )
+
+var logger = log.With().Str("component", "parser").Logger()
 
 type ParsedType int
 
@@ -30,6 +34,7 @@ const (
 
 // Parser is the base parser type. It will provide processors with all the inclusions and templates resolved.
 type Parser struct {
+	ctx       *processors.Context
 	src       io.Reader
 	dest      *bytes.Buffer
 	variables map[string]string
@@ -46,9 +51,9 @@ type ParsedLine struct {
 }
 
 // NewParser creates a new parser from an io.Reader.
-func NewParser(reader io.Reader) *Parser {
-	log.Debug().Str("component", "parser").Msgf("creating new parser")
+func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 	p := &Parser{
+		ctx:       ctx,
 		src:       reader,
 		dest:      &bytes.Buffer{},
 		variables: make(map[string]string),
@@ -70,17 +75,21 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
-		log.Debug().Str("component", "parser").Msgf("parsing line: %q", line)
+		text = "" // empty text each iteration
+		logger.Trace().Msgf("parsing line: %q", line)
 		parsedLine := p.parseLine(line)
 		switch parsedLine.parsedType {
 		case Regular:
 			text = line + "\n"
 		case Template:
 			// merge maps p.variables and parseLine.template
-			text = "something"
+			err := mergo.Merge(&p.variables, parsedLine.result)
+			if err != nil {
+				logger.Error().Err(err).Msg("error merging templates")
+			}
 		case Include:
 			// go read the included file and paste text here
-			content, _ := includeFile(parsedLine.result[IncludePatternName])
+			content, _ := includeFile(p.ctx, parsedLine.result[IncludePatternName])
 			text = content.String()
 		}
 		// err is always nil
@@ -90,7 +99,7 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 
 	// now that the file was parsed, we replace all templates
 	if len(p.variables) > 0 {
-		replaceTemplates(p.dest, p.variables)
+		p.dest = replaceTemplates(p.dest, p.variables)
 	}
 	return p.dest, wrote
 }
@@ -105,7 +114,7 @@ func (p *Parser) parseLine(line string) ParsedLine {
 		found := pattern.FindStringSubmatch(line)
 		// found[0] has the whole line that matched, found[N] has the subgroup
 		if len(found) > 0 {
-			log.Debug().Str("component", "parser").Msgf("found %s statement: %v", name, found[1:])
+			logger.Trace().Msgf("found %s statement: %v", name, found[1:])
 			switch name {
 			case IncludePatternName:
 				pType = Include
@@ -130,18 +139,29 @@ func (p *Parser) parseLine(line string) ParsedLine {
 	return pl
 }
 
-// includeFile does just a new call to the Parser on the named file.
-func includeFile(filename string) (*bytes.Buffer, int) {
+// includeFile does just a new call to the Parser on the named file. It will use the context to find files that have relative filenames.
+func includeFile(ctx *processors.Context, filename string) (*bytes.Buffer, int) {
+	logger.Trace().Msgf("reading filename: %v", filename)
+	// check if filename has an absolute path
+	// if it is relative, use the context to get the parent directory where we should search for the file.
+	if !filepath.IsAbs(filename) {
+		filename = filepath.Join(ctx.IncludeDir(), filename)
+	}
 	readFile, err := os.Open(filename)
 	if err != nil {
-		log.Fatal().Str("component", "parser").Msgf("cannot open file for inclusion: %v", err.Error())
+		logger.Fatal().Msgf("cannot open file for inclusion: %v", err.Error())
 	}
-	newP := NewParser(bufio.NewReader(readFile))
+	newP := NewParser(ctx, bufio.NewReader(readFile))
 	return newP.Parse()
 }
 
-func replaceTemplates(src *bytes.Buffer, variables map[string]string) {
+func replaceTemplates(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
+	logger.Trace().Msgf("before replacing templates: %v", src.String())
 	for needle, replacement := range variables {
+		needle := "{{" + needle + "}}"
+		replacement := replacement
 		src = bytes.NewBuffer(bytes.ReplaceAll(src.Bytes(), []byte(needle), []byte(replacement)))
 	}
+	logger.Trace().Msgf("replaces templates: %v", src.String())
+	return src
 }

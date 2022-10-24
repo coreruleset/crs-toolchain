@@ -4,6 +4,7 @@
 package processors
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -22,8 +23,13 @@ type Context struct {
 	singleChainOffset  bool
 }
 
-// NewContextForDir creates a new processor context
+// NewContextForDir creates a new processor context using the `rootDir` as the root directory.
 func NewContextForDir(rootDir string) *Context {
+	// check if directory exists first
+	_, err := os.Stat(rootDir)
+	if err != nil {
+		logger.Fatal().Err(err).Msgf("creating context: problem using %s as base directory.", rootDir)
+	}
 	ctx := &Context{
 		rootDirectory:      rootDir,
 		rulesDirectory:     rootDir + "/rules",
@@ -40,6 +46,7 @@ func NewContextForDir(rootDir string) *Context {
 	return ctx
 }
 
+// NewContext creates a new context using the current directory as base.
 func NewContext() *Context {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -50,6 +57,17 @@ func NewContext() *Context {
 	return NewContextForDir(cwd)
 }
 
+// Dump dumps the context to the passed io.Writer.
 func (ctx *Context) Dump(w io.Writer) {
+	fmt.Printf("Context: %v\n", ctx)
+}
 
+// DataDir returns the data directory. Used to find files that don't have an absolute path.
+func (ctx *Context) DataDir() string {
+	return ctx.dataFilesDirectory
+}
+
+// IncludeDir returns the include directory. Used to include files that don't have an absolute path.
+func (ctx *Context) IncludeDir() string {
+	return ctx.includeFiles
 }
