@@ -2,7 +2,10 @@ module github.com/theseion/crs-toolchain/v2
 
 go 1.19
 
-require github.com/spf13/cobra v1.6.0
+require (
+	github.com/magefile/mage v1.14.0
+	github.com/spf13/cobra v1.6.0
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
