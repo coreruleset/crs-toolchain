@@ -19,7 +19,7 @@ func init() {
 
 func createCompareCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "compare [RULE_ID]",
+		Use:   "compare [RULE_ID",
 		Short: "Compare generated regular expressions with the contents of associated rules",
 		Long: `Compare generated regular expressions with the contents of associated
 rules.

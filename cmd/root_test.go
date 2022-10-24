@@ -11,21 +11,21 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type RootTestSuite struct {
+type rootTestSuite struct {
 	suite.Suite
 }
 
-func (suite *RootTestSuite) SetupTest() {
+func (suite *rootTestSuite) SetupTest() {
 	rebuildRootCommand()
 	rebuildRegexCommand()
 	zerolog.SetGlobalLevel(defaultLogLevel)
 }
 
 func TestRunRootTestSuite(t *testing.T) {
-	suite.Run(t, new(RootTestSuite))
+	suite.Run(t, new(rootTestSuite))
 }
 
-func (s *RootTestSuite) TestRoot_NoArguments() {
+func (s *rootTestSuite) TestRoot_NoArguments() {
 	rootCmd.SetArgs([]string{})
 	cmd, err := rootCmd.ExecuteC()
 
@@ -33,7 +33,7 @@ func (s *RootTestSuite) TestRoot_NoArguments() {
 	assert.NoError(s.T(), err)
 }
 
-func (s *RootTestSuite) TestRoot_LogLevelDefault() {
+func (s *rootTestSuite) TestRoot_LogLevelDefault() {
 	rootCmd.SetArgs([]string{})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -44,7 +44,7 @@ func (s *RootTestSuite) TestRoot_LogLevelDefault() {
 	assert.Equal(s.T(), zerolog.ErrorLevel, zerolog.GlobalLevel())
 }
 
-func (s *RootTestSuite) TestRoot_LogLevelChanged() {
+func (s *rootTestSuite) TestRoot_LogLevelChanged() {
 	rootCmd.SetArgs([]string{"--log-level", "debug", "regex", "compare", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -55,7 +55,7 @@ func (s *RootTestSuite) TestRoot_LogLevelChanged() {
 	assert.Equal(s.T(), zerolog.DebugLevel, zerolog.GlobalLevel())
 }
 
-func (s *RootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
+func (s *rootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
 	rootCmd.SetArgs([]string{"--log-level", "bizarre", "regex", "compare", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -66,7 +66,7 @@ func (s *RootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
 	assert.Equal(s.T(), zerolog.GlobalLevel(), zerolog.ErrorLevel)
 }
 
-func (s *RootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
+func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
 	rootCmd.SetArgs([]string{"regex", "compare", "--log-level", "debug", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 

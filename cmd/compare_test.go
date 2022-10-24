@@ -10,19 +10,19 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type CompareTestSuite struct {
+type compareTestSuite struct {
 	suite.Suite
 }
 
-func (suite *CompareTestSuite) SetupTest() {
+func (suite *compareTestSuite) SetupTest() {
 	rebuildCompareCommand()
 }
 
 func TestRunCompareTestSuite(t *testing.T) {
-	suite.Run(t, new(CompareTestSuite))
+	suite.Run(t, new(compareTestSuite))
 }
 
-func (s *CompareTestSuite) TestCompare_NormalRuleId() {
+func (s *compareTestSuite) TestCompare_NormalRuleId() {
 	rootCmd.SetArgs([]string{"regex", "compare", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -39,7 +39,7 @@ func (s *CompareTestSuite) TestCompare_NormalRuleId() {
 	}
 }
 
-func (s *CompareTestSuite) TestCompare_AllFlag() {
+func (s *compareTestSuite) TestCompare_AllFlag() {
 	rootCmd.SetArgs([]string{"regex", "compare", "--all"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -55,19 +55,19 @@ func (s *CompareTestSuite) TestCompare_AllFlag() {
 	}
 }
 
-func (s *CompareTestSuite) TestCompare_NoRuleIdNoAllFlagReturnsError() {
+func (s *compareTestSuite) TestCompare_NoRuleIdNoAllFlagReturnsError() {
 	rootCmd.SetArgs([]string{"regex", "compare"})
 	_, err := rootCmd.ExecuteC()
 	assert.Error(s.T(), err)
 }
 
-func (s *CompareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
+func (s *compareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
 	rootCmd.SetArgs([]string{"regex", "compare", "123456", "all"})
 	_, err := rootCmd.ExecuteC()
 	assert.Error(s.T(), err)
 }
 
-func (s *UpdateTestSuite) TestCompare_DashReturnsError() {
+func (s *updateTestSuite) TestCompare_DashReturnsError() {
 	rootCmd.SetArgs([]string{"regex", "compare", "-"})
 	_, err := rootCmd.ExecuteC()
 
