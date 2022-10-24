@@ -3,7 +3,14 @@
 
 package processors
 
-import "io"
+import (
+	"io"
+	"os"
+
+	"github.com/rs/zerolog/log"
+)
+
+var logger = log.With().Str("component", "processors").Logger()
 
 type Context struct {
 	rootDirectory      string
@@ -15,8 +22,8 @@ type Context struct {
 	singleChainOffset  bool
 }
 
-// NewContext creates a new processor context
-func NewContext(rootDir string, namespace string) *Context {
+// NewContextForDir creates a new processor context
+func NewContextForDir(rootDir string) *Context {
 	ctx := &Context{
 		rootDirectory:      rootDir,
 		rulesDirectory:     rootDir + "/rules",
@@ -31,6 +38,16 @@ func NewContext(rootDir string, namespace string) *Context {
 	//if namespace and "chain_offset" in namespace:
 	//self.single_chain_offset = namespace.chain_offset
 	return ctx
+}
+
+func NewContext() *Context {
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic("Failed to retrieve current working directory")
+	}
+	logger.Debug().Msgf("Resolved working directory: %s", cwd)
+
+	return NewContextForDir(cwd)
 }
 
 func (ctx *Context) Dump(w io.Writer) {

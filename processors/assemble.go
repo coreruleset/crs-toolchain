@@ -5,6 +5,8 @@ package processors
 
 import (
 	"regexp"
+
+	"github.com/itchyny/rassemble-go"
 )
 
 const (
@@ -46,7 +48,11 @@ func (a *Assemble) HasBody() bool {
 	return true
 }
 
-func (a *Assemble) Complete() []string {
+func (a *Assemble) Complete() ([]string, error) {
 	//TODO: add real implementation
-	return a.proc.lines
+	assembly, err := rassemble.Join(a.proc.lines)
+	if err != nil {
+		return nil, err
+	}
+	return []string{assembly}, nil
 }

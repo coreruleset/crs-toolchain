@@ -7,6 +7,8 @@ require (
 	github.com/spf13/cobra v1.6.0
 )
 
+require github.com/itchyny/rassemble-go v0.1.0
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect

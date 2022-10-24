@@ -9,20 +9,20 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type RegexTestSuite struct {
+type regexTestSuite struct {
 	suite.Suite
 }
 
-func (suite *RegexTestSuite) SetupTest() {
+func (suite *regexTestSuite) SetupTest() {
 	rebuildRegexCommand()
 	rebuildCompareCommand()
 }
 
 func TestRunRegexTestSuite(t *testing.T) {
-	suite.Run(t, new(RegexTestSuite))
+	suite.Run(t, new(regexTestSuite))
 }
 
-func (s *RegexTestSuite) TestRegex_ParseRuleId() {
+func (s *regexTestSuite) TestRegex_ParseRuleId() {
 	rootCmd.SetArgs([]string{"regex", "compare", "123456"})
 	_, err := rootCmd.ExecuteC()
 
@@ -33,7 +33,7 @@ func (s *RegexTestSuite) TestRegex_ParseRuleId() {
 	s.False(ruleValues.useStdin)
 }
 
-func (s *RegexTestSuite) TestRegex_ParseRuleIdAndChainOffset() {
+func (s *regexTestSuite) TestRegex_ParseRuleIdAndChainOffset() {
 	rootCmd.SetArgs([]string{"regex", "compare", "123456-chain19"})
 	_, err := rootCmd.ExecuteC()
 
@@ -44,7 +44,7 @@ func (s *RegexTestSuite) TestRegex_ParseRuleIdAndChainOffset() {
 	s.False(ruleValues.useStdin)
 }
 
-func (s *RegexTestSuite) TestRegex_ParseRuleIdAndChainOffsetAndFileName() {
+func (s *regexTestSuite) TestRegex_ParseRuleIdAndChainOffsetAndFileName() {
 	rootCmd.SetArgs([]string{"regex", "compare", "123456-chain255.data"})
 	_, err := rootCmd.ExecuteC()
 
@@ -55,7 +55,7 @@ func (s *RegexTestSuite) TestRegex_ParseRuleIdAndChainOffsetAndFileName() {
 	s.False(ruleValues.useStdin)
 }
 
-func (s *RegexTestSuite) TestRegex_ParseRuleIdAndFileName() {
+func (s *regexTestSuite) TestRegex_ParseRuleIdAndFileName() {
 	rootCmd.SetArgs([]string{"regex", "compare", "123456.data"})
 	_, err := rootCmd.ExecuteC()
 

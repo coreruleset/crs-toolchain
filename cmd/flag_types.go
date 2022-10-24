@@ -59,7 +59,7 @@ func (l *logLevel) Set(value string) error {
 	// really want to do.
 	zerolog.SetGlobalLevel(parsedLogLevel)
 	*l = logLevel(value)
-	logger.Debug().Msgf("Set log level to '%s'", parsedLogLevel)
+	logger.Trace().Msgf("Set log level to '%s'", parsedLogLevel)
 
 	return nil
 }

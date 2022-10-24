@@ -10,19 +10,19 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type GenerateTestSuite struct {
+type generateTestSuite struct {
 	suite.Suite
 }
 
-func (suite *GenerateTestSuite) SetupTest() {
+func (suite *generateTestSuite) SetupTest() {
 	rebuildGenerateCommand()
 }
 
 func TestRunGenerateTestSuite(t *testing.T) {
-	suite.Run(t, new(GenerateTestSuite))
+	suite.Run(t, new(generateTestSuite))
 }
 
-func (s *GenerateTestSuite) TestGenerate_NormalRuleId() {
+func (s *generateTestSuite) TestGenerate_NormalRuleId() {
 	rootCmd.SetArgs([]string{"regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -33,14 +33,14 @@ func (s *GenerateTestSuite) TestGenerate_NormalRuleId() {
 	assert.Equal(s.T(), "123456", args[0])
 }
 
-func (s *GenerateTestSuite) TestGenerate_NoRuleId() {
+func (s *generateTestSuite) TestGenerate_NoRuleId() {
 	rootCmd.SetArgs([]string{"regex", "generate"})
 	_, err := rootCmd.ExecuteC()
 
 	assert.Error(s.T(), err)
 }
 
-func (s *GenerateTestSuite) TestGenerate_Dash() {
+func (s *generateTestSuite) TestGenerate_Dash() {
 	rootCmd.SetArgs([]string{"regex", "generate", "-"})
 	_, err := rootCmd.ExecuteC()
 

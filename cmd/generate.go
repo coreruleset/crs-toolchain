@@ -4,9 +4,11 @@
 package cmd
 
 import (
-	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/theseion/crs-toolchain/v2/processors"
 )
 
 // generateCmd represents the generate command
@@ -18,7 +20,7 @@ func init() {
 
 func createGenerateCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "generate RULE_ID|-",
+		Use:   "generate RULE_ID | -",
 		Short: "Generate regular expression from a data file",
 		Long: `Generate regular expression from a data file.
 This command is mainly used for quick debugging.
@@ -33,7 +35,12 @@ The special token '-' will cause the script to accept input
 from stdin.`,
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("generate called with %v", ruleValues)
+			assemble := processors.NewAssemble(processors.NewContext())
+			assembly, err := assemble.Complete()
+			if err != nil {
+				logger.Fatal().Err(err).Send()
+			}
+			os.Stdout.WriteString(assembly[0])
 		},
 	}
 }
