@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -31,8 +32,12 @@ func TestRunParserTestSuite(t *testing.T) {
 func (s *parserTestSuite) TestParser_NewParser() {
 	expected := &Parser{
 		src:       s.reader,
-		variables: make(map[string]string),
 		dest:      &bytes.Buffer{},
+		variables: make(map[string]string),
+		patterns: map[string]*regexp.Regexp{
+			IncludePatternName:  regexp.MustCompile(IncludePattern),
+			TemplatePatternName: regexp.MustCompile(TemplatePattern),
+		},
 	}
 	actual := NewParser(s.reader)
 

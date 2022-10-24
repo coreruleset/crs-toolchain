@@ -16,34 +16,46 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type ParsedType int
+
 const (
-	IncludePattern  string = `^\s*##!>\s*include\s*(.*)$`
-	TemplatePattern string = `^\s*##!>\s*template\s+([a-zA-Z0-9-_]+)\s+(.*)$`
-	RegularType     int    = 0
-	IncludeType     int    = 1
-	TemplateType    int    = 2
+	IncludePatternName  string     = "include"
+	IncludePattern      string     = `^\s*##!>\s*include\s*(.*)$`
+	TemplatePatternName string     = "template"
+	TemplatePattern     string     = `^\s*##!>\s*template\s+([a-zA-Z0-9-_]+)\s+(.*)$`
+	Regular             ParsedType = iota
+	Include
+	Template
 )
 
+// Parser is the base parser type. It will provide processors with all the inclusions and templates resolved.
 type Parser struct {
 	src       io.Reader
-	variables map[string]string
 	dest      *bytes.Buffer
+	variables map[string]string
+	patterns  map[string]*regexp.Regexp
 }
 
+// ParsedLine will store the results of parsing the line. `parsedType` will discriminate how you read the results:
+// if the type is `Include`, then the result map will store the file name in the "include" key. The template type
+// will just use the map for the name:value.
 type ParsedLine struct {
-	parsedType  int
-	includeFile string
-	template    map[string]string
-	line        string
+	parsedType ParsedType
+	result     map[string]string
+	line       string
 }
 
-// NewParser creates a new parser from a io.Reader.
+// NewParser creates a new parser from an io.Reader.
 func NewParser(reader io.Reader) *Parser {
-	log.Debug().Str("component", "parser").Msgf("creating new parsers")
+	log.Debug().Str("component", "parser").Msgf("creating new parser")
 	p := &Parser{
 		src:       reader,
-		variables: make(map[string]string),
 		dest:      &bytes.Buffer{},
+		variables: make(map[string]string),
+		patterns: map[string]*regexp.Regexp{
+			IncludePatternName:  regexp.MustCompile(IncludePattern),
+			TemplatePatternName: regexp.MustCompile(TemplatePattern),
+		},
 	}
 	return p
 }
@@ -59,16 +71,16 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
 		log.Debug().Str("component", "parser").Msgf("parsing line: %q", line)
-		parsedLine := parseLine(line)
+		parsedLine := p.parseLine(line)
 		switch parsedLine.parsedType {
-		case RegularType:
+		case Regular:
 			text = line + "\n"
-		case TemplateType:
+		case Template:
 			// merge maps p.variables and parseLine.template
 			text = "something"
-		case IncludeType:
+		case Include:
 			// go read the included file and paste text here
-			content, _ := includeFile(parsedLine.includeFile)
+			content, _ := includeFile(parsedLine.result[IncludePatternName])
 			text = content.String()
 		}
 		// err is always nil
@@ -83,33 +95,36 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 	return p.dest, wrote
 }
 
-func parseLine(line string) ParsedLine {
+// parseLine iterates over the pattern list and if found, creates the ParsedLine object with the results.
+func (p *Parser) parseLine(line string) ParsedLine {
 	var pl ParsedLine
-	include := regexp.MustCompile(IncludePattern)
-	found := include.FindStringSubmatch(line)
-	// found[0] has the whole line that matched, found[1] has the subgroup
-	if len(found) > 0 {
-		log.Debug().Str("component", "parser").Msgf("found include statement: %s", found[1])
-		pl = ParsedLine{
-			parsedType:  IncludeType,
-			includeFile: found[1],
+	var result map[string]string
+	pType := Regular
+
+	for name, pattern := range p.patterns {
+		found := pattern.FindStringSubmatch(line)
+		// found[0] has the whole line that matched, found[N] has the subgroup
+		if len(found) > 0 {
+			log.Debug().Str("component", "parser").Msgf("found %s statement: %v", name, found[1:])
+			switch name {
+			case IncludePatternName:
+				pType = Include
+				result = map[string]string{
+					name: found[1],
+				}
+			case TemplatePatternName:
+				pType = Template
+				result = map[string]string{
+					found[1]: found[2],
+				}
+			}
+			break
 		}
-		return pl
 	}
-	template := regexp.MustCompile(TemplatePattern)
-	found = template.FindStringSubmatch(line)
-	if len(found) > 0 {
-		log.Debug().Str("component", "parser").Msgf("found template: %s -> %s", found[1], found[2])
-		pl = ParsedLine{
-			parsedType: TemplateType,
-			template: map[string]string{
-				found[0]: found[1],
-			},
-		}
-		return pl
-	}
+
 	pl = ParsedLine{
-		parsedType: RegularType,
+		parsedType: pType,
+		result:     result,
 		line:       line,
 	}
 	return pl
