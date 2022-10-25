@@ -215,7 +215,7 @@ func (s *parserIncludeWithTemplates) TestParser_IncludeWithTemplates() {
 			"[a-zA-J]+8 to see if templates work.\n" +
 			"Second text for [0-9](pine|apple).\n")
 
-	s.Greater(len(parser.variables), 0)
+	s.NotEmpty(parser.variables)
 	s.Equal(parser.variables["this-is-a-text"], "[a-zA-J]+8", "failed to found template variables in map")
 	s.Equal(parser.variables["this-is-another-text"], "[0-9](pine|apple)", "failed to found template variables in map")
 	s.Equal(expected.String(), actual.String())
