@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -29,8 +28,8 @@ func (s *rootTestSuite) TestRoot_NoArguments() {
 	rootCmd.SetArgs([]string{})
 	cmd, err := rootCmd.ExecuteC()
 
-	assert.Equal(s.T(), "crs-toolchain", cmd.Name())
-	assert.NoError(s.T(), err)
+	s.Equal("crs-toolchain", cmd.Name())
+	s.NoError(err)
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelDefault() {
@@ -38,10 +37,10 @@ func (s *rootTestSuite) TestRoot_LogLevelDefault() {
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
-	assert.NotNil(s.T(), logLevelFlag)
-	assert.False(s.T(), logLevelFlag.Changed)
+	s.NotNil(logLevelFlag)
+	s.False(logLevelFlag.Changed)
 
-	assert.Equal(s.T(), zerolog.ErrorLevel, zerolog.GlobalLevel())
+	s.Equal(zerolog.ErrorLevel, zerolog.GlobalLevel())
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelChanged() {
@@ -49,10 +48,10 @@ func (s *rootTestSuite) TestRoot_LogLevelChanged() {
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
-	assert.NotNil(s.T(), logLevelFlag)
-	assert.True(s.T(), logLevelFlag.Changed)
+	s.NotNil(logLevelFlag)
+	s.True(logLevelFlag.Changed)
 
-	assert.Equal(s.T(), zerolog.DebugLevel, zerolog.GlobalLevel())
+	s.Equal(zerolog.DebugLevel, zerolog.GlobalLevel())
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
@@ -60,10 +59,10 @@ func (s *rootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
-	assert.NotNil(s.T(), logLevelFlag)
-	assert.True(s.T(), logLevelFlag.Changed)
+	s.NotNil(logLevelFlag)
+	s.True(logLevelFlag.Changed)
 
-	assert.Equal(s.T(), zerolog.GlobalLevel(), zerolog.ErrorLevel)
+	s.Equal(zerolog.GlobalLevel(), zerolog.ErrorLevel)
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
@@ -71,8 +70,8 @@ func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
-	assert.NotNil(s.T(), logLevelFlag)
-	assert.True(s.T(), logLevelFlag.Changed)
+	s.NotNil(logLevelFlag)
+	s.True(logLevelFlag.Changed)
 
-	assert.Equal(s.T(), zerolog.DebugLevel, zerolog.GlobalLevel())
+	s.Equal(zerolog.DebugLevel, zerolog.GlobalLevel())
 }

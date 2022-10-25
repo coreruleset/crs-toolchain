@@ -5,82 +5,107 @@ package processors
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type assembleTestSuite struct {
 	suite.Suite
+	tempDir string
 }
 
-var tempDir string
+type fileFormatTestSuite assembleTestSuite
+type specialCommentsTestSuite assembleTestSuite
+type specialCasesTestSuite assembleTestSuite
 
 func (suite *assembleTestSuite) SetupSuite() {
 	var err error
-	tempDir, err = os.MkdirTemp("", "assemble-test")
+	suite.tempDir, err = os.MkdirTemp("", "assemble-test")
 	suite.NoError(err)
 }
 
 func (suite *assembleTestSuite) TearDownSuite() {
-	err := os.RemoveAll(tempDir)
+	err := os.RemoveAll(suite.tempDir)
 	suite.NoError(err)
 }
 
-func (suite *assembleTestSuite) TearDownTest() {
-	matches, err := filepath.Glob(tempDir + "*")
-	if suite.NoError(err) {
-		for _, entry := range matches {
-			err := os.RemoveAll(entry)
-			suite.NoError(err)
-		}
-	}
+func (suite *fileFormatTestSuite) SetupSuite() {
+	var err error
+	suite.tempDir, err = os.MkdirTemp("", "file-format-test")
+	suite.NoError(err)
+}
+
+func (suite *fileFormatTestSuite) TearDownSuite() {
+	err := os.RemoveAll(suite.tempDir)
+	suite.NoError(err)
+}
+
+func (suite *specialCommentsTestSuite) SetupSuite() {
+	var err error
+	suite.tempDir, err = os.MkdirTemp("", "special-comments-test")
+	suite.NoError(err)
+}
+
+func (suite *specialCommentsTestSuite) TearDownSuite() {
+	err := os.RemoveAll(suite.tempDir)
+	suite.NoError(err)
+}
+
+func (suite *specialCasesTestSuite) SetupSuite() {
+	var err error
+	suite.tempDir, err = os.MkdirTemp("", "special-cases-test")
+	suite.NoError(err)
+}
+
+func (suite *specialCasesTestSuite) TearDownSuite() {
+	err := os.RemoveAll(suite.tempDir)
+	suite.NoError(err)
 }
 
 func TestRunAssembleTestSuite(t *testing.T) {
 	suite.Run(t, new(assembleTestSuite))
+	suite.Run(t, new(fileFormatTestSuite))
 }
 
 func (s *assembleTestSuite) TestNewAssemble() {
-	assemble := NewAssemble(NewContextForDir(tempDir))
+	assemble := NewAssemble(NewContextForDir(s.tempDir))
 
-	assert.NotNil(s.T(), assemble)
-	assert.Equal(s.T(), assemble.proc.ctx.rootDirectory, tempDir)
-	assert.Equal(s.T(), assemble.proc.ctx.dataFilesDirectory, tempDir+"/data")
+	s.NotNil(assemble)
+	s.Equal(assemble.proc.ctx.rootDirectory, s.tempDir)
+	s.Equal(assemble.proc.ctx.dataFilesDirectory, s.tempDir+"/data")
 }
 
 func (s *assembleTestSuite) TestAssemble_MultipleLines() {
-	assemble := NewAssemble(NewContextForDir(tempDir))
+	assemble := NewAssemble(NewContextForDir(s.tempDir))
 	assemble.ProcessLine("homer")
 	assemble.ProcessLine("simpson")
 	output, err := assemble.Complete()
 
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), output, 1)
-	assert.Equal(s.T(), "homer|simpson", output[0])
+	s.NoError(err)
+	s.Len(output, 1)
+	s.Equal("homer|simpson", output[0])
 }
 
 func (s *assembleTestSuite) TestAssemble_RegularExpressions() {
-	assemble := NewAssemble(NewContextForDir(tempDir))
+	assemble := NewAssemble(NewContextForDir(s.tempDir))
 	assemble.ProcessLine("home[r,]")
 	assemble.ProcessLine(".imps[a-c]{2}n")
 	output, err := assemble.Complete()
 
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), output, 1)
-	assert.Equal(s.T(), "home[,r]|(?-s:.)imps[a-c]{2}n", output[0])
+	s.NoError(err)
+	s.Len(output, 1)
+	s.Equal("home[,r]|(?-s:.)imps[a-c]{2}n", output[0])
 }
 
 func (s *assembleTestSuite) TestAssemble_InvalidRegularExpressionFails() {
-	assemble := NewAssemble(NewContextForDir(tempDir))
+	assemble := NewAssemble(NewContextForDir(s.tempDir))
 	assemble.ProcessLine("home[r")
 	_, err := assemble.Complete()
-	assert.Error(s.T(), err)
+	s.Error(err)
 }
 
-func (s *assembleTestSuite) TestFileFormat_PreprocessIgnoresSimpleComments() {
+func (s *fileFormatTestSuite) TestPreprocessIgnoresSimpleComments() {
 	contents := `##!line1
 ##! line2
 ##!\tline3
@@ -89,10 +114,10 @@ func (s *assembleTestSuite) TestFileFormat_PreprocessIgnoresSimpleComments() {
 
 	output, err := assembler.Preprocess(Peekerator(contents.splitlines()))
 
-	assert.Empty(s.T(), output)
+	s.Empty(output)
 }
 
-func (s *assembleTestSuite) TestFileFormat_Preprocess_DoesNotIgnoreSpecialComments() {
+func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 	contents := `##!+i
 ##!+ smx
 ##!^prefix
@@ -104,11 +129,11 @@ func (s *assembleTestSuite) TestFileFormat_Preprocess_DoesNotIgnoreSpecialCommen
 
 	output, err := assembler.preprocess(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), contents.splitlines(), output)
+	s.Equal(contents.splitlines(), output)
 
 }
 
-func (s *assembleTestSuite) TestFileFormat_PreprocessDoesNotRequireCommentsToStartLine() {
+func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
 	contents := `##!line1
  ##! line2
  not blank ##!+smx 
@@ -120,20 +145,20 @@ func (s *assembleTestSuite) TestFileFormat_PreprocessDoesNotRequireCommentsToSta
 
 	output, err := assembler.preprocess(Peekerator(contents.splitlines()))
 
-	assert.Len(s.T(), output, 1)
-	assert.Equal(s.T(), ` not blank ##!+smx `, output[0])
+	s.Len(output, 1)
+	s.Equal(` not blank ##!+smx `, output[0])
 }
 
-func (s *assembleTestSuite) TestFileFormat_PreprocessHandlesPreprocessorComments() {
+func (s *fileFormatTestSuite) TestPreprocessHandlesPreprocessorComments() {
 	contents := `##!> assemble`
 	assembler := NewAssembler(context)
 
 	output, err := assembler.preprocess(Peekerator(contents.splitlines()))
 
-	assert.Empty(s.T(), output)
+	s.Empty(output)
 }
 
-func (s *assembleTestSuite) TestFileFormat_PreprocessIgnoresEmptyLines() {
+func (s *fileFormatTestSuite) TestPreprocessIgnoresEmptyLines() {
 	contents := `some line
 
 another line`
@@ -141,13 +166,13 @@ another line`
 
 	output, err := assembler.preprocess(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), []string{
+	s.Equal([]string{
 		"some line",
 		"another line",
 	}, output)
 }
 
-func (s *assembleTestSuite) TestFileFormat_PreprocessFailsOnTooManyEndMarkers() {
+func (s *fileFormatTestSuite) TestPreprocessFailsOnTooManyEndMarkers() {
 	contents := `##!> assemble
 ##!> assemble
 ##!<
@@ -157,19 +182,19 @@ func (s *assembleTestSuite) TestFileFormat_PreprocessFailsOnTooManyEndMarkers() 
 	assembler := NewAssembler(context)
 
 	err := assembler.preprocess(Peekerator(contents.splitlines()))
-	assert.ErrorIs(s.T(), err, NestingError)
+	s.ErrorIs(err, NestingError)
 }
 
-func (s *assembleTestSuite) TestFileFormat_PreprocessFailsOnTooFewEndMarkers() {
+func (s *fileFormatTestSuite) TestPreprocessFailsOnTooFewEndMarkers() {
 	contents := `##!> assemble
 ##!> assemble`
 	assembler := NewAssembler(context)
 
 	err := assembler.preprocess(Peekerator(contents.splitlines()))
-	assert.ErrorIs(s.T(), err, NestingError)
+	s.ErrorIs(err, NestingError)
 }
 
-func (s *assembleTestSuite) TestFileFormat_PreprocessDoesNotRequireFinalEndMarker() {
+func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireFinalEndMarker() {
 	contents := `##!> assemble
 ##!> assemble
 ##!<
@@ -178,136 +203,136 @@ func (s *assembleTestSuite) TestFileFormat_PreprocessDoesNotRequireFinalEndMarke
 
 	output, err := assembler.preprocess(Peekerator(contents.splitlines()))
 
-	assert.Empty(s.T(), output)
+	s.Empty(output)
 }
 
-func (s *assembleTestSuite) TestSpecialComments_HandlesIgnoreCaseFlag() {
+func (s *specialCommentsTestSuite) TestHandlesIgnoreCaseFlag() {
 	for _, contents := range []string{"##!+i", "##!+ i", "##!+   i"} {
 		assembler := NewAssembler(context)
 		output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-		assert.Equal(s.T(), "(?i)", output)
+		s.Equal("(?i)", output)
 	}
 }
 
-func (s *assembleTestSuite) TestSpecialComments_HandlesSingleLineFlag() {
+func (s *specialCommentsTestSuite) TestHandlesSingleLineFlag() {
 	for contents := range []string{"##!+s", "##!+ s", "##!+   s"} {
 		assembler := NewAssembler(context)
 		output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-		assert.Equal(s.T(), "(?s)", output)
+		s.Equal("(?s)", output)
 	}
 }
 
-func (s *assembleTestSuite) TestSpecialComments_HandlesNoOtherFlags() {
+func (s *specialCommentsTestSuite) TestHandlesNoOtherFlags() {
 	contents := "##!+mx"
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Empty(s.T(), output)
+	s.Empty(output)
 }
 
-func (s *assembleTestSuite) TestSpecialComments_HandlesPrefixComment() {
+func (s *specialCommentsTestSuite) TestHandlesPrefixComment() {
 	contents := `##!^ a prefix
 a
 b`
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), "a prefix[a-b]", output)
+	s.Equal("a prefix[a-b]", output)
 }
 
-func (s *assembleTestSuite) TestSpecialComments_HandlesSuffixComment() {
+func (s *specialCommentsTestSuite) TestHandlesSuffixComment() {
 	contents := `##!$ a suffix
 a
 b`
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), "[a-b]a suffix", output)
+	s.Equal("[a-b]a suffix", output)
 }
 
-func (s *assembleTestSuite) TestSpecialCases_IgnoresEmptyLines() {
+func (s *specialCasesTestSuite) TestIgnoresEmptyLines() {
 	contents := `some line
 
 another line`
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), "(?:some|another) line", output)
+	s.Equal("(?:some|another) line", output)
 }
 
-func (s *assembleTestSuite) TestSpecialCases_ReturnsNoOutputForEmptyInput() {
+func (s *specialCasesTestSuite) TestReturnsNoOutputForEmptyInput() {
 	contents := `##!+ _
 
 `
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Empty(s.T(), output)
+	s.Empty(output)
 }
 
-func (s *assembleTestSuite) TestSpecialCases_SpecialComments_HandlesBackslashEscapeCorrectly() {
+func (s *specialCasesTestSuite) TestSpecialComments_HandlesBackslashEscapeCorrectly() {
 	contents := `\x5c\x5ca`
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), `\x5c\x5ca`, output)
+	s.Equal(`\x5c\x5ca`, output)
 }
 
-func (s *assembleTestSuite) TestSpecialCases_DoesNotDestroyHexEscapes() {
+func (s *specialCasesTestSuite) TestDoesNotDestroyHexEscapes() {
 	contents := `a\x5c\x48\\x48b`
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), `a\x5cH\x5cx48b`, output)
+	s.Equal(`a\x5cH\x5cx48b`, output)
 }
 
-func (s *assembleTestSuite) TestSpecialCases_DoesNotDestroyHexEscapesInAlternations() {
+func (s *specialCasesTestSuite) TestDoesNotDestroyHexEscapesInAlternations() {
 	contents := `a\x5c\x48
 b\x5c\x48
 `
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), `[a-b]\x5cH`, output)
+	s.Equal(`[a-b]\x5cH`, output)
 }
 
-func (s *assembleTestSuite) TestSpecialCases_SpecialComments_HandlesEscapedAlternationsCorrectly() {
+func (s *specialCasesTestSuite) TestSpecialComments_HandlesEscapedAlternationsCorrectly() {
 	contents := `\|\|something|or other`
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), `\|\|something|or other`, output)
+	s.Equal(`\|\|something|or other`, output)
 }
 
-func (s *assembleTestSuite) TestSpecialCases_AlwaysEscapesDoubleQuotes() {
+func (s *specialCasesTestSuite) TestAlwaysEscapesDoubleQuotes() {
 	contents := `(?:"\"\\"a)`
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), `\"\"\x5c"a`, output)
+	s.Equal(`\"\"\x5c"a`, output)
 }
 
-func (s *assembleTestSuite) TestSpecialCases_DoesNotConvertHexEscapesOfNonPrintableCharacters() {
+func (s *specialCasesTestSuite) TestDoesNotConvertHexEscapesOfNonPrintableCharacters() {
 	contents := `(?:\x48\xe2\x93\xab)`
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), `H\xe2\x93\xab`, output)
+	s.Equal(`H\xe2\x93\xab`, output)
 }
 
-func (s *assembleTestSuite) TestSpecialCases_BackslashSReplacesPerlEquivalentCharacterClass() {
+func (s *specialCasesTestSuite) TestBackslashSReplacesPerlEquivalentCharacterClass() {
 	// rassemble-go returns `[\t-\n\f-\r ]` for `\s`, which is correct for Perl
 	// but does not include `\v`, which `\s` does in PCRE (3 and 2).
 	contents := `\s`
 	assembler := NewAssembler(context)
 	output, err := assembler.Run(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), `\s`, output)
+	s.Equal(`\s`, output)
 }
 
-func (s *assembleTestSuite) TestPreprocessors_SequentialPreprocessors() {
+func (s *preprocessorsTestSuite) TestSequentialPreprocessors() {
 	contents := `##!> cmdline unix
 foo
 ##!<
@@ -326,7 +351,7 @@ five
 
 	output, err := assembler.preprocess(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), []string{
+	s.Equal([]string{
 		`f[\\x5c\"\\"]*o[\\x5c\"\\"]*o`,
 		`b[\\"\\^]*a[\\"\\^]*r`,
 		`(?:one|t(?:wo|hree))`,
@@ -335,7 +360,7 @@ five
 	}, output)
 }
 
-func (s *assembleTestSuite) TestPreprocessors_NestedPreprocessors() {
+func (s *preprocessorsTestSuite) TestNestedPreprocessors() {
 	contents := `##!> assemble
     ##!> cmdline unix
 foo
@@ -351,14 +376,14 @@ five
 
 	output, err := assembler.preprocess(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), []string{
+	s.Equal([]string{
 		`(?:f[""\\]*o[""\\]*o|b["\^]*a["\^]*r)`,
 		"four",
 		"five",
 	}, output)
 }
 
-func (s *assembleTestSuite) TestPreprocessors_ComplexNestedPreprocessors() {
+func (s *preprocessorsTestSuite) TestComplexNestedPreprocessors() {
 	contents := `##!> assemble, output)
     ##!> cmdline unix
 foo
@@ -383,7 +408,7 @@ eight
 
 	output, err := assembler.preprocess(Peekerator(contents.splitlines()))
 
-	assert.Equal(s.T(), []string{
+	s.Equal([]string{
 		`(?:f[""\\]*o[""\\]*o|((?:[""\\]*?[""\\]*:[""\\]*a[""\\]*b|[""\\]*c[""\\]*d)[""\\]*)|b["\^]*a["\^]*r)`,
 		"four",
 		"five",
