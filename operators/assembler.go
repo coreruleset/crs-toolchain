@@ -4,17 +4,12 @@
 package operators
 
 import (
-	"github.com/rs/zerolog/log"
 	"github.com/theseion/crs-toolchain/v2/processors"
 )
 
-var logger = log.With().Str("component", "operators").Logger()
-
 type Indent int
 
-type Assembler struct {
-	ctx *processors.Context
-}
+type Assembler Operator
 
 // TODO: Peekerator just has a compatible type, needs to be implemented.
 func Peekerator(s []string) string {
