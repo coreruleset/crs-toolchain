@@ -7,11 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-
-	"github.com/rs/zerolog/log"
 )
-
-var logger = log.With().Str("component", "processors").Logger()
 
 type Context struct {
 	rootDirectory      string
