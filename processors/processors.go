@@ -24,12 +24,7 @@ type IProcessor interface {
 
 // NewProcessor creates a new processor with defaults.
 func NewProcessor() *Processor {
-	p := &Processor{
-		ctx:          NewContext(),
-		commentRegex: regexp.MustCompile(`^##!`),
-		lines:        []string{},
-	}
-	return p
+	return NewProcessorWithContext(NewContext())
 }
 
 // NewProcessorWithContext creates a new processor with passed context.

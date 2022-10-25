@@ -49,7 +49,7 @@ func NewCmdline(ctx *Context, cmdType CmdlineType) *Cmdline {
 		// Unix: "cat foo", "cat<foo", "cat>foo"
 		a.evasion_patterns[SuffixPattern] = `(?:\s|<|>).*`
 		// Same as above but does not allow any white space as the next token.
-		// This is useful for thing like `python3`, where `python@` would
+		// This is useful for words like `python3`, where `python@` would
 		// create too many false positives because it would match `python `.
 		// This will match:
 		//
@@ -65,7 +65,7 @@ func NewCmdline(ctx *Context, cmdType CmdlineType) *Cmdline {
 		// "more<foo", "more>foo"
 		a.evasion_patterns[SuffixPattern] = `(?:[\s,;]|\.|/|<|>).*`
 		// Same as above but does not allow any white space as the next token.
-		// This is useful for thing like `python3`, where `python@` would
+		// This is useful for words like `python3`, where `python@` would
 		// create too many false positives because it would match `python `.
 		// This will match:
 		//
