@@ -108,6 +108,7 @@ func (c *Cmdline) Complete() ([]string, error) {
 // regexpStr converts a single line to regexp format, and insert anti-cmdline
 // evasions between characters.
 func (c *Cmdline) regexpStr(input string) string {
+	logger.Trace().Msgf("regexpStr: %s", input)
 	// By convention, if the line starts with ' char, copy the rest verbatim.
 	if strings.Index(input, "'") == 0 {
 		return input[1:]
@@ -129,16 +130,21 @@ func (c *Cmdline) regexpStr(input string) string {
 
 // regexpChar ensures that some special characters are escaped
 func (c *Cmdline) regexpChar(char byte) string {
+	logger.Trace().Msgf("regexpChar in: %v", char)
+
 	chars := ""
 	switch char {
 	case '.':
 		chars = "\\."
 	case '-':
-		chars = "\\."
+		chars = "\\-"
 	case '@':
 		chars = c.evasion_patterns[SuffixPattern]
 	case '~':
 		chars = c.evasion_patterns[SuffixExpandedCommand]
+	default:
+		chars = string(char)
 	}
+	logger.Trace().Msgf("regexpChar out: %s", chars)
 	return strings.Replace(chars, " ", "\\s+", -1)
 }
