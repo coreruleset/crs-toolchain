@@ -99,7 +99,7 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 
 	// now that the file was parsed, we replace all templates
 	if len(p.variables) > 0 {
-		p.dest = replaceTemplates(p.dest, p.variables)
+		p.dest = expandTemplates(p.dest, p.variables)
 	}
 	return p.dest, wrote
 }

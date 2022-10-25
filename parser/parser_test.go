@@ -61,17 +61,18 @@ func (s *parserTestSuite) TestParser_ParseTwoComments() {
 
 type parserIncludeTestSuite struct {
 	suite.Suite
-	ctx         *processors.Context
-	reader      io.Reader
-	includeFile *os.File
+	ctx           *processors.Context
+	reader        io.Reader
+	testDirectory string
+	includeFile   *os.File
 }
 
 func (s *parserIncludeTestSuite) SetupSuite() {
 	var err error
-	s.testDirectory = os.MkdirTemp("", "include-tests")
-	tmpdir := os.TempDir()
-	s.ctx = processors.NewContextForDir(tmpdir)
-	s.includeFile, err = os.CreateTemp(tmpdir, "test.data")
+	s.testDirectory, err = os.MkdirTemp("", "include-tests")
+	s.NoError(err)
+	s.ctx = processors.NewContextForDir(s.testDirectory)
+	s.includeFile, err = os.CreateTemp(s.testDirectory, "test.data")
 	s.NoError(err, "couldn't create %s file", s.includeFile.Name())
 	n, err := s.includeFile.WriteString("This data comes from the included file.\n")
 	s.NoError(err, "writing temp include file failed")
@@ -81,7 +82,7 @@ func (s *parserIncludeTestSuite) SetupSuite() {
 
 func (s *parserIncludeTestSuite) TearDownSuite() {
 	s.NoError(s.includeFile.Close())
-	s.NoError(os.RemoveAll(s.testDirectory)
+	s.NoError(os.RemoveAll(s.testDirectory))
 }
 
 func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
