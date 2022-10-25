@@ -68,6 +68,7 @@ type parserIncludeTestSuite struct {
 
 func (s *parserIncludeTestSuite) SetupSuite() {
 	var err error
+	s.testDirectory = os.MkdirTemp("", "include-tests")
 	tmpdir := os.TempDir()
 	s.ctx = processors.NewContextForDir(tmpdir)
 	s.includeFile, err = os.CreateTemp(tmpdir, "test.data")
@@ -80,7 +81,7 @@ func (s *parserIncludeTestSuite) SetupSuite() {
 
 func (s *parserIncludeTestSuite) TearDownSuite() {
 	s.NoError(s.includeFile.Close())
-	s.NoError(os.Remove(s.includeFile.Name()))
+	s.NoError(os.RemoveAll(s.testDirectory)
 }
 
 func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {

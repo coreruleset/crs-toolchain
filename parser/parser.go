@@ -155,13 +155,13 @@ func includeFile(ctx *processors.Context, filename string) (*bytes.Buffer, int) 
 	return newP.Parse()
 }
 
-func replaceTemplates(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
-	logger.Trace().Msgf("before replacing templates: %v", src.String())
+func expandTemplates(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
+	logger.Trace().Msgf("expanding templates in: %v", src.String())
 	for needle, replacement := range variables {
 		needle := "{{" + needle + "}}"
 		replacement := replacement
 		src = bytes.NewBuffer(bytes.ReplaceAll(src.Bytes(), []byte(needle), []byte(replacement)))
 	}
-	logger.Trace().Msgf("replaces templates: %v", src.String())
+	logger.Trace().Msgf("expanded all templates in: %v", src.String())
 	return src
 }
