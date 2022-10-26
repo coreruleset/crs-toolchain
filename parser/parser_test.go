@@ -167,7 +167,7 @@ func (s *parserTemplateTestSuite) TestParserTemplate_BasicTest() {
 }
 
 // Templates test suite
-type parserIncludeWithTemplatesTestSuite struct {
+type parserIncludeWithTemplates struct {
 	suite.Suite
 	ctx         *processors.Context
 	reader      io.Reader
