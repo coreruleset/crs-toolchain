@@ -16,8 +16,6 @@ import (
 
 type Indent int
 
-type Assembler Operator
-
 const (
 	commentRegexPrefix = `\s*##!`
 	// prefix, suffix, flags, block start block end
@@ -37,17 +35,18 @@ var regexes = struct {
 	simpleComment:     *regexp.MustCompile(fmt.Sprintf(simpleCommentRegexTemplate, commentRegexPrefix, specialCommentMarkers)),
 }
 
-func NewAssembler(ctx *processors.Context) *Assembler {
-	a := &Assembler{
-		ctx:   ctx,
-		stats: NewStats(),
+// Create the operator stack
+var operatorStack = []OperatorStack{}
+
+func NewAssembler(ctx *processors.Context) *Operator {
+	a := &Operator{
+		name:    "assemble",
+		details: make(map[string]string),
+		lines:   []string{},
+		ctx:     ctx,
+		stats:   NewStats(),
 	}
 	return a
-}
-
-func (a *Assembler) Preprocess(reader *bufio.Reader) (string, error) {
-	//TODO: Implement
-	return "TODO", nil
 }
 
 func (a *Assembler) Run(input string) (string, error) {
@@ -55,10 +54,19 @@ func (a *Assembler) Run(input string) (string, error) {
 	parser := parser.NewParser(a.ctx, strings.NewReader(input))
 	lines, _ := parser.Parse()
 	logger.Trace().Msgf("Parsed lines: %v", lines)
-	return a.run(lines)
+	return a.Assemble(lines)
 }
 
-func (a *Assembler) run(input *bytes.Buffer) (string, error) {
-	reader := bufio.NewReader(bytes.NewReader(input.Bytes()))
-	return a.Preprocess(reader)
+func (a *Assembler) Assemble(input *bytes.Buffer) (string, error) {
+	fileScanner := bufio.NewScanner(bytes.NewReader(input.Bytes()))
+	fileScanner.Split(bufio.ScanLines)
+	var text string
+
+	for fileScanner.Scan() {
+		line := fileScanner.Text()
+		text = "" // empty text each iteration
+		logger.Trace().Msgf("parsing line: %q", line)
+	}
+
+	return text, nil
 }

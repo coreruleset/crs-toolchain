@@ -9,10 +9,14 @@ import (
 var logger = log.With().Str("component", "operators").Logger()
 
 type Operator struct {
-	//TODO: define operator
-	stats *Stats
-	ctx   *processors.Context
+	name    string
+	details map[string]string
+	lines   []string
+	stats   *Stats
+	ctx     *processors.Context
 }
+
+type OperatorStack []*Operator
 
 type IOperator interface {
 	Preprocess(io.Reader)

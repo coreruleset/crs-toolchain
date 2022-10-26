@@ -82,7 +82,7 @@ func (s *fileFormatTestSuite) TestPreprocessIgnoresSimpleComments() {
 `
 	assembler := NewAssembler(s.ctx)
 
-	output, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 
 	s.Error(err)
 	s.Empty(output)
@@ -98,7 +98,7 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 `
 	assembler := NewAssembler(s.ctx)
 
-	output, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 
 	s.Error(err)
 	s.Equal(strings.Split(contents, "\n"), output)
@@ -115,7 +115,7 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() 
 `
 	assembler := NewAssembler(s.ctx)
 
-	output, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 
 	s.Error(err)
 	s.Len(output, 1)
@@ -126,7 +126,7 @@ func (s *fileFormatTestSuite) TestPreprocessHandlesPreprocessorComments() {
 	contents := `##!> assemble`
 	assembler := NewAssembler(s.ctx)
 
-	output, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 
 	s.Error(err)
 	s.Empty(output)
@@ -138,7 +138,7 @@ func (s *fileFormatTestSuite) TestPreprocessIgnoresEmptyLines() {
 another line`
 	assembler := NewAssembler(s.ctx)
 
-	output, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 
 	s.Error(err)
 	s.Equal([]string{
@@ -156,7 +156,7 @@ func (s *fileFormatTestSuite) TestPreprocessFailsOnTooManyEndMarkers() {
 `
 	assembler := NewAssembler(s.ctx)
 
-	_, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	_, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 	s.ErrorIs(err, errors.New("NestingError"))
 }
 
@@ -165,7 +165,7 @@ func (s *fileFormatTestSuite) TestPreprocessFailsOnTooFewEndMarkers() {
 ##!> assemble`
 	assembler := NewAssembler(s.ctx)
 
-	_, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	_, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 	s.ErrorIs(err, errors.New("NestingError"))
 }
 
@@ -176,7 +176,7 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireFinalEndMarker() {
 `
 	assembler := NewAssembler(s.ctx)
 
-	output, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 
 	s.Error(err)
 	s.Empty(output)
@@ -185,7 +185,7 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireFinalEndMarker() {
 func (s *specialCommentsTestSuite) TestHandlesIgnoreCaseFlag() {
 	for _, contents := range []string{"##!+i", "##!+ i", "##!+   i"} {
 		assembler := NewAssembler(s.ctx)
-		output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+		output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 		s.Error(err)
 		s.Equal("(?i)", output)
 	}
@@ -194,7 +194,7 @@ func (s *specialCommentsTestSuite) TestHandlesIgnoreCaseFlag() {
 func (s *specialCommentsTestSuite) TestHandlesSingleLineFlag() {
 	for _, contents := range []string{"##!+s", "##!+ s", "##!+   s"} {
 		assembler := NewAssembler(s.ctx)
-		output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+		output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 		s.Error(err)
 		s.Equal("(?s)", output)
 	}
@@ -203,7 +203,7 @@ func (s *specialCommentsTestSuite) TestHandlesSingleLineFlag() {
 func (s *specialCommentsTestSuite) TestHandlesNoOtherFlags() {
 	contents := "##!+mx"
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Empty(output)
 }
@@ -213,7 +213,7 @@ func (s *specialCommentsTestSuite) TestHandlesPrefixComment() {
 a
 b`
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal("a prefix[a-b]", output)
 }
@@ -223,7 +223,7 @@ func (s *specialCommentsTestSuite) TestHandlesSuffixComment() {
 a
 b`
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal("[a-b]a suffix", output)
 }
@@ -233,7 +233,7 @@ func (s *specialCasesTestSuite) TestIgnoresEmptyLines() {
 
 another line`
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal("(?:some|another) line", output)
 }
@@ -243,7 +243,7 @@ func (s *specialCasesTestSuite) TestReturnsNoOutputForEmptyInput() {
 
 `
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Empty(output)
 }
@@ -251,7 +251,7 @@ func (s *specialCasesTestSuite) TestReturnsNoOutputForEmptyInput() {
 func (s *specialCasesTestSuite) TestSpecialComments_HandlesBackslashEscapeCorrectly() {
 	contents := `\x5c\x5ca`
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal(`\x5c\x5ca`, output)
 }
@@ -259,7 +259,7 @@ func (s *specialCasesTestSuite) TestSpecialComments_HandlesBackslashEscapeCorrec
 func (s *specialCasesTestSuite) TestDoesNotDestroyHexEscapes() {
 	contents := `a\x5c\x48\\x48b`
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal(`a\x5cH\x5cx48b`, output)
 }
@@ -269,7 +269,7 @@ func (s *specialCasesTestSuite) TestDoesNotDestroyHexEscapesInAlternations() {
 b\x5c\x48
 `
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal(`[a-b]\x5cH`, output)
 }
@@ -277,7 +277,7 @@ b\x5c\x48
 func (s *specialCasesTestSuite) TestSpecialComments_HandlesEscapedAlternationsCorrectly() {
 	contents := `\|\|something|or other`
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal(`\|\|something|or other`, output)
 }
@@ -285,7 +285,7 @@ func (s *specialCasesTestSuite) TestSpecialComments_HandlesEscapedAlternationsCo
 func (s *specialCasesTestSuite) TestAlwaysEscapesDoubleQuotes() {
 	contents := `(?:"\"\\"a)`
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal(`\"\"\x5c"a`, output)
 }
@@ -293,7 +293,7 @@ func (s *specialCasesTestSuite) TestAlwaysEscapesDoubleQuotes() {
 func (s *specialCasesTestSuite) TestDoesNotConvertHexEscapesOfNonPrintableCharacters() {
 	contents := `(?:\x48\xe2\x93\xab)`
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal(`H\xe2\x93\xab`, output)
 }
@@ -303,7 +303,7 @@ func (s *specialCasesTestSuite) TestBackslashSReplacesPerlEquivalentCharacterCla
 	// but does not include `\v`, which `\s` does in PCRE (3 and 2).
 	contents := `\s`
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Run(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal(`\s`, output)
 }
@@ -325,7 +325,7 @@ five
 `
 	assembler := NewAssembler(s.ctx)
 
-	output, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal([]string{
 		`f[\\x5c\"\\"]*o[\\x5c\"\\"]*o`,
@@ -350,7 +350,7 @@ five
 `
 	assembler := NewAssembler(s.ctx)
 
-	output, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal([]string{
 		`(?:f[""\\]*o[""\\]*o|b["\^]*a["\^]*r)`,
@@ -382,7 +382,7 @@ eight
 `
 	assembler := NewAssembler(s.ctx)
 
-	output, err := assembler.Preprocess(Peekerator(strings.Split(contents, "\n")))
+	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
 	s.Error(err)
 	s.Equal([]string{
 		`(?:f[""\\]*o[""\\]*o|((?:[""\\]*?[""\\]*:[""\\]*a[""\\]*b|[""\\]*c[""\\]*d)[""\\]*)|b["\^]*a["\^]*r)`,
