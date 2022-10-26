@@ -104,47 +104,45 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 
 }
 
-// func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
-// 	contents := `##!line1
-//  ##! line2
-//  not blank ##!+smx
-// \t\t##!foo
-// \t ##! bar
-// ##!\tline3
-// `
-// 	assembler := NewAssembler(s.ctx)
+//func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
+//	contents := `##!line1
+// ##! line2
+// not blank ##!+smx
+//\t\t##!foo
+//\t ##! bar
+//##!\tline3
+//`
+//	assembler := NewAssembler(s.ctx)
+//
+//	output, err := assembler.Run(contents)
+//
+//	s.Error(err)
+//	s.Len(output, 1)
+//	s.Equal(` not blank ##!+smx `, output)
+//}
 
-// 	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
+//func (s *fileFormatTestSuite) TestPreprocessHandlesPreprocessorComments() {
+//	contents := `##!> assemble`
+//	assembler := NewAssembler(s.ctx)
+//
+//	output, err := assembler.Run(contents)
+//
+//	s.Error(err)
+//	s.Empty(output)
+//}
 
-// 	s.Error(err)
-// 	s.Len(output, 1)
-// 	s.Equal(` not blank ##!+smx `, output[0])
-// }
+func (s *fileFormatTestSuite) TestPreprocessIgnoresEmptyLines() {
+	contents := `some line
 
-// func (s *fileFormatTestSuite) TestPreprocessHandlesPreprocessorComments() {
-// 	contents := `##!> assemble`
-// 	assembler := NewAssembler(s.ctx)
+another line`
+	assembler := NewAssembler(s.ctx)
 
-// 	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
+	expected := `(?:(?:some|another) line)?`
+	output, err := assembler.Run(contents)
 
-// 	s.Error(err)
-// 	s.Empty(output)
-// }
-
-// func (s *fileFormatTestSuite) TestPreprocessIgnoresEmptyLines() {
-// 	contents := `some line
-
-// another line`
-// 	assembler := NewAssembler(s.ctx)
-
-// 	output, err := assembler.Preprocess(strings.NewReader(strings.Split(contents, "\n")))
-
-// 	s.Error(err)
-// 	s.Equal([]string{
-// 		"some line",
-// 		"another line",
-// 	}, output)
-// }
+	s.NoError(err)
+	s.Equal(expected, output)
+}
 
 // func (s *fileFormatTestSuite) TestPreprocessFailsOnTooManyEndMarkers() {
 // 	contents := `##!> assemble

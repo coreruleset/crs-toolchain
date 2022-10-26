@@ -29,9 +29,9 @@ const (
 	templatePatternName string     = "template"
 	templatePattern     string     = `^\s*##!>\s*template\s+([a-zA-Z0-9-_]+)\s+(.*)$`
 	commentPatternName  string     = "comment"
-	commentPattern      string     = `^\s*##![^^$+><=]`
+	commentPattern      string     = `\s*##![^^$+><=]`
 	flagsPatternName    string     = "flags"
-	flagsPattern        string     = `^\s*##!\+\s*(.*)$`
+	flagsPattern        string     = `^\s*##!\+\s*(.*)\s*$`
 	prefixPatternName   string     = "prefix"
 	prefixPattern       string     = `^\s*##!\^\s*(.*)$`
 	suffixPatternName   string     = "suffix"
@@ -127,6 +127,7 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 			p.Suffixes = append(p.Suffixes, parsedLine.result[suffixPatternName])
 		}
 		// err is always nil
+		logger.Trace().Msgf("** ADDING text: %q", text)
 		n, _ := p.dest.WriteString(text)
 		wrote += n
 	}
@@ -148,7 +149,7 @@ func (p *Parser) parseLine(line string) ParsedLine {
 		found := pattern.FindStringSubmatch(line)
 		// found[0] has the whole line that matched, found[N] has the subgroup
 		if len(found) > 0 {
-			logger.Trace().Msgf("found %s statement: %v", name, found[1:])
+			logger.Trace().Msgf("found %s statement: %v", name, found)
 			switch name {
 			case commentPatternName:
 				pType = comment
