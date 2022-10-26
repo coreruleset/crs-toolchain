@@ -5,15 +5,13 @@ package processors
 
 import (
 	"github.com/rs/zerolog/log"
-	"regexp"
 )
 
 var logger = log.With().Str("component", "processors").Logger()
 
 type Processor struct {
-	ctx          *Context
-	commentRegex *regexp.Regexp
-	lines        []string
+	ctx   *Context
+	lines []string
 }
 
 type IProcessor interface {
@@ -30,9 +28,8 @@ func NewProcessor() *Processor {
 // NewProcessorWithContext creates a new processor with passed context.
 func NewProcessorWithContext(ctx *Context) *Processor {
 	p := &Processor{
-		ctx:          ctx,
-		commentRegex: regexp.MustCompile(`^##!`),
-		lines:        []string{},
+		ctx:   ctx,
+		lines: []string{},
 	}
 	return p
 }

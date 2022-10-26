@@ -20,16 +20,19 @@ import (
 
 var logger = log.With().Str("component", "parser").Logger()
 
-type ParsedType int
+type parsedType int
 
 const (
-	IncludePatternName  string     = "include"
-	IncludePattern      string     = `^\s*##!>\s*include\s*(.*)$`
-	TemplatePatternName string     = "template"
-	TemplatePattern     string     = `^\s*##!>\s*template\s+([a-zA-Z0-9-_]+)\s+(.*)$`
-	Regular             ParsedType = iota
-	Include
-	Template
+	includePatternName  string     = "include"
+	includePattern      string     = `^\s*##!>\s*include\s*(.*)$`
+	templatePatternName string     = "template"
+	templatePattern     string     = `^\s*##!>\s*template\s+([a-zA-Z0-9-_]+)\s+(.*)$`
+	commentPatternName  string     = "comment"
+	commentPattern      string     = `^\s*##![^^$+><=]`
+	regular             parsedType = iota
+	include
+	template
+	comment
 )
 
 // Parser is the base parser type. It will provide processors with all the inclusions and templates resolved.
@@ -42,10 +45,10 @@ type Parser struct {
 }
 
 // ParsedLine will store the results of parsing the line. `parsedType` will discriminate how you read the results:
-// if the type is `Include`, then the result map will store the file name in the "include" key. The template type
+// if the type is `include`, then the result map will store the file name in the "include" key. The template type
 // will just use the map for the name:value.
 type ParsedLine struct {
-	parsedType ParsedType
+	parsedType parsedType
 	result     map[string]string
 	line       string
 }
@@ -58,8 +61,9 @@ func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 		dest:      &bytes.Buffer{},
 		variables: make(map[string]string),
 		patterns: map[string]*regexp.Regexp{
-			IncludePatternName:  regexp.MustCompile(IncludePattern),
-			TemplatePatternName: regexp.MustCompile(TemplatePattern),
+			includePatternName:  regexp.MustCompile(includePattern),
+			templatePatternName: regexp.MustCompile(templatePattern),
+			commentPatternName:  regexp.MustCompile(commentPattern),
 		},
 	}
 	return p
@@ -79,17 +83,20 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 		logger.Trace().Msgf("parsing line: %q", line)
 		parsedLine := p.parseLine(line)
 		switch parsedLine.parsedType {
-		case Regular:
+		case regular:
 			text = line + "\n"
-		case Template:
+		case comment:
+			// remove comments from the parsed line
+			text = ""
+		case template:
 			// merge maps p.variables and parseLine.template
 			err := mergo.Merge(&p.variables, parsedLine.result)
 			if err != nil {
 				logger.Error().Err(err).Msg("error merging templates")
 			}
-		case Include:
+		case include:
 			// go read the included file and paste text here
-			content, _ := includeFile(p.ctx, parsedLine.result[IncludePatternName])
+			content, _ := includeFile(p.ctx, parsedLine.result[includePatternName])
 			text = content.String()
 		}
 		// err is always nil
@@ -108,7 +115,7 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 func (p *Parser) parseLine(line string) ParsedLine {
 	var pl ParsedLine
 	var result map[string]string
-	pType := Regular
+	pType := regular
 
 	for name, pattern := range p.patterns {
 		found := pattern.FindStringSubmatch(line)
@@ -116,13 +123,18 @@ func (p *Parser) parseLine(line string) ParsedLine {
 		if len(found) > 0 {
 			logger.Trace().Msgf("found %s statement: %v", name, found[1:])
 			switch name {
-			case IncludePatternName:
-				pType = Include
+			case commentPatternName:
+				pType = comment
+				result = map[string]string{
+					name: "comment",
+				}
+			case includePatternName:
+				pType = include
 				result = map[string]string{
 					name: found[1],
 				}
-			case TemplatePatternName:
-				pType = Template
+			case templatePatternName:
+				pType = template
 				result = map[string]string{
 					found[1]: found[2],
 				}

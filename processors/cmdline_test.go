@@ -22,26 +22,25 @@ func TestRunCmdLineTestSuite(t *testing.T) {
 func (s *cmdLineTestSuite) TestCmdLine_NewParser() {
 	expected := &Cmdline{
 		proc: &Processor{
-			ctx:          s.ctx,
-			commentRegex: regexp.MustCompile(`^##!`),
-			lines:        []string{},
+			ctx:   s.ctx,
+			lines: []string{},
 		},
 		input:   regexp.MustCompile(AssembleInput),
 		output:  regexp.MustCompile(AssembleOutput),
-		cmdType: Unix,
-		evasion_patterns: map[EvasionPatterns]string{
-			EvasionPattern:        `[\x5c'\"]*`,
-			SuffixPattern:         `(?:\s|<|>).*`,
-			SuffixExpandedCommand: `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"]*)+(?:\s|<|>)).*`,
+		cmdType: unix,
+		evasionPatterns: map[EvasionPatterns]string{
+			evasionPattern:        `[\x5c'\"]*`,
+			suffixPattern:         `(?:\s|<|>).*`,
+			suffixExpandedCommand: `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"]*)+(?:\s|<|>)).*`,
 		},
 	}
-	actual := NewCmdline(s.ctx, Unix)
+	actual := NewCmdline(s.ctx, unix)
 
 	s.Equal(expected, actual)
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
-	cmd := NewCmdline(s.ctx, Unix)
+	cmd := NewCmdline(s.ctx, unix)
 
 	cmd.ProcessLine(`foo`)
 
@@ -49,7 +48,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
-	cmd := NewCmdline(s.ctx, Unix)
+	cmd := NewCmdline(s.ctx, unix)
 
 	cmd.ProcessLine(`gcc-10.`)
 

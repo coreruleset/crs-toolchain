@@ -2,7 +2,6 @@ package processors
 
 import (
 	"github.com/stretchr/testify/suite"
-	"regexp"
 	"testing"
 )
 
@@ -21,9 +20,8 @@ func TestRunProcessorTestSuite(t *testing.T) {
 
 func (s *processorTestSuite) TestProcessor_New() {
 	expected := &Processor{
-		ctx:          s.ctx,
-		commentRegex: regexp.MustCompile(`^##!`),
-		lines:        []string{},
+		ctx:   s.ctx,
+		lines: []string{},
 	}
 
 	actual := NewProcessor()
@@ -32,9 +30,8 @@ func (s *processorTestSuite) TestProcessor_New() {
 
 func (s *processorTestSuite) TestProcessor_NewWithContext() {
 	expected := &Processor{
-		ctx:          s.ctx,
-		commentRegex: regexp.MustCompile(`^##!`),
-		lines:        []string{},
+		ctx:   s.ctx,
+		lines: []string{},
 	}
 
 	actual := NewProcessorWithContext(s.ctx)

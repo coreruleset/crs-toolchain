@@ -40,8 +40,9 @@ func (s *parserTestSuite) TestParser_NewParser() {
 		dest:      &bytes.Buffer{},
 		variables: make(map[string]string),
 		patterns: map[string]*regexp.Regexp{
-			IncludePatternName:  regexp.MustCompile(IncludePattern),
-			TemplatePatternName: regexp.MustCompile(TemplatePattern),
+			includePatternName:  regexp.MustCompile(includePattern),
+			templatePatternName: regexp.MustCompile(templatePattern),
+			commentPatternName:  regexp.MustCompile(commentPattern),
 		},
 	}
 	actual := NewParser(processors.NewContext(), s.reader)
@@ -53,7 +54,7 @@ func (s *parserTestSuite) TestParser_ParseTwoComments() {
 	parser := NewParser(processors.NewContext(), s.reader)
 
 	actual, n := parser.Parse()
-	expected := bytes.NewBufferString("##! This is a comment.\n##! This is another line.\n")
+	expected := bytes.NewBufferString("")
 
 	s.Equal(expected.String(), actual.String())
 	s.Equal(expected.Len(), n)
@@ -88,13 +89,11 @@ func (s *parserIncludeTestSuite) TearDownSuite() {
 func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
 	parser := NewParser(s.ctx, s.reader)
 	actual, n := parser.Parse()
-	expected := bytes.NewBufferString("This data comes from the included file.\n##! This is a comment line.\n")
+	expected := bytes.NewBufferString("This data comes from the included file.\n")
 
 	s.Equal(expected.String(), actual.String())
 	s.Equal(expected.Len(), n)
 }
-
-//TODO: add test for relative include based on context
 
 // Test Suite to perform multiple inclusions
 
@@ -113,12 +112,12 @@ func (s *parserMultiIncludeTestSuite) SetupSuite() {
 		s.NoError(err, "couldn't create %s file", file.Name())
 		if i == 0 {
 			// Only the initial include goes to the reader
-			s.reader = strings.NewReader(fmt.Sprintf("##!> include %s\n##! This is comment %d.\n", file.Name(), i))
+			s.reader = strings.NewReader(fmt.Sprintf("##!> include %s\nThis is comment %d.\n", file.Name(), i))
 		}
 		s.includeFile = append(s.includeFile, file)
 		// Write to file i-1
 		if i > 0 {
-			_, err := s.includeFile[i-1].WriteString(fmt.Sprintf("##!> include %s\n##! This is comment %d.\n", file.Name(), i))
+			_, err := s.includeFile[i-1].WriteString(fmt.Sprintf("##!> include %s\nThis is comment %d.\n", file.Name(), i))
 			s.NoError(err, "writing temp include file failed")
 		}
 	}
@@ -134,7 +133,7 @@ func (s *parserMultiIncludeTestSuite) TearDownSuite() {
 func (s *parserMultiIncludeTestSuite) TestParserMultiInclude_FromMultiFile() {
 	parser := NewParser(s.ctx, s.reader)
 	actual, n := parser.Parse()
-	expected := bytes.NewBufferString("##! This is comment 3.\n##! This is comment 2.\n##! This is comment 1.\n##! This is comment 0.\n")
+	expected := bytes.NewBufferString("This is comment 3.\nThis is comment 2.\nThis is comment 1.\nThis is comment 0.\n")
 
 	s.Equal(expected.String(), actual.String())
 	s.Equal(expected.Len(), n)
@@ -195,7 +194,7 @@ func (s *parserIncludeWithTemplates) SetupSuite() {
 			_, err := s.includeFile[i-1].WriteString(
 				fmt.Sprintf(
 					"##!> include %s\n"+
-						"##! This is comment %d.\n"+
+						"This is comment %d.\n"+
 						"{{this-is-a-text}} to see if templates work when included\n", file.Name(), i))
 			s.NoError(err, "writing temp include file failed")
 		}
@@ -206,11 +205,11 @@ func (s *parserIncludeWithTemplates) TestParser_IncludeWithTemplates() {
 	parser := NewParser(s.ctx, s.reader)
 	actual, _ := parser.Parse()
 	expected := bytes.NewBufferString(
-		"##! This is comment 3.\n" +
+		"This is comment 3.\n" +
 			"[a-zA-J]+8 to see if templates work when included\n" +
-			"##! This is comment 2.\n" +
+			"This is comment 2.\n" +
 			"[a-zA-J]+8 to see if templates work when included\n" +
-			"##! This is comment 1.\n" +
+			"This is comment 1.\n" +
 			"[a-zA-J]+8 to see if templates work when included\n" +
 			"[a-zA-J]+8 to see if templates work.\n" +
 			"Second text for [0-9](pine|apple).\n")

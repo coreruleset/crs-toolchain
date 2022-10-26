@@ -12,42 +12,44 @@ import (
 )
 
 const (
-	Unix CmdlineType = iota
-	Windows
-	EvasionPattern EvasionPatterns = iota
-	SuffixPattern
-	SuffixExpandedCommand
+	unix CmdlineType = iota
+	windows
+)
+const (
+	evasionPattern EvasionPatterns = iota
+	suffixPattern
+	suffixExpandedCommand
 )
 
 type CmdlineType int
 type EvasionPatterns int
 
 type Cmdline struct {
-	proc             *Processor
-	input            *regexp.Regexp
-	output           *regexp.Regexp
-	cmdType          CmdlineType
-	evasion_patterns map[EvasionPatterns]string
+	proc            *Processor
+	input           *regexp.Regexp
+	output          *regexp.Regexp
+	cmdType         CmdlineType
+	evasionPatterns map[EvasionPatterns]string
 }
 
 // NewCmdline creates a new cmdline processor
 func NewCmdline(ctx *Context, cmdType CmdlineType) *Cmdline {
 	a := &Cmdline{
-		proc:             NewProcessorWithContext(ctx),
-		input:            regexp.MustCompile(AssembleInput),
-		output:           regexp.MustCompile(AssembleOutput),
-		cmdType:          cmdType,
-		evasion_patterns: make(map[EvasionPatterns]string),
+		proc:            NewProcessorWithContext(ctx),
+		input:           regexp.MustCompile(AssembleInput),
+		output:          regexp.MustCompile(AssembleOutput),
+		cmdType:         cmdType,
+		evasionPatterns: make(map[EvasionPatterns]string),
 	}
 
 	// Now add evasion patterns
 	// We will insert these sequences between characters to prevent evasion.
 	// This emulates the relevant parts of t:cmdLine.
 	switch cmdType {
-	case Unix:
-		a.evasion_patterns[EvasionPattern] = `[\x5c'\"]*`
-		// Unix: "cat foo", "cat<foo", "cat>foo"
-		a.evasion_patterns[SuffixPattern] = `(?:\s|<|>).*`
+	case unix:
+		a.evasionPatterns[evasionPattern] = `[\x5c'\"]*`
+		// unix: "cat foo", "cat<foo", "cat>foo"
+		a.evasionPatterns[suffixPattern] = `(?:\s|<|>).*`
 		// Same as above but does not allow any white space as the next token.
 		// This is useful for words like `python3`, where `python@` would
 		// create too many false positives because it would match `python `.
@@ -58,12 +60,12 @@ func NewCmdline(ctx *Context, cmdType CmdlineType) *Cmdline {
 		//
 		// It will _not_ match:
 		// python foo
-		a.evasion_patterns[SuffixExpandedCommand] = `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"]*)+(?:\s|<|>)).*`
-	case Windows:
-		a.evasion_patterns[EvasionPattern] = `[\"\^]*`
-		// Windows: "more foo", "more,foo", "more;foo", "more.com", "more/e",
+		a.evasionPatterns[suffixExpandedCommand] = `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"]*)+(?:\s|<|>)).*`
+	case windows:
+		a.evasionPatterns[evasionPattern] = `[\"\^]*`
+		// windows: "more foo", "more,foo", "more;foo", "more.com", "more/e",
 		// "more<foo", "more>foo"
-		a.evasion_patterns[SuffixPattern] = `(?:[\s,;]|\.|/|<|>).*`
+		a.evasionPatterns[suffixPattern] = `(?:[\s,;]|\.|/|<|>).*`
 		// Same as above but does not allow any white space as the next token.
 		// This is useful for words like `python3`, where `python@` would
 		// create too many false positives because it would match `python `.
@@ -74,7 +76,7 @@ func NewCmdline(ctx *Context, cmdType CmdlineType) *Cmdline {
 		//
 		// It will _not_ match:
 		// python foo
-		a.evasion_patterns[SuffixExpandedCommand] = `(?:(?:[,;]|\.|/|<|>)|(?:[\w\d._-][\"\^]*)+(?:[\s,;]|\.|/|<|>)).*`
+		a.evasionPatterns[suffixExpandedCommand] = `(?:(?:[,;]|\.|/|<|>)|(?:[\w\d._-][\"\^]*)+(?:[\s,;]|\.|/|<|>)).*`
 	}
 
 	return a
@@ -113,15 +115,11 @@ func (c *Cmdline) regexpStr(input string) string {
 	if strings.Index(input, "'") == 0 {
 		return input[1:]
 	}
-	// If this line is a comment, return as is
-	if c.proc.commentRegex.MatchString(input) {
-		return input
-	}
 
 	result := bytes.Buffer{}
 	for i, char := range []byte(input) {
 		if i > 0 {
-			result.WriteString(c.evasion_patterns[EvasionPattern])
+			result.WriteString(c.evasionPatterns[evasionPattern])
 		}
 		result.WriteString(c.regexpChar(char))
 	}
@@ -139,9 +137,9 @@ func (c *Cmdline) regexpChar(char byte) string {
 	case '-':
 		chars = "\\-"
 	case '@':
-		chars = c.evasion_patterns[SuffixPattern]
+		chars = c.evasionPatterns[suffixPattern]
 	case '~':
-		chars = c.evasion_patterns[SuffixExpandedCommand]
+		chars = c.evasionPatterns[suffixExpandedCommand]
 	default:
 		chars = string(char)
 	}
