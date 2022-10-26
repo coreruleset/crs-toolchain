@@ -9,13 +9,14 @@ package parser
 import (
 	"bufio"
 	"bytes"
-	"github.com/imdario/mergo"
-	"github.com/rs/zerolog/log"
-	"github.com/theseion/crs-toolchain/v2/processors"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"github.com/imdario/mergo"
+	"github.com/rs/zerolog/log"
+	"github.com/theseion/crs-toolchain/v2/processors"
 )
 
 var logger = log.With().Str("component", "parser").Logger()
@@ -29,10 +30,19 @@ const (
 	templatePattern     string     = `^\s*##!>\s*template\s+([a-zA-Z0-9-_]+)\s+(.*)$`
 	commentPatternName  string     = "comment"
 	commentPattern      string     = `^\s*##![^^$+><=]`
+	flagsPatternName    string     = "flags"
+	flagsPattern        string     = `^\s*##!\+\s*(.*)$`
+	prefixPatternName   string     = "prefix"
+	prefixPattern       string     = `^\s*##!\^\s*(.*)$`
+	suffixPatternName   string     = "suffix"
+	suffixPattern       string     = `^\s*##!\$\s*(.*)$`
 	regular             parsedType = iota
 	include
 	template
 	comment
+	flags
+	prefix
+	suffix
 )
 
 // Parser is the base parser type. It will provide processors with all the inclusions and templates resolved.
@@ -41,6 +51,9 @@ type Parser struct {
 	src       io.Reader
 	dest      *bytes.Buffer
 	variables map[string]string
+	Flags     map[rune]bool
+	Prefixes  []string
+	Suffixes  []string
 	patterns  map[string]*regexp.Regexp
 }
 
@@ -60,10 +73,16 @@ func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 		src:       reader,
 		dest:      &bytes.Buffer{},
 		variables: make(map[string]string),
+		Flags:     make(map[rune]bool),
+		Prefixes:  []string{},
+		Suffixes:  []string{},
 		patterns: map[string]*regexp.Regexp{
 			includePatternName:  regexp.MustCompile(includePattern),
 			templatePatternName: regexp.MustCompile(templatePattern),
 			commentPatternName:  regexp.MustCompile(commentPattern),
+			flagsPatternName:    regexp.MustCompile(flagsPattern),
+			prefixPatternName:   regexp.MustCompile(prefixPattern),
+			suffixPatternName:   regexp.MustCompile(suffixPattern),
 		},
 	}
 	return p
@@ -98,6 +117,14 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 			// go read the included file and paste text here
 			content, _ := includeFile(p.ctx, parsedLine.result[includePatternName])
 			text = content.String()
+		case flags:
+			for _, flag := range parsedLine.result[flagsPatternName] {
+				p.Flags[flag] = true
+			}
+		case prefix:
+			p.Prefixes = append(p.Prefixes, parsedLine.result[prefixPatternName])
+		case suffix:
+			p.Suffixes = append(p.Suffixes, parsedLine.result[suffixPatternName])
 		}
 		// err is always nil
 		n, _ := p.dest.WriteString(text)
@@ -137,6 +164,21 @@ func (p *Parser) parseLine(line string) ParsedLine {
 				pType = template
 				result = map[string]string{
 					found[1]: found[2],
+				}
+			case flagsPatternName:
+				pType = flags
+				result = map[string]string{
+					name: found[1],
+				}
+			case prefixPatternName:
+				pType = prefix
+				result = map[string]string{
+					name: found[1],
+				}
+			case suffixPatternName:
+				pType = suffix
+				result = map[string]string{
+					name: found[1],
 				}
 			}
 			break

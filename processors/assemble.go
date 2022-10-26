@@ -22,8 +22,8 @@ type Assemble struct {
 }
 
 // NewAssemble creates a new assemble processor
-func NewAssemble(ctx *Context) Assemble {
-	a := Assemble{
+func NewAssemble(ctx *Context) *Assemble {
+	a := &Assemble{
 		proc:   NewProcessorWithContext(ctx),
 		input:  regexp.MustCompile(AssembleInput),
 		output: regexp.MustCompile(AssembleOutput),

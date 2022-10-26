@@ -6,12 +6,13 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"github.com/theseion/crs-toolchain/v2/processors"
 	"io"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/theseion/crs-toolchain/v2/processors"
 
 	"github.com/stretchr/testify/suite"
 )
