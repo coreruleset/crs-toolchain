@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/itchyny/rassemble-go"
 	"github.com/theseion/crs-toolchain/v2/parser"
 	"github.com/theseion/crs-toolchain/v2/processors"
 )
@@ -18,14 +19,17 @@ import (
 const (
 	preprocessorStartRegex = `\s*##!>\s*(.*)`
 	preprocessorEndRegex   = `\s*##!<`
+	doubleQuotesRegex      = `([^\])"`
 )
 
 var regexes = struct {
 	preprocessorStart regexp.Regexp
 	preprocessorEnd   regexp.Regexp
+	doubleQuotesRegex regexp.Regexp
 }{
 	preprocessorStart: *regexp.MustCompile(preprocessorStartRegex),
 	preprocessorEnd:   *regexp.MustCompile(preprocessorEndRegex),
+	doubleQuotesRegex: *regexp.MustCompile(doubleQuotesRegex),
 }
 
 // Create the processor stack
@@ -144,27 +148,53 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 	return result
 }
 
+// Once the entire expression has been assembled, run one last
+// pass to possibly simplify groups and concatenations.
 func (a *Operator) runSimplificationAssembly(input string) string {
-	// TODO port from python
-	return input
+	logger.Trace().Msg("Simplifying regex")
+	result, err := rassemble.Join([]string{input})
+	if err != nil {
+		logger.Fatal().Err(err).Str("regex", input).Msg("Failed to simplify regex")
+	}
+	return result
 }
 
 // escapeDoublequotes takes a duoble quote and adds the `\` char before it.
+// We need all double quotes to be escaped because we use them
+// as delimiters in rules.
 func (a *Operator) escapeDoublequotes(input string) string {
-	return strings.Replace(input, "\"", "\\\"", -1)
+	logger.Trace().Msg("Escaping double quotes")
+	found := regexes.doubleQuotesRegex.FindAllStringSubmatch(input, -1)
+	result := input
+	for _, match := range found {
+		fullMatch := match[0]
+		for _, precedingChar := range match[1:] {
+			result = strings.ReplaceAll(result, fullMatch, precedingChar+`"`)
+		}
+	}
+
+	return result
 }
 
-// useHexBackslashes implements the cook_hex from regexp-assemble.pl.
+// useHexBackslashes replaces all literal backslashes with `\x5c`,
+// the hexadecimal representation of a backslash. This is for compatibility and
+// readbility reasons, as Apache httpd handles sequences of backslashes
+// differently than nginx.
 func (a *Operator) useHexBackslashes(input string) string {
-	// TODO port from perl
-	return input
+	logger.Trace().Msg("Replacing literal backslashes with \\x5c")
+	return strings.ReplaceAll(input, `\\`, `\x5c`)
 }
 
-// includeVerticalTabInBackslashS adds a `\v` to the `\s` pcre regex. If you take a look, Go regexp
-// doesn't include the `\v` in `\s`. This is a difference with the classic pcre meaning for `\s`, but pcre2 acts
-// differently.
-// It is included in the ascii character class `[[:space:]]    whitespace (== [\t\n\v\f\r ])`.
+// In Perl, the vertical tab (`\v`, `\x0b`) is *not* part of `\s`, but it is
+// in newer versions of PCRE (both 3 and 2). Go's `regexp/syntax` package
+// uses Perl as the reference and, hence, generates `[\t-\n\f-\r ]` as the
+// character class for `\s`, i.e., `\v` is missing.
+// We simply replace the generated class with `\s` again to fix this.
 func (a *Operator) includeVerticalTabInBackslashS(input string) string {
-	// TODO port from python
-	return input
+	logger.Trace().Msg("Fixing up regex to include \\v in white space class matches")
+	result := strings.ReplaceAll(input, `[\t-\n\f-\r ]`, `\s`)
+	result = strings.ReplaceAll(result, `[^\t-\n\f-\r ]`, `[^\s]`)
+	// There's a range attached, can't just replace
+	result = strings.ReplaceAll(result, `\t-\n\f-\r -`, `\s -`)
+	return strings.ReplaceAll(result, `\t-\n\f-\r `, `\s`)
 }
