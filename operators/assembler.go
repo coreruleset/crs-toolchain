@@ -6,6 +6,7 @@ package operators
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"regexp"
 	"sort"
 	"strings"
@@ -15,8 +16,8 @@ import (
 )
 
 const (
-	preprocessorStartRegex = `\s*##!}>\s*(.*)`
-	preprocessorEndRegex   = `\s*##!}<`
+	preprocessorStartRegex = `\s*##!>\s*(.*)`
+	preprocessorEndRegex   = `\s*##!<`
 )
 
 var regexes = struct {
@@ -28,8 +29,9 @@ var regexes = struct {
 }
 
 // Create the processor stack
-var processorStack = NewProcessorStack()
+var processorStack ProcessorStack
 
+// NewAssembler creates a new Operator based on context.
 func NewAssembler(ctx *processors.Context) *Operator {
 	a := &Operator{
 		name:    "assemble",
@@ -42,11 +44,16 @@ func NewAssembler(ctx *processors.Context) *Operator {
 }
 
 func (a *Operator) Run(input string) (string, error) {
+	processorStack = NewProcessorStack()
 	logger.Trace().Msg("Starting assembler")
 	assembleParser := parser.NewParser(a.ctx, strings.NewReader(input))
 	lines, _ := assembleParser.Parse()
 	logger.Trace().Msgf("Parsed lines: %v", lines)
-	return a.Assemble(assembleParser, lines)
+	assembled, err := a.Assemble(assembleParser, lines)
+	if p, _ := processorStack.top(); p != nil {
+		return assembled, errors.New("stack has unprocessed items")
+	}
+	return assembled, err
 }
 
 func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) (string, error) {
@@ -85,6 +92,7 @@ func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 			}
 			a.lines = append(a.lines, lines...)
 		} else {
+			logger.Trace().Msg("Processor is processing line")
 			processor.ProcessLine(line)
 		}
 	}
@@ -141,16 +149,21 @@ func (a *Operator) runSimplificationAssembly(input string) string {
 	return input
 }
 
+// escapeDoublequotes takes a duoble quote and adds the `\` char before it.
 func (a *Operator) escapeDoublequotes(input string) string {
-	// TODO port from python
-	return input
+	return strings.Replace(input, "\"", "\\\"", -1)
 }
 
+// useHexBackslashes implements the cook_hex from regexp-assemble.pl.
 func (a *Operator) useHexBackslashes(input string) string {
-	// TODO port from python
+	// TODO port from perl
 	return input
 }
 
+// includeVerticalTabInBackslashS adds a `\v` to the `\s` pcre regex. If you take a look, Go regexp
+// doesn't include the `\v` in `\s`. This is a difference with the classic pcre meaning for `\s`, but pcre2 acts
+// differently.
+// It is included in the ascii character class `[[:space:]]    whitespace (== [\t\n\v\f\r ])`.
 func (a *Operator) includeVerticalTabInBackslashS(input string) string {
 	// TODO port from python
 	return input

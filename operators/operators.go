@@ -41,11 +41,12 @@ func (p *ProcessorStack) pop() (processors.IProcessor, error) {
 		return nil, err
 	}
 
-	p.processors = p.processors[len(p.processors)-1:]
+	p.processors = p.processors[:len(p.processors)-1]
 	return top, nil
 }
 
 func (p *ProcessorStack) top() (processors.IProcessor, error) {
+	logger.Trace().Msgf("Processor stack len: %d\n", len(p.processors))
 	if len(p.processors) == 0 {
 		return nil, errors.New("stack is empty")
 	}
