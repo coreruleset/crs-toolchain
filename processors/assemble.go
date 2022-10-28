@@ -35,17 +35,14 @@ func NewAssemble(ctx *Context) *Assemble {
 
 // ProcessLine implements the line processor
 func (a *Assemble) ProcessLine(line string) {
-	//TODO: add real implementation
 	a.proc.lines = append(a.proc.lines, line)
 }
 
 func (a *Assemble) HasBody() bool {
-	//TODO: add real implementation
 	return true
 }
 
 func (a *Assemble) Complete() ([]string, error) {
-	//TODO: add real implementation
 	assembly, err := rassemble.Join(a.proc.lines)
 	if err != nil {
 		return nil, err
