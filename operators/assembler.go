@@ -7,13 +7,12 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"regexp"
-	"sort"
-	"strings"
-
 	"github.com/itchyny/rassemble-go"
 	"github.com/theseion/crs-toolchain/v2/parser"
 	"github.com/theseion/crs-toolchain/v2/processors"
+	"regexp"
+	"sort"
+	"strings"
 )
 
 const (
@@ -128,6 +127,11 @@ func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 	}
 	logger.Trace().Msgf("** Got lines from Processor: %v\n", lines)
 	a.lines = append(a.lines, lines...)
+	_, err = processorStack.pop()
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to remove assembler processor.")
+		return "", err
+	}
 	return a.complete(assembleParser), nil
 }
 
@@ -186,17 +190,18 @@ func (a *Operator) runSimplificationAssembly(input string) string {
 // as delimiters in rules.
 func (a *Operator) escapeDoublequotes(input string) string {
 	logger.Trace().Msg("Escaping double quotes")
-	return regexes.doubleQuotesRegex.ReplaceAllString(input, `${1}\"`)
-	//found := regexes.doubleQuotesRegex.FindAllStringSubmatch(input, -1)
-	//result := input
-	//for _, match := range found {
-	//	fullMatch := match[0]
-	//	for _, precedingChar := range match[1:] {
-	//		result = strings.ReplaceAll(result, fullMatch, precedingChar+`"`)
-	//	}
-	//}
-	//
-	//return result
+	binput := []byte(input)
+	result := bytes.Buffer{}
+	for k, v := range binput {
+		if k == 0 && v == '"' {
+			result.WriteString(`\"`)
+		} else if k > 0 && v == '"' && binput[k-1] != '\\' {
+			result.WriteString(`\"`)
+		} else {
+			result.WriteByte(v)
+		}
+	}
+	return result.String()
 }
 
 // useHexBackslashes replaces all literal backslashes with `\x5c`,
