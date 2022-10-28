@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	preprocessorStartRegex = `\s*##!>\s*(.*)`
+	preprocessorStartRegex = `\s*##!>\s*([a-z]+)(?:\s+([a-z]+))?`
 	preprocessorEndRegex   = `\s*##!<`
-	doubleQuotesRegex      = `([^\])"`
+	doubleQuotesRegex      = `([^\\])"`
 )
 
 var regexes = struct {
@@ -70,28 +70,43 @@ func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 		line := fileScanner.Text()
 		logger.Trace().Msgf("parsing line: %q", line)
 
-		if regexes.preprocessorStart.MatchString(line) {
-			logger.Trace().Msg("Found processor start")
-			assemble := processors.NewAssemble(a.ctx)
-			processorStack.push(assemble)
-			processor = assemble
+		if procline := regexes.preprocessorStart.FindStringSubmatch(line); len(procline) > 0 {
+			logger.Trace().Msgf("Found processor %s start\n", procline[1])
+			switch procline[1] {
+			case "assemble":
+				assemble := processors.NewAssemble(a.ctx)
+				processorStack.push(assemble)
+				processor = assemble
+			case "cmdline":
+				cmdType, err := processors.CmdLineTypeFromString(procline[2])
+				if err != nil {
+					logger.Error().Err(err).Msgf("Wrong cmdline type used: %s\n", procline[2])
+					return "", err
+				}
+				cmdline := processors.NewCmdLine(a.ctx, cmdType)
+				processorStack.push(cmdline)
+				processor = cmdline
+			default:
+				logger.Error().Msgf("Unknown processor name found: %s\n", procline[1])
+				return "", errors.New("unknown processor found")
+			}
 		} else if regexes.preprocessorEnd.MatchString(line) {
 			logger.Trace().Msg("Found processor end")
-			previousProcessor, err := processorStack.pop()
-			if err != nil {
-				logger.Error().Err(err).Msg("Mismatched end marker, processor stack is empty")
-				return "", err
-			}
-
-			lines, err := previousProcessor.Complete()
+			lines, err := processor.Complete()
 			if err != nil {
 				logger.Error().Err(err).Msg("Failed to complete processor")
 				return "", err
 			}
-
-			processor, err = processorStack.top()
+			logger.Trace().Msgf("** Got lines from Processor: %v\n", lines)
+			// remove actual processor. read from top next processor.
+			_, err = processorStack.pop()
 			if err != nil {
 				logger.Error().Err(err).Msg("Mismatched end marker, processor stack is empty")
+				return "", err
+			}
+			processor, err = processorStack.top()
+			if err != nil {
+				logger.Error().Err(err).Msg("Ooops, nothing on top, processor stack is empty")
 				return "", err
 			}
 			a.lines = append(a.lines, lines...)
@@ -101,7 +116,7 @@ func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 		}
 	}
 
-	processor, err := processorStack.pop()
+	processor, err := processorStack.top()
 	if err != nil {
 		logger.Error().Err(err).Msg("Mismatched end marker, processor stack is empty")
 		return "", err
@@ -111,11 +126,13 @@ func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 		logger.Error().Err(err).Msg("Failed to complete processor")
 		return "", err
 	}
+	logger.Trace().Msgf("** Got lines from Processor: %v\n", lines)
 	a.lines = append(a.lines, lines...)
 	return a.complete(assembleParser), nil
 }
 
 func (a *Operator) complete(assembleParser *parser.Parser) string {
+	logger.Trace().Msgf("** completing using: %v\n", a.lines)
 	flagsPrefix := ""
 	if len(assembleParser.Flags) > 0 {
 		flags := make([]string, 0, len(assembleParser.Flags))
@@ -135,10 +152,15 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 	result = prefixes + result + suffixes
 
 	if len(result) > 0 {
+		logger.Trace().Msgf("Applying last cleanups to %s\n", result)
 		result = a.runSimplificationAssembly(result)
+		logger.Trace().Msgf("After simplification assembly: %s\n", result)
 		result = a.escapeDoublequotes(result)
+		logger.Trace().Msgf("After escaping double quotes: %s\n", result)
 		result = a.useHexBackslashes(result)
+		logger.Trace().Msgf("After use hex backslashes: %s\n", result)
 		result = a.includeVerticalTabInBackslashS(result)
+		logger.Trace().Msgf("After including vertical tabs: %s\n", result)
 	}
 
 	if len(flagsPrefix) > 0 {
@@ -159,21 +181,22 @@ func (a *Operator) runSimplificationAssembly(input string) string {
 	return result
 }
 
-// escapeDoublequotes takes a duoble quote and adds the `\` char before it.
+// escapeDoublequotes takes a double quote and adds the `\` char before it.
 // We need all double quotes to be escaped because we use them
 // as delimiters in rules.
 func (a *Operator) escapeDoublequotes(input string) string {
 	logger.Trace().Msg("Escaping double quotes")
-	found := regexes.doubleQuotesRegex.FindAllStringSubmatch(input, -1)
-	result := input
-	for _, match := range found {
-		fullMatch := match[0]
-		for _, precedingChar := range match[1:] {
-			result = strings.ReplaceAll(result, fullMatch, precedingChar+`"`)
-		}
-	}
-
-	return result
+	return regexes.doubleQuotesRegex.ReplaceAllString(input, `${1}\"`)
+	//found := regexes.doubleQuotesRegex.FindAllStringSubmatch(input, -1)
+	//result := input
+	//for _, match := range found {
+	//	fullMatch := match[0]
+	//	for _, precedingChar := range match[1:] {
+	//		result = strings.ReplaceAll(result, fullMatch, precedingChar+`"`)
+	//	}
+	//}
+	//
+	//return result
 }
 
 // useHexBackslashes replaces all literal backslashes with `\x5c`,

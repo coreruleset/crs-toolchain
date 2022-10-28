@@ -21,7 +21,7 @@ type Operator struct {
 type ProcessorStack struct {
 	processors []processors.IProcessor
 }
-
+	
 type IOperator interface {
 	Preprocess(io.Reader)
 	Run(io.Reader)
