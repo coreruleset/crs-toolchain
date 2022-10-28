@@ -82,5 +82,5 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
 
 	cmd.ProcessLine(`foo`)
 
-	s.Equal(`f[\x5c'\"]*o[\x5c'\"]*o`, cmd.proc.lines[0])
+	s.Equal(`f[\"\^]*o[\"\^]*o`, cmd.proc.lines[0])
 }
