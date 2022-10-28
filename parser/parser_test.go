@@ -39,11 +39,17 @@ func (s *parserTestSuite) TestParser_NewParser() {
 		ctx:       processors.NewContext(),
 		src:       s.reader,
 		dest:      &bytes.Buffer{},
+		Flags:     make(map[rune]bool),
+		Prefixes:  []string{},
+		Suffixes:  []string{},
 		variables: make(map[string]string),
 		patterns: map[string]*regexp.Regexp{
 			includePatternName:  regexp.MustCompile(includePattern),
 			templatePatternName: regexp.MustCompile(templatePattern),
 			commentPatternName:  regexp.MustCompile(commentPattern),
+			flagsPatternName:    regexp.MustCompile(flagsPattern),
+			prefixPatternName:   regexp.MustCompile(prefixPattern),
+			suffixPatternName:   regexp.MustCompile(suffixPattern),
 		},
 	}
 	actual := NewParser(processors.NewContext(), s.reader)
