@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -134,6 +135,8 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		logger.Trace().Msgf("Applying last cleanups to %s\n", result)
 		result = a.runSimplificationAssembly(result)
 		logger.Trace().Msgf("After simplification assembly: %s\n", result)
+		result = a.useHexEscapes(result)
+		logger.Trace().Msgf("After simplification assembly: %s\n", result)
 		result = a.escapeDoublequotes(result)
 		logger.Trace().Msgf("After escaping double quotes: %s\n", result)
 		result = a.useHexBackslashes(result)
@@ -213,6 +216,37 @@ func (a *Operator) includeVerticalTabInBackslashS(input string) string {
 	// There's a range attached, can't just replace
 	result = strings.ReplaceAll(result, `\t-\n\f-\r -`, `\s -`)
 	return strings.ReplaceAll(result, `\t-\n\f-\r `, `\s`)
+}
+
+// rassemble-go doesn't provide an option to specify literals.
+// Go itself would, via the `Literal` flag to `syntax.Parse`.
+// As it is, escapes that are printable runes will be returned as such,
+// which means we will have weird looking characters in our regex
+// instead of hex escapes.
+// To replace the characters with their hex escape sequence, we can simply
+// take the decimal value of each byte (this might be a single byte of a
+// multi-byte sequnce), check whether it is a printable character and
+// then either append it to the output string or create the equivalent
+// escape code.
+//
+// Note: presumes that hexadecimal escapes in the input create UTF-8
+// sequences.
+//
+// Note: not all hex escapes in the input will be escaped in the
+// output, but all printable non-printable characters, including
+// `\v\n\r` and space (`\x32`).
+func (a *Operator) useHexEscapes(input string) string {
+	var sb strings.Builder
+	for _, char := range input {
+		// dec_value = ord(char)
+		if char < 32 || char > 126 {
+			sb.WriteString(`\x`)
+			sb.WriteString(fmt.Sprintf("%x", char))
+		} else {
+			sb.WriteRune(char)
+		}
+	}
+	return sb.String()
 }
 
 func (a *Operator) startPreprocessor(processorName string, args []string) error {
