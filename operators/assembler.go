@@ -167,7 +167,7 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		logger.Trace().Msgf("After including vertical tabs: %s\n", result)
 	}
 
-	if len(flagsPrefix) > 0 {
+	if len(flagsPrefix) > 0 && len(result) > 0 {
 		result = flagsPrefix + result
 	}
 
