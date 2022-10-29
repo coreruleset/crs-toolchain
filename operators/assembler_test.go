@@ -323,11 +323,7 @@ five
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f[\\x5c\"\\"]*o[\\x5c\"\\"]*o`+
-		`b[\\"\\^]*a[\\"\\^]*r`+
-		`(?:one|t(?:wo|hree))`+
-		`four`+
-		`five`, output)
+	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|b[\"\^]*a[\"\^]*r|one|t(?:wo|hree)`, output)
 }
 
 func (s *preprocessorsTestSuite) TestNestedPreprocessors() {

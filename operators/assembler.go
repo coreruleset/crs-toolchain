@@ -7,12 +7,13 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"github.com/itchyny/rassemble-go"
-	"github.com/theseion/crs-toolchain/v2/parser"
-	"github.com/theseion/crs-toolchain/v2/processors"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/itchyny/rassemble-go"
+	"github.com/theseion/crs-toolchain/v2/parser"
+	"github.com/theseion/crs-toolchain/v2/processors"
 )
 
 const (
@@ -33,6 +34,7 @@ var regexes = struct {
 
 // Create the processor stack
 var processorStack ProcessorStack
+var processor processors.IProcessor
 
 // NewAssembler creates a new Operator based on context.
 func NewAssembler(ctx *processors.Context) *Operator {
@@ -62,7 +64,7 @@ func (a *Operator) Run(input string) (string, error) {
 func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) (string, error) {
 	fileScanner := bufio.NewScanner(bytes.NewReader(input.Bytes()))
 	fileScanner.Split(bufio.ScanLines)
-	var processor processors.IProcessor = processors.NewAssemble(a.ctx)
+	processor = processors.NewAssemble(a.ctx)
 	processorStack.push(processor)
 
 	for fileScanner.Scan() {
@@ -70,45 +72,13 @@ func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 		logger.Trace().Msgf("parsing line: %q", line)
 
 		if procline := regexes.preprocessorStart.FindStringSubmatch(line); len(procline) > 0 {
-			logger.Trace().Msgf("Found processor %s start\n", procline[1])
-			switch procline[1] {
-			case "assemble":
-				assemble := processors.NewAssemble(a.ctx)
-				processorStack.push(assemble)
-				processor = assemble
-			case "cmdline":
-				cmdType, err := processors.CmdLineTypeFromString(procline[2])
-				if err != nil {
-					logger.Error().Err(err).Msgf("Wrong cmdline type used: %s\n", procline[2])
-					return "", err
-				}
-				cmdline := processors.NewCmdLine(a.ctx, cmdType)
-				processorStack.push(cmdline)
-				processor = cmdline
-			default:
-				logger.Error().Msgf("Unknown processor name found: %s\n", procline[1])
-				return "", errors.New("unknown processor found")
+			if err := a.startPreprocessor(procline[1], procline[2:]); err != nil {
+				return "", err
 			}
 		} else if regexes.preprocessorEnd.MatchString(line) {
-			logger.Trace().Msg("Found processor end")
-			lines, err := processor.Complete()
-			if err != nil {
-				logger.Error().Err(err).Msg("Failed to complete processor")
+			if err := a.endPreprocessor(); err != nil {
 				return "", err
 			}
-			logger.Trace().Msgf("** Got lines from Processor: %v\n", lines)
-			// remove actual processor. read from top next processor.
-			_, err = processorStack.pop()
-			if err != nil {
-				logger.Error().Err(err).Msg("Mismatched end marker, processor stack is empty")
-				return "", err
-			}
-			processor, err = processorStack.top()
-			if err != nil {
-				logger.Error().Err(err).Msg("Ooops, nothing on top, processor stack is empty")
-				return "", err
-			}
-			a.lines = append(a.lines, lines...)
 		} else {
 			logger.Trace().Msg("Processor is processing line")
 			processor.ProcessLine(line)
@@ -147,7 +117,12 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		flagsPrefix = "(?" + strings.Join(flags, "") + ")"
 	}
 
-	result := strings.Join(a.lines, "")
+	logger.Trace().Msg("Final alternation pass")
+	result, err := a.runFinalPass()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Final pass failed")
+	}
+
 	if len(assembleParser.Prefixes) > 0 && len(assembleParser.Suffixes) > 0 && len(result) > 0 {
 		result = "(?:" + result + ")"
 	}
@@ -172,6 +147,18 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 	}
 
 	return result
+}
+
+func (a *Operator) runFinalPass() (string, error) {
+	processor := processors.NewAssemble(a.ctx)
+	for _, line := range a.lines {
+		processor.ProcessLine(line)
+	}
+	result, err := processor.Complete()
+	if err != nil {
+		return "", err
+	}
+	return strings.Join(result, ""), nil
 }
 
 // Once the entire expression has been assembled, run one last
@@ -226,4 +213,50 @@ func (a *Operator) includeVerticalTabInBackslashS(input string) string {
 	// There's a range attached, can't just replace
 	result = strings.ReplaceAll(result, `\t-\n\f-\r -`, `\s -`)
 	return strings.ReplaceAll(result, `\t-\n\f-\r `, `\s`)
+}
+
+func (a *Operator) startPreprocessor(processorName string, args []string) error {
+	logger.Trace().Msgf("Found processor %s start\n", processorName)
+	switch processorName {
+	case "assemble":
+		assemble := processors.NewAssemble(a.ctx)
+		processorStack.push(assemble)
+		processor = assemble
+	case "cmdline":
+		cmdType, err := processors.CmdLineTypeFromString(args[0])
+		if err != nil {
+			logger.Error().Err(err).Msgf("Wrong cmdline type used: %s\n", args[0])
+			return err
+		}
+		cmdline := processors.NewCmdLine(a.ctx, cmdType)
+		processorStack.push(cmdline)
+		processor = cmdline
+	default:
+		logger.Error().Msgf("Unknown processor name found: %s\n", processorName)
+		return errors.New("unknown processor found")
+	}
+	return nil
+}
+
+func (a *Operator) endPreprocessor() error {
+	logger.Trace().Msg("Found processor end")
+	lines, err := processor.Complete()
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to complete processor")
+		return err
+	}
+	logger.Trace().Msgf("** Got lines from Processor: %v\n", lines)
+	// remove actual processor. read from top next processor.
+	_, err = processorStack.pop()
+	if err != nil {
+		logger.Error().Err(err).Msg("Mismatched end marker, processor stack is empty")
+		return err
+	}
+	processor, err = processorStack.top()
+	if err != nil {
+		logger.Error().Err(err).Msg("Ooops, nothing on top, processor stack is empty")
+		return err
+	}
+	a.lines = append(a.lines, lines...)
+	return nil
 }
