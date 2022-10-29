@@ -89,7 +89,7 @@ func (s *fileFormatTestSuite) TestPreprocessIgnoresSimpleComments() {
 
 func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 	contents := `##!+i
-##!+ smx
+##!+ s
 ##!^prefix
 ##!^ prefix
 ##!$suffix
@@ -100,14 +100,14 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 	output, err := assembler.Run(contents)
 
 	s.NoError(err)
-	s.Equal("(?imsx)prefixprefixsuffixsuffix", output)
+	s.Equal("(?is)prefixprefixsuffixsuffix", output)
 
 }
 
 func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
 	contents := `##!line1
 ##! line2
- not blank ##!+smx
+ not blank ##!+is 
 \t\t##!foo
 \t ##! bar
 ##!\tline3
@@ -117,8 +117,8 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() 
 	output, err := assembler.Run(contents)
 
 	s.NoError(err)
-	s.Len(output, 19)
-	s.Equal(` not blank ##!+smx `, output)
+	s.Len(output, 18)
+	s.Equal(` not blank ##!+is `, output)
 }
 
 func (s *fileFormatTestSuite) TestPreprocessHandlesPreprocessorComments() {
