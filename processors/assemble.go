@@ -52,3 +52,9 @@ func (a *Assemble) Complete() ([]string, error) {
 	}
 	return []string{assembly}, nil
 }
+
+func (a *Assemble) Consume(lines []string) {
+	for _, line := range lines {
+		a.ProcessLine(line)
+	}
+}

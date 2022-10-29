@@ -6,9 +6,10 @@ package processors
 import (
 	"bytes"
 	"errors"
-	"github.com/itchyny/rassemble-go"
 	"regexp"
 	"strings"
+
+	"github.com/itchyny/rassemble-go"
 )
 
 const (
@@ -161,4 +162,10 @@ func (c *CmdLine) regexpChar(char byte) string {
 	}
 	logger.Trace().Msgf("regexpChar out: %s", chars)
 	return strings.Replace(chars, " ", "\\s+", -1)
+}
+
+func (c *CmdLine) Consume(lines []string) {
+	for _, line := range lines {
+		c.ProcessLine(line)
+	}
 }

@@ -77,9 +77,11 @@ func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 				return "", err
 			}
 		} else if regexes.preprocessorEnd.MatchString(line) {
-			if err := a.endPreprocessor(); err != nil {
+			lines, err := a.endPreprocessor()
+			if err != nil {
 				return "", err
 			}
+			processor.Consume(lines)
 		} else {
 			logger.Trace().Msg("Processor is processing line")
 			processor.ProcessLine(line)
@@ -272,25 +274,24 @@ func (a *Operator) startPreprocessor(processorName string, args []string) error 
 	return nil
 }
 
-func (a *Operator) endPreprocessor() error {
+func (a *Operator) endPreprocessor() ([]string, error) {
 	logger.Trace().Msg("Found processor end")
 	lines, err := processor.Complete()
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed to complete processor")
-		return err
+		return nil, err
 	}
 	logger.Trace().Msgf("** Got lines from Processor: %v\n", lines)
 	// remove actual processor. read from top next processor.
 	_, err = processorStack.pop()
 	if err != nil {
 		logger.Error().Err(err).Msg("Mismatched end marker, processor stack is empty")
-		return err
+		return nil, err
 	}
 	processor, err = processorStack.top()
 	if err != nil {
 		logger.Error().Err(err).Msg("Ooops, nothing on top, processor stack is empty")
-		return err
+		return nil, err
 	}
-	a.lines = append(a.lines, lines...)
-	return nil
+	return lines, nil
 }

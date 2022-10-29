@@ -137,7 +137,7 @@ func (s *fileFormatTestSuite) TestPreprocessIgnoresEmptyLines() {
 another line`
 	assembler := NewAssembler(s.ctx)
 
-	expected := `(?:(?:some|another) line)?`
+	expected := "(?:some|another) line"
 	output, err := assembler.Run(contents)
 
 	s.NoError(err)
@@ -341,13 +341,11 @@ five
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`(?:f[""\\]*o[""\\]*o|b["\^]*a["\^]*r)`+
-		"four"+
-		"five", output)
+	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|b[\"\^]*a[\"\^]*r`, output)
 }
 
 func (s *preprocessorsTestSuite) TestComplexNestedPreprocessors() {
-	contents := `##!> assemble, output)
+	contents := `##!> assemble
     ##!> cmdline unix
 foo
         ##!> assemble
@@ -371,9 +369,5 @@ eight
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`(?:f[""\\]*o[""\\]*o|((?:[""\\]*?[""\\]*:[""\\]*a[""\\]*b|[""\\]*c[""\\]*d)[""\\]*)|b["\^]*a["\^]*r)`+
-		"four"+
-		"five"+
-		"(?:s(?:ix|even))"+
-		"eight", output)
+	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|a[\"'\x5c]*b[\"'\x5c]*|[\"'\x5c]*c[\"'\x5c]*d|b[\"\^]*a[\"\^]*r|s(?:ix|even)|eight`, output)
 }
