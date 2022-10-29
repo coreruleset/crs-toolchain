@@ -121,7 +121,11 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 			text = content.String()
 		case flags:
 			for _, flag := range parsedLine.result[flagsPatternName] {
-				p.Flags[flag] = true
+				if flagIsAllowed(flag) {
+					p.Flags[flag] = true
+				} else {
+					logger.Panic().Msgf("flag '%s' is not supported", string(flag))
+				}
 			}
 		case prefix:
 			p.Prefixes = append(p.Prefixes, parsedLine.result[prefixPatternName])
@@ -209,4 +213,13 @@ func expandTemplates(src *bytes.Buffer, variables map[string]string) *bytes.Buff
 	}
 	logger.Trace().Msgf("expanded all templates in: %v", src.String())
 	return src
+}
+
+func flagIsAllowed(flag rune) bool {
+	allowed := false
+	switch flag {
+	case 'i', 's':
+		allowed = true
+	}
+	return allowed
 }

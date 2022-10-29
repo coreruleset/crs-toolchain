@@ -117,7 +117,7 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() 
 	output, err := assembler.Run(contents)
 
 	s.NoError(err)
-	s.Len(output, 1)
+	s.Len(output, 19)
 	s.Equal(` not blank ##!+smx `, output)
 }
 
@@ -200,9 +200,8 @@ func (s *specialCommentsTestSuite) TestHandlesSingleLineFlag() {
 func (s *specialCommentsTestSuite) TestHandlesNoOtherFlags() {
 	contents := "##!+mx"
 	assembler := NewAssembler(s.ctx)
-	output, err := assembler.Run(contents)
-	s.Error(err)
-	s.Empty(output)
+
+	s.PanicsWithValue("flag 'm' is not supported", func() { assembler.Run(contents) }, "should panic because flags are not supported")
 }
 
 func (s *specialCommentsTestSuite) TestHandlesPrefixComment() {
@@ -236,7 +235,7 @@ another line`
 }
 
 func (s *specialCasesTestSuite) TestReturnsNoOutputForEmptyInput() {
-	contents := `##!+ _
+	contents := `##!+ i
 
 `
 	assembler := NewAssembler(s.ctx)

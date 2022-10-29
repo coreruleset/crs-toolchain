@@ -177,8 +177,9 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 // Once the entire expression has been assembled, run one last
 // pass to possibly simplify groups and concatenations.
 func (a *Operator) runSimplificationAssembly(input string) string {
-	logger.Trace().Msg("Simplifying regex")
+	logger.Trace().Msgf("Simplifying regex %s\n", input)
 	result, err := rassemble.Join([]string{input})
+	logger.Trace().Msgf("=> Simplified to %s\n", result)
 	if err != nil {
 		logger.Fatal().Err(err).Str("regex", input).Msg("Failed to simplify regex")
 	}

@@ -75,6 +75,15 @@ func (s *parserTestSuite) TestIgnoresEmptyLines() {
 	s.Len(expected, n)
 }
 
+func (s *parserTestSuite) TestPanicsOnUnrecognizedFlag() {
+	contents := "##!+ flag"
+	reader := strings.NewReader(contents)
+	parser := NewParser(processors.NewContext(), reader)
+
+	s.PanicsWithValue("flag 'f' is not supported", func() { parser.Parse() }, "should panic because flags are not supported")
+
+}
+
 type parserIncludeTestSuite struct {
 	suite.Suite
 	ctx           *processors.Context
