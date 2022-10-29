@@ -43,6 +43,9 @@ func (a *Assemble) HasBody() bool {
 }
 
 func (a *Assemble) Complete() ([]string, error) {
+	if len(a.proc.lines) == 0 {
+		return []string{}, nil
+	}
 	assembly, err := rassemble.Join(a.proc.lines)
 	if err != nil {
 		return nil, err
