@@ -61,7 +61,7 @@ func (s *parserTestSuite) TestParser_ParseTwoComments() {
 	expected := bytes.NewBufferString("")
 
 	s.Equal(expected.String(), actual.String())
-	s.Len(expected, n)
+	s.Len(expected.String(), n)
 }
 
 func (s *parserTestSuite) TestIgnoresEmptyLines() {
