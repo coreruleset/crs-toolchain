@@ -4,10 +4,12 @@
 package cmd
 
 import (
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/theseion/crs-toolchain/v2/operators"
 	"github.com/theseion/crs-toolchain/v2/processors"
 )
 
@@ -35,12 +37,16 @@ The special token '-' will cause the script to accept input
 from stdin.`,
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			assemble := processors.NewAssemble(processors.NewContext())
-			assembly, err := assemble.Complete()
+			assembler := operators.NewAssembler(processors.NewContext())
+			input, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				logger.Fatal().Err(err).Msg("Failed to read from stdin")
+			}
+			assembly, err := assembler.Run(string(input))
 			if err != nil {
 				logger.Fatal().Err(err).Send()
 			}
-			os.Stdout.WriteString(assembly[0])
+			os.Stdout.WriteString(assembly)
 		},
 	}
 }
