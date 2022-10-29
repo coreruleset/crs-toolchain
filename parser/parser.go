@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
@@ -37,6 +38,7 @@ const (
 	suffixPatternName   string     = "suffix"
 	suffixPattern       string     = `^\s*##!\$\s*(.*)$`
 	regular             parsedType = iota
+	empty
 	include
 	template
 	comment
@@ -104,9 +106,9 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 		switch parsedLine.parsedType {
 		case regular:
 			text = line + "\n"
-		case comment:
-			// remove comments from the parsed line
-			text = ""
+		// remove comments and empty lines from the parsed line
+		case empty, comment:
+			continue
 		case template:
 			// merge maps p.variables and parseLine.template
 			err := mergo.Merge(&p.variables, parsedLine.result)
@@ -119,7 +121,11 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 			text = content.String()
 		case flags:
 			for _, flag := range parsedLine.result[flagsPatternName] {
-				p.Flags[flag] = true
+				if flagIsAllowed(flag) {
+					p.Flags[flag] = true
+				} else {
+					logger.Panic().Msgf("flag '%s' is not supported", string(flag))
+				}
 			}
 		case prefix:
 			p.Prefixes = append(p.Prefixes, parsedLine.result[prefixPatternName])
@@ -141,9 +147,15 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 
 // parseLine iterates over the pattern list and if found, creates the ParsedLine object with the results.
 func (p *Parser) parseLine(line string) ParsedLine {
-	var pl ParsedLine
-	var result map[string]string
-	pType := regular
+	pl := ParsedLine{
+		parsedType: regular,
+		result:     make(map[string]string),
+		line:       line,
+	}
+	if len(strings.TrimSpace(line)) == 0 {
+		pl.parsedType = empty
+		return pl
+	}
 
 	for name, pattern := range p.patterns {
 		found := pattern.FindStringSubmatch(line)
@@ -152,44 +164,26 @@ func (p *Parser) parseLine(line string) ParsedLine {
 			logger.Trace().Msgf("found %s statement: %v", name, found)
 			switch name {
 			case commentPatternName:
-				pType = comment
-				result = map[string]string{
-					name: "comment",
-				}
+				pl.parsedType = comment
+				pl.result[name] = "comment"
 			case includePatternName:
-				pType = include
-				result = map[string]string{
-					name: found[1],
-				}
+				pl.parsedType = include
+				pl.result[name] = found[1]
 			case templatePatternName:
-				pType = template
-				result = map[string]string{
-					found[1]: found[2],
-				}
+				pl.parsedType = template
+				pl.result[found[1]] = found[2]
 			case flagsPatternName:
-				pType = flags
-				result = map[string]string{
-					name: found[1],
-				}
+				pl.parsedType = flags
+				pl.result[name] = found[1]
 			case prefixPatternName:
-				pType = prefix
-				result = map[string]string{
-					name: found[1],
-				}
+				pl.parsedType = prefix
+				pl.result[name] = found[1]
 			case suffixPatternName:
-				pType = suffix
-				result = map[string]string{
-					name: found[1],
-				}
+				pl.parsedType = suffix
+				pl.result[name] = found[1]
 			}
 			break
 		}
-	}
-
-	pl = ParsedLine{
-		parsedType: pType,
-		result:     result,
-		line:       line,
 	}
 	return pl
 }
@@ -219,4 +213,13 @@ func expandTemplates(src *bytes.Buffer, variables map[string]string) *bytes.Buff
 	}
 	logger.Trace().Msgf("expanded all templates in: %v", src.String())
 	return src
+}
+
+func flagIsAllowed(flag rune) bool {
+	allowed := false
+	switch flag {
+	case 'i', 's':
+		allowed = true
+	}
+	return allowed
 }

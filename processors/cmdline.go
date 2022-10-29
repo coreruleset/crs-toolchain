@@ -5,15 +5,16 @@ package processors
 
 import (
 	"bytes"
+	"errors"
+	"github.com/itchyny/rassemble-go"
 	"regexp"
 	"strings"
-
-	"github.com/itchyny/rassemble-go"
 )
 
 const (
-	unix CmdlineType = iota
-	windows
+	CmdLineUndefined CmdLineType = iota
+	CmdLineUnix
+	CmdLineWindows
 )
 const (
 	evasionPattern EvasionPatterns = iota
@@ -21,20 +22,33 @@ const (
 	suffixExpandedCommand
 )
 
-type CmdlineType int
+type CmdLineType int
 type EvasionPatterns int
 
-type Cmdline struct {
+type CmdLine struct {
 	proc            *Processor
 	input           *regexp.Regexp
 	output          *regexp.Regexp
-	cmdType         CmdlineType
+	cmdType         CmdLineType
 	evasionPatterns map[EvasionPatterns]string
 }
 
-// NewCmdline creates a new cmdline processor
-func NewCmdline(ctx *Context, cmdType CmdlineType) *Cmdline {
-	a := &Cmdline{
+// CmdLineTypeFromString will return a CmdLineType based on the string you enter, or an CmdLineUndefined and a new error.
+func CmdLineTypeFromString(t string) (CmdLineType, error) {
+	switch t {
+	case "unix":
+		return CmdLineUnix, nil
+	case "windows":
+		return CmdLineWindows, nil
+	default:
+		return CmdLineUndefined, errors.New("bad cmdline option")
+	}
+
+}
+
+// NewCmdLine creates a new cmdline processor
+func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
+	a := &CmdLine{
 		proc:            NewProcessorWithContext(ctx),
 		input:           regexp.MustCompile(AssembleInput),
 		output:          regexp.MustCompile(AssembleOutput),
@@ -46,9 +60,9 @@ func NewCmdline(ctx *Context, cmdType CmdlineType) *Cmdline {
 	// We will insert these sequences between characters to prevent evasion.
 	// This emulates the relevant parts of t:cmdLine.
 	switch cmdType {
-	case unix:
+	case CmdLineUnix:
 		a.evasionPatterns[evasionPattern] = `[\x5c'\"]*`
-		// unix: "cat foo", "cat<foo", "cat>foo"
+		// CmdLineUnix: "cat foo", "cat<foo", "cat>foo"
 		a.evasionPatterns[suffixPattern] = `(?:\s|<|>).*`
 		// Same as above but does not allow any white space as the next token.
 		// This is useful for words like `python3`, where `python@` would
@@ -61,9 +75,9 @@ func NewCmdline(ctx *Context, cmdType CmdlineType) *Cmdline {
 		// It will _not_ match:
 		// python foo
 		a.evasionPatterns[suffixExpandedCommand] = `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"]*)+(?:\s|<|>)).*`
-	case windows:
+	case CmdLineWindows:
 		a.evasionPatterns[evasionPattern] = `[\"\^]*`
-		// windows: "more foo", "more,foo", "more;foo", "more.com", "more/e",
+		// CmdLineWindows: "more foo", "more,foo", "more;foo", "more.com", "more/e",
 		// "more<foo", "more>foo"
 		a.evasionPatterns[suffixPattern] = `(?:[\s,;]|\.|/|<|>).*`
 		// Same as above but does not allow any white space as the next token.
@@ -83,7 +97,7 @@ func NewCmdline(ctx *Context, cmdType CmdlineType) *Cmdline {
 }
 
 // ProcessLine implements the line processor
-func (c *Cmdline) ProcessLine(line string) {
+func (c *CmdLine) ProcessLine(line string) {
 	if len(line) != 0 {
 		processed := c.regexpStr(line)
 		c.proc.lines = append(c.proc.lines, processed)
@@ -93,23 +107,25 @@ func (c *Cmdline) ProcessLine(line string) {
 }
 
 // HasBody is a class method
-func (c *Cmdline) HasBody() bool {
+func (c *CmdLine) HasBody() bool {
 	// Empty method
 	return true
 }
 
 // Complete is the class method
-func (c *Cmdline) Complete() ([]string, error) {
+func (c *CmdLine) Complete() ([]string, error) {
 	assembly, err := rassemble.Join(c.proc.lines)
 	if err != nil {
 		return nil, err
 	}
+	logger.Trace().Msgf("cmdLine Complete result: %v", assembly)
 	return []string{assembly}, nil
+	//return c.proc.lines, nil
 }
 
 // regexpStr converts a single line to regexp format, and insert anti-cmdline
 // evasions between characters.
-func (c *Cmdline) regexpStr(input string) string {
+func (c *CmdLine) regexpStr(input string) string {
 	logger.Trace().Msgf("regexpStr: %s", input)
 	// By convention, if the line starts with ' char, copy the rest verbatim.
 	if strings.Index(input, "'") == 0 {
@@ -127,7 +143,7 @@ func (c *Cmdline) regexpStr(input string) string {
 }
 
 // regexpChar ensures that some special characters are escaped
-func (c *Cmdline) regexpChar(char byte) string {
+func (c *CmdLine) regexpChar(char byte) string {
 	logger.Trace().Msgf("regexpChar in: %v", char)
 
 	chars := ""

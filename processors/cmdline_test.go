@@ -20,27 +20,49 @@ func TestRunCmdLineTestSuite(t *testing.T) {
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_NewParser() {
-	expected := &Cmdline{
+	expected := &CmdLine{
 		proc: &Processor{
 			ctx:   s.ctx,
 			lines: []string{},
 		},
 		input:   regexp.MustCompile(AssembleInput),
 		output:  regexp.MustCompile(AssembleOutput),
-		cmdType: unix,
+		cmdType: CmdLineUnix,
 		evasionPatterns: map[EvasionPatterns]string{
 			evasionPattern:        `[\x5c'\"]*`,
 			suffixPattern:         `(?:\s|<|>).*`,
 			suffixExpandedCommand: `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"]*)+(?:\s|<|>)).*`,
 		},
 	}
-	actual := NewCmdline(s.ctx, unix)
+	actual := NewCmdLine(s.ctx, CmdLineUnix)
 
 	s.Equal(expected, actual)
 }
 
+func (s *cmdLineTestSuite) TestCmdLine_CmdLineTypeFromString() {
+	t, err := CmdLineTypeFromString("unix")
+	s.NoError(err)
+	cmd := NewCmdLine(s.ctx, t)
+
+	cmd.ProcessLine(`foo`)
+	s.Equal(`f[\x5c'\"]*o[\x5c'\"]*o`, cmd.proc.lines[0])
+
+	t, err = CmdLineTypeFromString("windows")
+	s.NoError(err)
+	cmd = NewCmdLine(s.ctx, t)
+
+	cmd.ProcessLine(`foo`)
+	s.Equal(`f[\"\^]*o[\"\^]*o`, cmd.proc.lines[0])
+}
+
+func (s *cmdLineTestSuite) TestCmdLine_BadCmdLineTypeFromString() {
+	t, err := CmdLineTypeFromString("nonexistent")
+	s.EqualError(err, "bad cmdline option", "cmdline was created even when a bad option was passed")
+	s.Equal(t, CmdLineUndefined)
+}
+
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
-	cmd := NewCmdline(s.ctx, unix)
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
 
 	cmd.ProcessLine(`foo`)
 
@@ -48,9 +70,17 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
-	cmd := NewCmdline(s.ctx, unix)
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
 
 	cmd.ProcessLine(`gcc-10.`)
 
 	s.Equal(`g[\x5c'\"]*c[\x5c'\"]*c[\x5c'\"]*\-[\x5c'\"]*1[\x5c'\"]*0[\x5c'\"]*\.`, cmd.proc.lines[0])
+}
+
+func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
+	cmd := NewCmdLine(s.ctx, CmdLineWindows)
+
+	cmd.ProcessLine(`foo`)
+
+	s.Equal(`f[\"\^]*o[\"\^]*o`, cmd.proc.lines[0])
 }

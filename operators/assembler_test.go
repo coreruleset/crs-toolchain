@@ -89,7 +89,7 @@ func (s *fileFormatTestSuite) TestPreprocessIgnoresSimpleComments() {
 
 func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 	contents := `##!+i
-##!+ smx
+##!+ s
 ##!^prefix
 ##!^ prefix
 ##!$suffix
@@ -100,26 +100,26 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 	output, err := assembler.Run(contents)
 
 	s.NoError(err)
-	s.Equal("(?imsx)prefixprefixsuffixsuffix", output)
+	s.Equal("(?is)prefixprefixsuffixsuffix", output)
 
 }
 
-//func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
-//	contents := `##!line1
-//##! line2
-//not blank ##!+smx
-//\t\t##!foo
-//\t ##! bar
-//##!\tline3
-//`
-//	assembler := NewAssembler(s.ctx)
-//
-//	output, err := assembler.Run(contents)
-//
-//	s.Error(err)
-//	s.Len(output, 1)
-//	s.Equal(` not blank ##!+smx `, output)
-//}
+func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
+	contents := `##!line1
+##! line2
+ not blank ##!+is 
+\t\t##!foo
+\t ##! bar
+##!\tline3
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.NoError(err)
+	s.Len(output, 18)
+	s.Equal(` not blank ##!+is `, output)
+}
 
 func (s *fileFormatTestSuite) TestPreprocessHandlesPreprocessorComments() {
 	contents := `##!> assemble`
@@ -180,96 +180,95 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireFinalEndMarker() {
 }
 
 func (s *specialCommentsTestSuite) TestHandlesIgnoreCaseFlag() {
-	for _, contents := range []string{"##!+i", "##!+ i", "##!+   i"} {
+	for _, contents := range []string{"##!+i\na", "##!+ i\na", "##!+   i\na"} {
 		assembler := NewAssembler(s.ctx)
 		output, err := assembler.Run(contents)
 		s.NoError(err)
-		s.Equal("(?i)", output)
+		s.Equal("(?i)a", output)
 	}
 }
 
 func (s *specialCommentsTestSuite) TestHandlesSingleLineFlag() {
-	for _, contents := range []string{"##!+s", "##!+ s", "##!+   s"} {
+	for _, contents := range []string{"##!+s\na", "##!+ s\na", "##!+   s\na"} {
 		assembler := NewAssembler(s.ctx)
 		output, err := assembler.Run(contents)
 		s.NoError(err)
-		s.Equal("(?s)", output)
+		s.Equal("(?s)a", output)
 	}
 }
 
-// func (s *specialCommentsTestSuite) TestHandlesNoOtherFlags() {
-// 	contents := "##!+mx"
-// 	assembler := NewAssembler(s.ctx)
-// 	output, err := assembler.Run(contents)
-// 	s.Error(err)
-// 	s.Empty(output)
-// }
+func (s *specialCommentsTestSuite) TestHandlesNoOtherFlags() {
+	contents := "##!+mx"
+	assembler := NewAssembler(s.ctx)
 
-// func (s *specialCommentsTestSuite) TestHandlesPrefixComment() {
-// 	contents := `##!^ a prefix
-// a
-// b`
-// 	assembler := NewAssembler(s.ctx)
-// 	output, err := assembler.Run(contents)
-// 	s.Error(err)
-// 	s.Equal("a prefix[a-b]", output)
-// }
+	s.PanicsWithValue("flag 'm' is not supported", func() { assembler.Run(contents) }, "should panic because flags are not supported")
+}
 
-// func (s *specialCommentsTestSuite) TestHandlesSuffixComment() {
-// 	contents := `##!$ a suffix
-// a
-// b`
-// 	assembler := NewAssembler(s.ctx)
-// 	output, err := assembler.Run(contents)
-// 	s.Error(err)
-// 	s.Equal("[a-b]a suffix", output)
-// }
+func (s *specialCommentsTestSuite) TestHandlesPrefixComment() {
+	contents := `##!^ a prefix
+a
+b`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal("a prefix[a-b]", output)
+}
 
-// func (s *specialCasesTestSuite) TestIgnoresEmptyLines() {
-// 	contents := `some line
+func (s *specialCommentsTestSuite) TestHandlesSuffixComment() {
+	contents := `##!$ a suffix
+a
+b`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal("[a-b]a suffix", output)
+}
 
-// another line`
-// 	assembler := NewAssembler(s.ctx)
-// 	output, err := assembler.Run(contents)
-// 	s.Error(err)
-// 	s.Equal("(?:some|another) line", output)
-// }
+func (s *specialCasesTestSuite) TestIgnoresEmptyLines() {
+	contents := `some line
 
-//func (s *specialCasesTestSuite) TestReturnsNoOutputForEmptyInput() {
-//	contents := `##!+ _
-//
-//`
-//	assembler := NewAssembler(s.ctx)
-//	output, err := assembler.Run(contents)
-//	s.Error(err)
-//	s.Empty(output)
-//}
+another line`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal("(?:some|another) line", output)
+}
 
-//func (s *specialCasesTestSuite) TestSpecialComments_HandlesBackslashEscapeCorrectly() {
-//	contents := `\x5c\x5ca`
-//	assembler := NewAssembler(s.ctx)
-//	output, err := assembler.Run(contents)
-//	s.Error(err)
-//	s.Equal(`\x5c\x5ca`, output)
-//}
+func (s *specialCasesTestSuite) TestReturnsNoOutputForEmptyInput() {
+	contents := `##!+ i
 
-//func (s *specialCasesTestSuite) TestDoesNotDestroyHexEscapes() {
-//	contents := `a\x5c\x48\\x48b`
-//	assembler := NewAssembler(s.ctx)
-//	output, err := assembler.Run(contents)
-//	s.Error(err)
-//	s.Equal(`a\x5cH\x5cx48b`, output)
-//}
+`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Empty(output)
+}
 
-// func (s *specialCasesTestSuite) TestDoesNotDestroyHexEscapesInAlternations() {
-// 	contents := `a\x5c\x48
-// b\x5c\x48
-// `
-// 	assembler := NewAssembler(s.ctx)
-// 	output, err := assembler.Run(contents)
-// 	s.Error(err)
-// 	s.Equal(`[a-b]\x5cH`, output)
-// }
+func (s *specialCasesTestSuite) TestSpecialComments_HandlesBackslashEscapeCorrectly() {
+	contents := `\x5c\x5ca`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`\x5c\x5ca`, output)
+}
+
+func (s *specialCasesTestSuite) TestDoesNotDestroyHexEscapes() {
+	contents := `a\x5c\x48\\x48b`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`a\x5cH\x5cx48b`, output)
+}
+
+func (s *specialCasesTestSuite) TestDoesNotDestroyHexEscapesInAlternations() {
+	contents := `a\x5c\x48
+b\x5c\x48
+`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`[a-b]\x5cH`, output)
+}
 
 func (s *specialCasesTestSuite) TestSpecialComments_HandlesEscapedAlternationsCorrectly() {
 	contents := `\|\|something|or other`
@@ -279,106 +278,102 @@ func (s *specialCasesTestSuite) TestSpecialComments_HandlesEscapedAlternationsCo
 	s.Equal(`\|\|something|or other`, output)
 }
 
-//func (s *specialCasesTestSuite) TestAlwaysEscapesDoubleQuotes() {
-//	contents := `(?:"\"\\"a)`
-//	assembler := NewAssembler(s.ctx)
-//	output, err := assembler.Run(contents)
-//	s.NoError(err)
-//	s.Equal(`\"\"\x5c"a`, output)
-//}
+func (s *specialCasesTestSuite) TestAlwaysEscapesDoubleQuotes() {
+	contents := `(?:"\"\\"a)`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`\"\"\x5c"a`, output)
+}
 
-// func (s *specialCasesTestSuite) TestDoesNotConvertHexEscapesOfNonPrintableCharacters() {
-// 	contents := `(?:\x48\xe2\x93\xab)`
-// 	assembler := NewAssembler(s.ctx)
-// 	output, err := assembler.Run(contents)
-// 	s.NoError(err)
-// 	s.Equal(`H\xe2\x93\xab`, output)
-// }
+func (s *specialCasesTestSuite) TestDoesNotConvertHexEscapesOfNonPrintableCharacters() {
+	contents := `(?:\x48\xe2\x93\xab)`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`H\xe2\x93\xab`, output)
+}
 
-// func (s *specialCasesTestSuite) TestBackslashSReplacesPerlEquivalentCharacterClass() {
-// 	// rassemble-go returns `[\t-\n\f-\r ]` for `\s`, which is correct for Perl
-// 	// but does not include `\v`, which `\s` does in PCRE (3 and 2).
-// 	contents := `\s`
-// 	assembler := NewAssembler(s.ctx)
-// 	output, err := assembler.Run(contents)
-// 	s.NoError(err)
-// 	s.Equal(`\s`, output)
-// }
+func (s *specialCasesTestSuite) TestBackslashSReplacesPerlEquivalentCharacterClass() {
+	// rassemble-go returns `[\t-\n\f-\r ]` for `\s`, which is correct for Perl
+	// but does not include `\v`, which `\s` does in PCRE (3 and 2).
+	contents := `\s`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`\s`, output)
+}
 
-//func (s *preprocessorsTestSuite) TestSequentialPreprocessors() {
-//	contents := `##!> cmdline unix
-//foo
-//##!<
-//##!> cmdline windows
-//bar
-//##!<
-//##!> assemble
-//one
-//two
-//three
-//##!<
-//four
-//five
-//`
-//	assembler := NewAssembler(s.ctx)
-//
-//	output, err := assembler.Run(contents)
-//	s.NoError(err)
-//	s.Equal(`f[\\x5c\"\\"]*o[\\x5c\"\\"]*o`+
-//		`b[\\"\\^]*a[\\"\\^]*r`+
-//		`(?:one|t(?:wo|hree))`+
-//		`four`+
-//		`five`, output)
-//}
+func (s *preprocessorsTestSuite) TestSequentialPreprocessors() {
+	contents := `##!> cmdline unix
+foo
+##!<
+##!> cmdline windows
+bar
+##!<
+##!> assemble
+one
+two
+three
+##!<
+four
+five
+`
+	assembler := NewAssembler(s.ctx)
 
-// func (s *preprocessorsTestSuite) TestNestedPreprocessors() {
-// 	contents := `##!> assemble
-//     ##!> cmdline unix
-// foo
-//     ##!<
-//     ##!> cmdline windows
-// bar
-//     ##!<
-// ##!<
-// four
-// five
-// `
-// 	assembler := NewAssembler(s.ctx)
-// 	output, err := assembler.Run(contents)
-// 	s.NoError(err)
-// 	s.Equal(`(?:f[""\\]*o[""\\]*o|b["\^]*a["\^]*r)` +
-// 		"four" +
-// 		"five", output)
-// }
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|b[\"\^]*a[\"\^]*r|one|t(?:wo|hree)`, output)
+}
 
-// func (s *preprocessorsTestSuite) TestComplexNestedPreprocessors() {
-// 	contents := `##!> assemble, output)
-//     ##!> cmdline unix
-// foo
-//         ##!> assemble
-// ab
-// cd
-//         ##!<
-//     ##!<
-//     ##!> cmdline windows
-// bar
-//     ##!<
-// ##!<
-// four
-// five
-// ##!> assemble
-// six
-// seven
-// ##!<
-// eight
-// `
-// 	assembler := NewAssembler(s.ctx)
+func (s *preprocessorsTestSuite) TestNestedPreprocessors() {
+	contents := `##!> assemble
+    ##!> cmdline unix
+foo
+    ##!<
+    ##!> cmdline windows
+bar
+    ##!<
+##!<
+four
+five
+`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`(?:f[""\\]*o[""\\]*o|b["\^]*a["\^]*r)`+
+		"four"+
+		"five", output)
+}
 
-// 	output, err := assembler.Run(contents)
-// 	s.NoError(err)
-// 	s.Equal(`(?:f[""\\]*o[""\\]*o|((?:[""\\]*?[""\\]*:[""\\]*a[""\\]*b|[""\\]*c[""\\]*d)[""\\]*)|b["\^]*a["\^]*r)` +
-// 		"four" +
-// 		"five" +
-// 		"(?:s(?:ix|even))" +
-// 		"eight", output)
-// }
+func (s *preprocessorsTestSuite) TestComplexNestedPreprocessors() {
+	contents := `##!> assemble, output)
+    ##!> cmdline unix
+foo
+        ##!> assemble
+ab
+cd
+        ##!<
+    ##!<
+    ##!> cmdline windows
+bar
+    ##!<
+##!<
+four
+five
+##!> assemble
+six
+seven
+##!<
+eight
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`(?:f[""\\]*o[""\\]*o|((?:[""\\]*?[""\\]*:[""\\]*a[""\\]*b|[""\\]*c[""\\]*d)[""\\]*)|b["\^]*a["\^]*r)`+
+		"four"+
+		"five"+
+		"(?:s(?:ix|even))"+
+		"eight", output)
+}

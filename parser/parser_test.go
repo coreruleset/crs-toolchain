@@ -22,10 +22,6 @@ type parserTestSuite struct {
 	reader io.Reader
 }
 
-func (s *parserTestSuite) SetupTest() {
-	s.reader = strings.NewReader("##! This is a comment.\n##! This is another line.\n")
-}
-
 func TestRunParserTestSuite(t *testing.T) {
 	suite.Run(t, new(parserTestSuite))
 	suite.Run(t, new(parserIncludeTestSuite))
@@ -39,11 +35,17 @@ func (s *parserTestSuite) TestParser_NewParser() {
 		ctx:       processors.NewContext(),
 		src:       s.reader,
 		dest:      &bytes.Buffer{},
+		Flags:     make(map[rune]bool),
+		Prefixes:  []string{},
+		Suffixes:  []string{},
 		variables: make(map[string]string),
 		patterns: map[string]*regexp.Regexp{
 			includePatternName:  regexp.MustCompile(includePattern),
 			templatePatternName: regexp.MustCompile(templatePattern),
 			commentPatternName:  regexp.MustCompile(commentPattern),
+			flagsPatternName:    regexp.MustCompile(flagsPattern),
+			prefixPatternName:   regexp.MustCompile(prefixPattern),
+			suffixPatternName:   regexp.MustCompile(suffixPattern),
 		},
 	}
 	actual := NewParser(processors.NewContext(), s.reader)
@@ -52,13 +54,34 @@ func (s *parserTestSuite) TestParser_NewParser() {
 }
 
 func (s *parserTestSuite) TestParser_ParseTwoComments() {
-	parser := NewParser(processors.NewContext(), s.reader)
+	reader := strings.NewReader("##! This is a comment.\n##! This is another line.\n")
+	parser := NewParser(processors.NewContext(), reader)
 
 	actual, n := parser.Parse()
 	expected := bytes.NewBufferString("")
 
 	s.Equal(expected.String(), actual.String())
-	s.Equal(expected.Len(), n)
+	s.Len(expected, n)
+}
+
+func (s *parserTestSuite) TestIgnoresEmptyLines() {
+	contents := "some line\n\nanother line"
+	reader := strings.NewReader(contents)
+	parser := NewParser(processors.NewContext(), reader)
+	actual, n := parser.Parse()
+
+	expected := "some line\nanother line\n"
+	s.Equal(expected, actual.String())
+	s.Len(expected, n)
+}
+
+func (s *parserTestSuite) TestPanicsOnUnrecognizedFlag() {
+	contents := "##!+ flag"
+	reader := strings.NewReader(contents)
+	parser := NewParser(processors.NewContext(), reader)
+
+	s.PanicsWithValue("flag 'f' is not supported", func() { parser.Parse() }, "should panic because flags are not supported")
+
 }
 
 type parserIncludeTestSuite struct {
