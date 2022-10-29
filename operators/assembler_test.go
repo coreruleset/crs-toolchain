@@ -180,20 +180,20 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireFinalEndMarker() {
 }
 
 func (s *specialCommentsTestSuite) TestHandlesIgnoreCaseFlag() {
-	for _, contents := range []string{"##!+i", "##!+ i", "##!+   i"} {
+	for _, contents := range []string{"##!+i\na", "##!+ i\na", "##!+   i\na"} {
 		assembler := NewAssembler(s.ctx)
 		output, err := assembler.Run(contents)
 		s.NoError(err)
-		s.Equal("(?i)", output)
+		s.Equal("(?i)a", output)
 	}
 }
 
 func (s *specialCommentsTestSuite) TestHandlesSingleLineFlag() {
-	for _, contents := range []string{"##!+s", "##!+ s", "##!+   s"} {
+	for _, contents := range []string{"##!+s\na", "##!+ s\na", "##!+   s\na"} {
 		assembler := NewAssembler(s.ctx)
 		output, err := assembler.Run(contents)
 		s.NoError(err)
-		s.Equal("(?s)", output)
+		s.Equal("(?s)a", output)
 	}
 }
 
