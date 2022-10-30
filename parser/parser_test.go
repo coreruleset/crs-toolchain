@@ -32,7 +32,7 @@ func TestRunParserTestSuite(t *testing.T) {
 
 func (s *parserTestSuite) TestParser_NewParser() {
 	expected := &Parser{
-		ctx:       processors.NewContext(),
+		ctx:       processors.NewContextForDir(os.TempDir()),
 		src:       s.reader,
 		dest:      &bytes.Buffer{},
 		Flags:     make(map[rune]bool),
@@ -48,14 +48,14 @@ func (s *parserTestSuite) TestParser_NewParser() {
 			suffixPatternName:   regexp.MustCompile(suffixPattern),
 		},
 	}
-	actual := NewParser(processors.NewContext(), s.reader)
+	actual := NewParser(processors.NewContextForDir(os.TempDir()), s.reader)
 
 	s.Equal(expected, actual)
 }
 
 func (s *parserTestSuite) TestParser_ParseTwoComments() {
 	reader := strings.NewReader("##! This is a comment.\n##! This is another line.\n")
-	parser := NewParser(processors.NewContext(), reader)
+	parser := NewParser(processors.NewContextForDir(os.TempDir()), reader)
 
 	actual, n := parser.Parse()
 	expected := bytes.NewBufferString("")
@@ -67,7 +67,7 @@ func (s *parserTestSuite) TestParser_ParseTwoComments() {
 func (s *parserTestSuite) TestIgnoresEmptyLines() {
 	contents := "some line\n\nanother line"
 	reader := strings.NewReader(contents)
-	parser := NewParser(processors.NewContext(), reader)
+	parser := NewParser(processors.NewContextForDir(os.TempDir()), reader)
 	actual, n := parser.Parse()
 
 	expected := "some line\nanother line\n"
@@ -78,7 +78,7 @@ func (s *parserTestSuite) TestIgnoresEmptyLines() {
 func (s *parserTestSuite) TestPanicsOnUnrecognizedFlag() {
 	contents := "##!+ flag"
 	reader := strings.NewReader(contents)
-	parser := NewParser(processors.NewContext(), reader)
+	parser := NewParser(processors.NewContextForDir(os.TempDir()), reader)
 
 	s.PanicsWithValue("flag 'f' is not supported", func() { parser.Parse() }, "should panic because flags are not supported")
 
@@ -171,7 +171,7 @@ type parserTemplateTestSuite struct {
 }
 
 func (s *parserTemplateTestSuite) SetupSuite() {
-	s.ctx = processors.NewContext()
+	s.ctx = processors.NewContextForDir(os.TempDir())
 	s.reader = strings.NewReader("##!> template this-is-a-text [a-zA-J]+8\n" +
 		"##!> template this-is-another-text [0-9](pine|apple)\n" +
 		"{{this-is-a-text}} to see if templates work.\n" +
