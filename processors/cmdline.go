@@ -59,7 +59,9 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 
 	// Now add evasion patterns
 	// We will insert these sequences between characters to prevent evasion.
-	// This emulates the relevant parts of t:cmdLine.
+	// This emulates the relevant parts of t:cmdLine for Unix and Windows.
+	//
+	// The Unix evasion patterns, were extended per decision in https://github.com/coreruleset/coreruleset/issues/2632.
 	switch cmdType {
 	case CmdLineUnix:
 		a.evasionPatterns[evasionPattern] = `[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?`
@@ -121,7 +123,6 @@ func (c *CmdLine) Complete() ([]string, error) {
 	}
 	logger.Trace().Msgf("cmdLine Complete result: %v", assembly)
 	return []string{assembly}, nil
-	//return c.proc.lines, nil
 }
 
 // regexpStr converts a single line to regexp format, and insert anti-cmdline
