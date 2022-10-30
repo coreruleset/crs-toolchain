@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/theseion/crs-toolchain/v2/processors"
-
 	"github.com/stretchr/testify/suite"
+
+	"github.com/theseion/crs-toolchain/v2/processors"
 )
 
 type parserTestSuite struct {

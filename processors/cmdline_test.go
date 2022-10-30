@@ -1,9 +1,13 @@
+// Copyright 2022 OWASP Core Rule Set Project
+// SPDX-License-Identifier: Apache-2.0
+
 package processors
 
 import (
-	"github.com/stretchr/testify/suite"
 	"regexp"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type cmdLineTestSuite struct {
@@ -84,4 +88,3 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
 
 	s.Equal(`f[\"\^]*o[\"\^]*o`, cmd.proc.lines[0])
 }
-	

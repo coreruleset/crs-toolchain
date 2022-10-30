@@ -1,3 +1,6 @@
+// Copyright 2022 OWASP Core Rule Set Project
+// SPDX-License-Identifier: Apache-2.0
+
 package operators
 
 import (
@@ -5,6 +8,7 @@ import (
 	"io"
 
 	"github.com/rs/zerolog/log"
+
 	"github.com/theseion/crs-toolchain/v2/processors"
 )
 
@@ -21,7 +25,7 @@ type Operator struct {
 type ProcessorStack struct {
 	processors []processors.IProcessor
 }
-	
+
 type IOperator interface {
 	Preprocess(io.Reader)
 	Run(io.Reader)

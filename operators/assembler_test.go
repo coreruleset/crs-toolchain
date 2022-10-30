@@ -205,7 +205,7 @@ func (s *specialCommentsTestSuite) TestHandlesNoOtherFlags() {
 	contents := "##!+mx"
 	assembler := NewAssembler(s.ctx)
 
-	s.PanicsWithValue("flag 'm' is not supported", func() { assembler.Run(contents) }, "should panic because flags are not supported")
+	s.PanicsWithValue("flag 'm' is not supported", func() { _, _ = assembler.Run(contents) }, "should panic because flags are not supported")
 }
 
 func (s *specialCommentsTestSuite) TestHandlesPrefixComment() {
