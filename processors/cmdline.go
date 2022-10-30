@@ -62,7 +62,7 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 	// This emulates the relevant parts of t:cmdLine.
 	switch cmdType {
 	case CmdLineUnix:
-		a.evasionPatterns[evasionPattern] = `[\x5c'\"]*`
+		a.evasionPatterns[evasionPattern] = `[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?`
 		// CmdLineUnix: "cat foo", "cat<foo", "cat>foo"
 		a.evasionPatterns[suffixPattern] = `(?:\s|<|>).*`
 		// Same as above but does not allow any white space as the next token.
@@ -75,7 +75,7 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 		//
 		// It will _not_ match:
 		// python foo
-		a.evasionPatterns[suffixExpandedCommand] = `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"]*)+(?:\s|<|>)).*`
+		a.evasionPatterns[suffixExpandedCommand] = `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?)+(?:\s|<|>)).*`
 	case CmdLineWindows:
 		a.evasionPatterns[evasionPattern] = `[\"\^]*`
 		// CmdLineWindows: "more foo", "more,foo", "more;foo", "more.com", "more/e",

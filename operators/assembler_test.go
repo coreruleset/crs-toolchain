@@ -323,7 +323,7 @@ five
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|b[\"\^]*a[\"\^]*r|one|t(?:wo|hree)`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r|one|t(?:wo|hree)`, output)
 }
 
 func (s *preprocessorsTestSuite) TestNestedPreprocessors() {
@@ -341,7 +341,7 @@ five
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|b[\"\^]*a[\"\^]*r`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r`, output)
 }
 
 func (s *preprocessorsTestSuite) TestComplexNestedPreprocessors() {
@@ -369,5 +369,5 @@ eight
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|a[\"'\x5c]*b[\"'\x5c]*|[\"'\x5c]*c[\"'\x5c]*d|b[\"\^]*a[\"\^]*r|s(?:ix|even)|eight`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|a[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?b[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?|[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?c[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?d|b[\"\^]*a[\"\^]*r|s(?:ix|even)|eight`, output)
 }

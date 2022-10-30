@@ -29,9 +29,9 @@ func (s *cmdLineTestSuite) TestCmdLine_NewParser() {
 		output:  regexp.MustCompile(AssembleOutput),
 		cmdType: CmdLineUnix,
 		evasionPatterns: map[EvasionPatterns]string{
-			evasionPattern:        `[\x5c'\"]*`,
+			evasionPattern:        `[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?`,
 			suffixPattern:         `(?:\s|<|>).*`,
-			suffixExpandedCommand: `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"]*)+(?:\s|<|>)).*`,
+			suffixExpandedCommand: `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?)+(?:\s|<|>)).*`,
 		},
 	}
 	actual := NewCmdLine(s.ctx, CmdLineUnix)
@@ -45,7 +45,7 @@ func (s *cmdLineTestSuite) TestCmdLine_CmdLineTypeFromString() {
 	cmd := NewCmdLine(s.ctx, t)
 
 	cmd.ProcessLine(`foo`)
-	s.Equal(`f[\x5c'\"]*o[\x5c'\"]*o`, cmd.proc.lines[0])
+	s.Equal(`f[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o`, cmd.proc.lines[0])
 
 	t, err = CmdLineTypeFromString("windows")
 	s.NoError(err)
@@ -66,7 +66,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
 
 	cmd.ProcessLine(`foo`)
 
-	s.Equal(`f[\x5c'\"]*o[\x5c'\"]*o`, cmd.proc.lines[0])
+	s.Equal(`f[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
@@ -74,7 +74,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
 
 	cmd.ProcessLine(`gcc-10.`)
 
-	s.Equal(`g[\x5c'\"]*c[\x5c'\"]*c[\x5c'\"]*\-[\x5c'\"]*1[\x5c'\"]*0[\x5c'\"]*\.`, cmd.proc.lines[0])
+	s.Equal(`g[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?c[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?c[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?\-[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?1[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?0[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?\.`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
@@ -84,3 +84,4 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
 
 	s.Equal(`f[\"\^]*o[\"\^]*o`, cmd.proc.lines[0])
 }
+	
