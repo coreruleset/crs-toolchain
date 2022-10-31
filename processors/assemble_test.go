@@ -22,7 +22,7 @@ func (suite *assembleTestSuite) SetupSuite() {
 	var err error
 	suite.tempDir, err = os.MkdirTemp("", "assemble-test")
 	suite.NoError(err)
-	suite.ctx = NewContextForDir(suite.tempDir)
+	suite.ctx = NewContext(suite.tempDir)
 }
 
 func (suite *assembleTestSuite) TearDownSuite() {
@@ -34,7 +34,7 @@ func (suite *fileFormatTestSuite) SetupSuite() {
 	var err error
 	suite.tempDir, err = os.MkdirTemp("", "file-format-test")
 	suite.NoError(err)
-	suite.ctx = NewContextForDir(suite.tempDir)
+	suite.ctx = NewContext(suite.tempDir)
 }
 
 func (suite *fileFormatTestSuite) TearDownSuite() {

@@ -50,7 +50,7 @@ func CmdLineTypeFromString(t string) (CmdLineType, error) {
 // NewCmdLine creates a new cmdline processor
 func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 	a := &CmdLine{
-		proc:            NewProcessorWithContext(ctx),
+		proc:            NewProcessor(ctx),
 		input:           regexp.MustCompile(AssembleInput),
 		output:          regexp.MustCompile(AssembleOutput),
 		cmdType:         cmdType,

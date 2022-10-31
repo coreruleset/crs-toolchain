@@ -32,7 +32,7 @@ func TestRunParserTestSuite(t *testing.T) {
 
 func (s *parserTestSuite) TestParser_NewParser() {
 	expected := &Parser{
-		ctx:       processors.NewContextForDir(os.TempDir()),
+		ctx:       processors.NewContext(os.TempDir()),
 		src:       s.reader,
 		dest:      &bytes.Buffer{},
 		Flags:     make(map[rune]bool),
@@ -48,14 +48,14 @@ func (s *parserTestSuite) TestParser_NewParser() {
 			suffixPatternName:   regexp.MustCompile(suffixPattern),
 		},
 	}
-	actual := NewParser(processors.NewContextForDir(os.TempDir()), s.reader)
+	actual := NewParser(processors.NewContext(os.TempDir()), s.reader)
 
 	s.Equal(expected, actual)
 }
 
 func (s *parserTestSuite) TestParser_ParseTwoComments() {
 	reader := strings.NewReader("##! This is a comment.\n##! This is another line.\n")
-	parser := NewParser(processors.NewContextForDir(os.TempDir()), reader)
+	parser := NewParser(processors.NewContext(os.TempDir()), reader)
 
 	actual, n := parser.Parse()
 	expected := bytes.NewBufferString("")
@@ -67,7 +67,7 @@ func (s *parserTestSuite) TestParser_ParseTwoComments() {
 func (s *parserTestSuite) TestIgnoresEmptyLines() {
 	contents := "some line\n\nanother line"
 	reader := strings.NewReader(contents)
-	parser := NewParser(processors.NewContextForDir(os.TempDir()), reader)
+	parser := NewParser(processors.NewContext(os.TempDir()), reader)
 	actual, n := parser.Parse()
 
 	expected := "some line\nanother line\n"
@@ -78,7 +78,7 @@ func (s *parserTestSuite) TestIgnoresEmptyLines() {
 func (s *parserTestSuite) TestPanicsOnUnrecognizedFlag() {
 	contents := "##!+ flag"
 	reader := strings.NewReader(contents)
-	parser := NewParser(processors.NewContextForDir(os.TempDir()), reader)
+	parser := NewParser(processors.NewContext(os.TempDir()), reader)
 
 	s.PanicsWithValue("flag 'f' is not supported", func() { parser.Parse() }, "should panic because flags are not supported")
 
@@ -96,7 +96,7 @@ func (s *parserIncludeTestSuite) SetupSuite() {
 	var err error
 	s.testDirectory, err = os.MkdirTemp("", "include-tests")
 	s.NoError(err)
-	s.ctx = processors.NewContextForDir(s.testDirectory)
+	s.ctx = processors.NewContext(s.testDirectory)
 	s.includeFile, err = os.CreateTemp(s.testDirectory, "test.data")
 	s.NoError(err, "couldn't create %s file", s.includeFile.Name())
 	n, err := s.includeFile.WriteString("This data comes from the included file.\n")
@@ -130,7 +130,7 @@ type parserMultiIncludeTestSuite struct {
 
 func (s *parserMultiIncludeTestSuite) SetupSuite() {
 	tmpdir := os.TempDir()
-	s.ctx = processors.NewContextForDir(tmpdir)
+	s.ctx = processors.NewContext(tmpdir)
 	for i := 0; i < 4; i++ {
 		file, err := os.CreateTemp(tmpdir, "multi-include.data")
 		s.NoError(err, "couldn't create %s file", file.Name())
@@ -171,7 +171,7 @@ type parserTemplateTestSuite struct {
 }
 
 func (s *parserTemplateTestSuite) SetupSuite() {
-	s.ctx = processors.NewContextForDir(os.TempDir())
+	s.ctx = processors.NewContext(os.TempDir())
 	s.reader = strings.NewReader("##!> template this-is-a-text [a-zA-J]+8\n" +
 		"##!> template this-is-another-text [0-9](pine|apple)\n" +
 		"{{this-is-a-text}} to see if templates work.\n" +
@@ -199,7 +199,7 @@ type parserIncludeWithTemplates struct {
 
 func (s *parserIncludeWithTemplates) SetupSuite() {
 	tmpdir := os.TempDir()
-	s.ctx = processors.NewContextForDir(tmpdir)
+	s.ctx = processors.NewContext(tmpdir)
 	for i := 0; i < 4; i++ {
 		file, err := os.CreateTemp(tmpdir, "multi-templates.data")
 		s.NoError(err, "couldn't create %s file", file.Name())

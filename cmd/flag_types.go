@@ -4,7 +4,11 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/rs/zerolog"
@@ -81,10 +85,57 @@ func (w *workingDirectory) Set(value string) error {
 		return err
 	}
 
-	*w = workingDirectory(absPath)
+	root, err := findRootDirectory(absPath)
+	if err != nil {
+		logger.Error().Err(err).Msgf("Failed to find root directory from %s", absPath)
+		return err
+	}
+
+	logger.Debug().Msgf("Resolved root directory %s", root)
+	*w = workingDirectory(root)
 	return nil
 }
 
 func (w *workingDirectory) Type() string {
 	return "working directory"
+}
+
+func findRootDirectory(startPath string) (string, error) {
+	root := ""
+	currentPath := startPath
+	seen := make(map[string]bool)
+	// root directory only will have a separator as the last rune
+	for currentPath[len(currentPath)-1] != filepath.Separator {
+		filepath.WalkDir(startPath, func(filePath string, dirEntry fs.DirEntry, err error) error {
+			if seen[filePath] {
+				// skip this directory
+				return fs.SkipDir
+			} else {
+				seen[filePath] = true
+			}
+
+			// look for util/data/include
+			if dirEntry != nil && dirEntry.IsDir() && dirEntry.Name() == "data" {
+				_, err2 := os.Stat(path.Join(filePath, "include"))
+				if err2 == nil {
+					root = path.Dir(path.Dir(filePath))
+					// stop processing
+					return errors.New("done")
+				} else {
+					// skip this directory
+					return fs.SkipDir
+				}
+			}
+			// continue
+			return nil
+		})
+		if root != "" {
+			return root, nil
+		}
+		currentPath = path.Dir(currentPath)
+	}
+	if root == "" {
+		return "", errors.New("failed to find root directory")
+	}
+	return root, nil
 }

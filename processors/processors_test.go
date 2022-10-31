@@ -4,6 +4,7 @@
 package processors
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -15,7 +16,7 @@ type processorTestSuite struct {
 }
 
 func (s *processorTestSuite) SetupTest() {
-	s.ctx = NewContext()
+	s.ctx = NewContext(os.TempDir())
 }
 
 func TestRunProcessorTestSuite(t *testing.T) {
@@ -28,7 +29,7 @@ func (s *processorTestSuite) TestProcessor_New() {
 		lines: []string{},
 	}
 
-	actual := NewProcessor()
+	actual := NewProcessor(s.ctx)
 	s.Equal(expected, actual)
 }
 
@@ -38,6 +39,6 @@ func (s *processorTestSuite) TestProcessor_NewWithContext() {
 		lines: []string{},
 	}
 
-	actual := NewProcessorWithContext(s.ctx)
+	actual := NewProcessor(s.ctx)
 	s.Equal(expected, actual)
 }

@@ -34,7 +34,7 @@ func (s *assembleTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "assemble-test")
 	s.NoError(err)
-	s.ctx = processors.NewContextForDir(s.tempDir)
+	s.ctx = processors.NewContext(s.tempDir)
 }
 
 func (s *assembleTestSuite) TearDownSuite() {
@@ -46,7 +46,7 @@ func (s *fileFormatTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "file-format-test")
 	s.NoError(err)
-	s.ctx = processors.NewContextForDir(s.tempDir)
+	s.ctx = processors.NewContext(s.tempDir)
 }
 
 func (s *fileFormatTestSuite) TearDownSuite() {
@@ -58,7 +58,7 @@ func (s *specialCommentsTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "special-comments-test")
 	s.NoError(err)
-	s.ctx = processors.NewContextForDir(s.tempDir)
+	s.ctx = processors.NewContext(s.tempDir)
 }
 
 func (s *specialCommentsTestSuite) TearDownSuite() {
@@ -70,7 +70,7 @@ func (s *specialCasesTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "special-cases-test")
 	s.NoError(err)
-	s.ctx = processors.NewContextForDir(s.tempDir)
+	s.ctx = processors.NewContext(s.tempDir)
 }
 
 func (s *specialCasesTestSuite) TearDownSuite() {

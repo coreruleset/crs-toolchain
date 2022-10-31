@@ -16,11 +16,11 @@ const defaultLogLevel = zerolog.ErrorLevel
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = createRootCommand()
 var logger zerolog.Logger
-var rootValues struct {
+var rootValues = struct {
 	output           outputType
 	logLevel         logLevel
 	workingDirectory workingDirectory
-}
+}{}
 
 func Execute() {
 	err := rootCmd.Execute()
@@ -33,6 +33,20 @@ func init() {
 	zerolog.SetGlobalLevel(defaultLogLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "03:04:05"})
 	logger = log.With().Str("component", "cmd").Logger()
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to resolve working directory")
+	}
+	rootValues = struct {
+		output           outputType
+		logLevel         logLevel
+		workingDirectory workingDirectory
+	}{
+		output:           text,
+		logLevel:         logLevel(zerolog.LevelErrorValue),
+		workingDirectory: workingDirectory(cwd),
+	}
 
 	buildRootCommand()
 }
