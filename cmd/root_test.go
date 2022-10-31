@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"os"
+	"path"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -74,4 +76,32 @@ func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
 	s.True(logLevelFlag.Changed)
 
 	s.Equal(zerolog.DebugLevel, zerolog.GlobalLevel())
+}
+
+func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
+	rootCmd.SetArgs([]string{"--directory", os.TempDir(), "regex", "compare", "123456"})
+	cmd, _ := rootCmd.ExecuteC()
+
+	workingDirectoryFlag := cmd.Flags().Lookup("directory")
+	s.NotNil(workingDirectoryFlag)
+	s.True(workingDirectoryFlag.Changed)
+
+	s.Equal(path.Clean(os.TempDir()), workingDirectoryFlag.Value.String())
+}
+
+func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
+	rootCmd.SetArgs([]string{"-d", "../homer", "regex", "compare", "123456"})
+	cmd, _ := rootCmd.ExecuteC()
+
+	workingDirectoryFlag := cmd.Flags().Lookup("directory")
+	s.NotNil(workingDirectoryFlag)
+	s.True(workingDirectoryFlag.Changed)
+	s.True(path.IsAbs(workingDirectoryFlag.Value.String()))
+
+	cwd, err := os.Getwd()
+	s.NoError(err)
+	parentDir := path.Dir(cwd)
+	expectedPath := path.Join(parentDir, "homer")
+
+	s.Equal(path.Clean(expectedPath), workingDirectoryFlag.Value.String())
 }

@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/rs/zerolog"
 )
@@ -19,6 +20,7 @@ import (
 
 type outputType string
 type logLevel string
+type workingDirectory string
 
 // TODO: Use proper types that encapsulate printing logic
 const (
@@ -66,4 +68,23 @@ func (l *logLevel) Set(value string) error {
 
 func (l *logLevel) Type() string {
 	return "log level"
+}
+
+func (w *workingDirectory) String() string {
+	return string(*w)
+}
+
+func (w *workingDirectory) Set(value string) error {
+	absPath, err := filepath.Abs(value)
+	if err != nil {
+		logger.Error().Err(err).Msgf("Failed to construct absolute path from %s", value)
+		return err
+	}
+
+	*w = workingDirectory(absPath)
+	return nil
+}
+
+func (w *workingDirectory) Type() string {
+	return "working directory"
 }

@@ -17,8 +17,9 @@ const defaultLogLevel = zerolog.ErrorLevel
 var rootCmd = createRootCommand()
 var logger zerolog.Logger
 var rootValues struct {
-	output   outputType
-	logLevel logLevel
+	output           outputType
+	logLevel         logLevel
+	workingDirectory workingDirectory
 }
 
 func Execute() {
@@ -48,6 +49,8 @@ func buildRootCommand() {
 		`Set the application log level. Default: 'error'.
 Options: 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic', 'disabled`)
 	rootCmd.PersistentFlags().VarP(&rootValues.output, "output", "o", "Output format. One of 'text', 'github'. Default: 'text'")
+	rootCmd.PersistentFlags().VarP(&rootValues.workingDirectory, "directory", "d",
+		"Absolute or relative path to the CRS directory. If not specified, the command is assumed to run inside the CRS directory.")
 }
 
 func rebuildRootCommand() {
