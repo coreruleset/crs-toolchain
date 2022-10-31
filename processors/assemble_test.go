@@ -17,9 +17,6 @@ type assembleTestSuite struct {
 }
 
 type fileFormatTestSuite assembleTestSuite
-type specialCommentsTestSuite assembleTestSuite
-type specialCasesTestSuite assembleTestSuite
-type preprocessorsTestSuite assembleTestSuite
 
 func (suite *assembleTestSuite) SetupSuite() {
 	var err error
@@ -41,30 +38,6 @@ func (suite *fileFormatTestSuite) SetupSuite() {
 }
 
 func (suite *fileFormatTestSuite) TearDownSuite() {
-	err := os.RemoveAll(suite.tempDir)
-	suite.NoError(err)
-}
-
-func (suite *specialCommentsTestSuite) SetupSuite() {
-	var err error
-	suite.tempDir, err = os.MkdirTemp("", "special-comments-test")
-	suite.NoError(err)
-	suite.ctx = NewContextForDir(suite.tempDir)
-}
-
-func (suite *specialCommentsTestSuite) TearDownSuite() {
-	err := os.RemoveAll(suite.tempDir)
-	suite.NoError(err)
-}
-
-func (suite *specialCasesTestSuite) SetupSuite() {
-	var err error
-	suite.tempDir, err = os.MkdirTemp("", "special-cases-test")
-	suite.NoError(err)
-	suite.ctx = NewContextForDir(suite.tempDir)
-}
-
-func (suite *specialCasesTestSuite) TearDownSuite() {
 	err := os.RemoveAll(suite.tempDir)
 	suite.NoError(err)
 }

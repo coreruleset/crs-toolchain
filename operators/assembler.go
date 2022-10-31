@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/itchyny/rassemble-go"
+
 	"github.com/theseion/crs-toolchain/v2/parser"
 	"github.com/theseion/crs-toolchain/v2/processors"
 )

@@ -17,6 +17,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
+
 	"github.com/theseion/crs-toolchain/v2/processors"
 )
 

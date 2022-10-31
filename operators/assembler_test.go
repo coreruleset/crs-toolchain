@@ -1,3 +1,6 @@
+// Copyright 2022 OWASP Core Rule Set Project
+// SPDX-License-Identifier: Apache-2.0
+
 package operators
 
 import (
@@ -5,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
 	"github.com/theseion/crs-toolchain/v2/processors"
 )
 
@@ -201,7 +205,7 @@ func (s *specialCommentsTestSuite) TestHandlesNoOtherFlags() {
 	contents := "##!+mx"
 	assembler := NewAssembler(s.ctx)
 
-	s.PanicsWithValue("flag 'm' is not supported", func() { assembler.Run(contents) }, "should panic because flags are not supported")
+	s.PanicsWithValue("flag 'm' is not supported", func() { _, _ = assembler.Run(contents) }, "should panic because flags are not supported")
 }
 
 func (s *specialCommentsTestSuite) TestHandlesPrefixComment() {
@@ -323,7 +327,7 @@ five
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|b[\"\^]*a[\"\^]*r|one|t(?:wo|hree)`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r|one|t(?:wo|hree)`, output)
 }
 
 func (s *preprocessorsTestSuite) TestNestedPreprocessors() {
@@ -341,7 +345,7 @@ five
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|b[\"\^]*a[\"\^]*r`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r`, output)
 }
 
 func (s *preprocessorsTestSuite) TestComplexNestedPreprocessors() {
@@ -369,5 +373,5 @@ eight
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\x5c]*o[\"'\x5c]*o|our|ive)|a[\"'\x5c]*b[\"'\x5c]*|[\"'\x5c]*c[\"'\x5c]*d|b[\"\^]*a[\"\^]*r|s(?:ix|even)|eight`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|a[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?b[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?|[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?c[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?d|b[\"\^]*a[\"\^]*r|s(?:ix|even)|eight`, output)
 }
