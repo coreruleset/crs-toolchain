@@ -66,7 +66,7 @@ func Lint() error {
 
 // Test runs all tests.
 func Test() error {
-	if err := sh.RunV("go", "test", "./..."); err != nil {
+	if err := sh.RunV("go", "test", "-v", "./..."); err != nil {
 		return err
 	}
 
@@ -78,7 +78,7 @@ func Coverage() error {
 	if err := os.MkdirAll("build", 0755); err != nil {
 		return err
 	}
-	if err := sh.RunV("go", "test", "-race", "-coverprofile=build/coverage.txt", "-covermode=atomic", "-coverpkg=./...", "./..."); err != nil {
+	if err := sh.RunV("go", "test", "-v", "-race", "-coverprofile=build/coverage.txt", "-covermode=atomic", "-coverpkg=./...", "./..."); err != nil {
 		return err
 	}
 

@@ -6,7 +6,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -102,42 +101,20 @@ func (w *workingDirectory) Type() string {
 
 func findRootDirectory(startPath string) (string, error) {
 	logger.Trace().Msgf("Searching for root directory starting at %s", startPath)
-	root := ""
+	dataPath := path.Join("util", "regexp-assemble", "data")
 	currentPath := startPath
-	seen := make(map[string]bool)
 	// root directory only will have a separator as the last rune
 	for currentPath[len(currentPath)-1] != filepath.Separator {
-		filepath.WalkDir(currentPath, func(filePath string, dirEntry fs.DirEntry, err error) error {
-			if seen[filePath] {
-				// skip this directory
-				return fs.SkipDir
-			} else if dirEntry.IsDir() {
-				seen[filePath] = true
-			}
 
-			// look for util/regexp-assemble/data
-			if dirEntry != nil && dirEntry.IsDir() && dirEntry.Name() == "regexp-assemble" {
-				_, err2 := os.Stat(path.Join(filePath, "data"))
-				if err2 == nil {
-					root = path.Dir(path.Dir(filePath))
-					// stop processing
-					return errors.New("done")
-				} else {
-					// skip this directory
-					return fs.SkipDir
-				}
-			}
-			// continue
-			return nil
-		})
-		if root != "" {
-			return root, nil
+		_, err := os.Stat(path.Join(currentPath, dataPath))
+		if err != nil {
+			currentPath = path.Dir(currentPath)
+			logger.Trace().Msgf("Root directory not found yet. Trying %s", currentPath)
+			continue
 		}
-		currentPath = path.Dir(currentPath)
-		logger.Trace().Msgf("Root directory not found yet. Trying %s", currentPath)
+
+		return currentPath, nil
 	}
-	if root == "" {
-		return "", errors.New("failed to find root directory")
-	}
-	return root, nil
+
+	return "", errors.New("failed to find root directory")
 }

@@ -65,7 +65,7 @@ func (s *updateTestSuite) TestUpdate_NormalRuleId() {
 }
 
 func (s *updateTestSuite) TestUpdate_AllFlag() {
-	rootCmd.SetArgs([]string{"regex", "update", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("update", cmd.Name())
@@ -81,24 +81,24 @@ func (s *updateTestSuite) TestUpdate_AllFlag() {
 }
 
 func (s *updateTestSuite) TestUpdate_NoRuleIdNoAllFlagReturnsError() {
-	rootCmd.SetArgs([]string{"regex", "update"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update"})
 	_, err := rootCmd.ExecuteC()
 
-	s.Error(err)
+	s.EqualError(err, "expected either RULE_ID or flag, found neither")
 }
 
 func (s *updateTestSuite) TestUpdate_BothRuleIdAndAllFlagReturnsError() {
-	rootCmd.SetArgs([]string{"regex", "update", "123456", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "123456", "--all"})
 	_, err := rootCmd.ExecuteC()
 
-	s.Error(err)
+	s.EqualError(err, "expected either RULE_ID or flag, found both")
 }
 
 func (s *updateTestSuite) TestUpdate_DashReturnsError() {
-	rootCmd.SetArgs([]string{"regex", "update", "-"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "-"})
 	_, err := rootCmd.ExecuteC()
 
-	s.Error(err)
+	s.EqualError(err, "invalid argument '-'")
 }
 
 func (s *updateTestSuite) writeDataFile(filename string, contents string) {

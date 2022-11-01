@@ -95,7 +95,7 @@ func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
 }
 
 func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
-	rootCmd.SetArgs([]string{"--directory", os.TempDir(), "regex", "compare", "123456"})
+	rootCmd.SetArgs([]string{"--directory", s.tempDir, "regex", "compare", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	workingDirectoryFlag := cmd.Flags().Lookup("directory")
@@ -166,9 +166,6 @@ func (s *rootTestSuite) TestFindRootDirectoryInRules() {
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryFails() {
-	root, err := findRootDirectory(os.TempDir())
-	if !s.Error(err) {
-		s.T().Logf("Unexpectedly found root directory %s, started at %s", root, os.TempDir())
-	}
-
+	_, err := findRootDirectory(os.TempDir())
+	s.Error(err)
 }

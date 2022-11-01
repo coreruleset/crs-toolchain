@@ -16,6 +16,7 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
+
 	"github.com/theseion/crs-toolchain/v2/operators"
 	"github.com/theseion/crs-toolchain/v2/processors"
 )
@@ -82,7 +83,7 @@ func rebuildUpdateCommand() {
 
 func performUpdate(process_all bool, ctx *processors.Context) {
 	if process_all {
-		filepath.WalkDir(ctx.DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
+		err := filepath.WalkDir(ctx.DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
 				// fail
 				return err
@@ -108,6 +109,9 @@ func performUpdate(process_all bool, ctx *processors.Context) {
 			}
 			return nil
 		})
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to perform rule update(s)")
+		}
 	} else {
 		regex := runAssemble(path.Join(ctx.DataDir(), ruleValues.fileName), ctx)
 		processRegex(ruleValues.id, ruleValues.chainOffset, regex, ctx)
@@ -183,5 +187,8 @@ func updateRegex(filePath string, ruleId string, chainOffset uint8, regex string
 	updatedLine := found[0][1] + regex + found[0][2]
 	lines[index-1] = []byte(updatedLine)
 
-	os.WriteFile(filePath, bytes.Join(lines, []byte("\n")), fs.ModePerm)
+	err = os.WriteFile(filePath, bytes.Join(lines, []byte("\n")), fs.ModePerm)
+	if err != nil {
+		logger.Fatal().Err(err).Msgf("Failed to write rule file %s", filePath)
+	}
 }
