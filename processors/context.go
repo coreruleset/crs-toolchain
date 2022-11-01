@@ -19,8 +19,8 @@ type Context struct {
 	singleChainOffset  bool
 }
 
-// NewContextForDir creates a new processor context using the `rootDir` as the root directory.
-func NewContextForDir(rootDir string) *Context {
+// NewContext creates a new processor context using the `rootDir` as the root directory.
+func NewContext(rootDir string) *Context {
 	// check if directory exists first
 	_, err := os.Stat(rootDir)
 	if err != nil {
@@ -40,17 +40,6 @@ func NewContextForDir(rootDir string) *Context {
 	//if namespace and "chain_offset" in namespace:
 	//self.single_chain_offset = namespace.chain_offset
 	return ctx
-}
-
-// NewContext creates a new context using the current directory as base.
-func NewContext() *Context {
-	cwd, err := os.Getwd()
-	if err != nil {
-		panic("Failed to retrieve current working directory")
-	}
-	logger.Debug().Msgf("Resolved working directory: %s", cwd)
-
-	return NewContextForDir(cwd)
 }
 
 // Dump dumps the context to the passed io.Writer.

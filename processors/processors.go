@@ -21,13 +21,8 @@ type IProcessor interface {
 	Consume([]string)
 }
 
-// NewProcessor creates a new processor with defaults.
-func NewProcessor() *Processor {
-	return NewProcessorWithContext(NewContext())
-}
-
-// NewProcessorWithContext creates a new processor with passed context.
-func NewProcessorWithContext(ctx *Context) *Processor {
+// NewProcessor creates a new processor with passed context.
+func NewProcessor(ctx *Context) *Processor {
 	p := &Processor{
 		ctx:   ctx,
 		lines: []string{},

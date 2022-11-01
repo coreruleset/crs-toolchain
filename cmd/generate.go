@@ -38,7 +38,7 @@ The special token '-' will cause the script to accept input
 from stdin.`,
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			ctxt := processors.NewContext()
+			ctxt := processors.NewContext(rootValues.workingDirectory.String())
 			assembler := operators.NewAssembler(ctxt)
 			var input []byte
 			var err error

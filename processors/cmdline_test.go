@@ -4,6 +4,7 @@
 package processors
 
 import (
+	"os"
 	"regexp"
 	"testing"
 
@@ -16,7 +17,7 @@ type cmdLineTestSuite struct {
 }
 
 func (s *cmdLineTestSuite) SetupTest() {
-	s.ctx = NewContext()
+	s.ctx = NewContext(os.TempDir())
 }
 
 func TestRunCmdLineTestSuite(t *testing.T) {
