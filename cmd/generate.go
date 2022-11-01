@@ -6,6 +6,7 @@ package cmd
 import (
 	"io"
 	"os"
+	"path"
 
 	"github.com/spf13/cobra"
 
@@ -37,10 +38,23 @@ The special token '-' will cause the script to accept input
 from stdin.`,
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			assembler := operators.NewAssembler(processors.NewContext())
-			input, err := io.ReadAll(os.Stdin)
-			if err != nil {
-				logger.Fatal().Err(err).Msg("Failed to read from stdin")
+			ctxt := processors.NewContext()
+			assembler := operators.NewAssembler(ctxt)
+			var input []byte
+			var err error
+			if ruleValues.useStdin {
+				logger.Trace().Msg("Reading from stdin")
+				input, err = io.ReadAll(os.Stdin)
+				if err != nil {
+					logger.Fatal().Err(err).Msg("Failed to read from stdin")
+				}
+			} else {
+				filePath := path.Join(ctxt.DataDir(), ruleValues.fileName)
+				logger.Trace().Msgf("Reading from %s", filePath)
+				input, err = os.ReadFile(filePath)
+				if err != nil {
+					logger.Fatal().Err(err).Msgf("Failed to read data file %s", filePath)
+				}
 			}
 			assembly, err := assembler.Run(string(input))
 			if err != nil {
