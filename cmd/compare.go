@@ -19,7 +19,7 @@ func init() {
 
 func createCompareCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "compare [RULE_ID",
+		Use:   "compare [RULE_ID | -]",
 		Short: "Compare generated regular expressions with the contents of associated rules",
 		Long: `Compare generated regular expressions with the contents of associated
 rules.
@@ -38,7 +38,7 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 			if !allFlag.Changed && len(args) == 0 {
 				return errors.New("expected either RULE_ID or flag, found neither")
 			} else if allFlag.Changed && len(args) > 0 {
-				return errors.New("expected either RULE_ID of flag, found both")
+				return errors.New("expected either RULE_ID or flag, found both")
 			} else if len(args) == 1 && args[0] == "-" {
 				return errors.New("invalid argument '-'")
 			}
@@ -54,7 +54,7 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 
 func buildCompareCommand() {
 	regexCmd.AddCommand(compareCmd)
-	compareCmd.PersistentFlags().BoolP("all", "a", false, `Instead of supplying a rule_id, you can tell the script to
+	compareCmd.PersistentFlags().BoolP("all", "a", false, `Instead of supplying a RULE_ID, you can tell the script to
 update all rules from their data files`)
 }
 

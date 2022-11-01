@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"io/fs"
 	"os"
 	"path"
 	"testing"
@@ -15,6 +16,7 @@ import (
 type rootTestSuite struct {
 	suite.Suite
 	tempDir string
+	dataDir string
 }
 
 func (suite *rootTestSuite) SetupTest() {
@@ -25,9 +27,13 @@ func (suite *rootTestSuite) SetupTest() {
 	tempDir, err := os.MkdirTemp("", "root-tests")
 	suite.NoError(err)
 	suite.tempDir = tempDir
+
+	suite.dataDir = path.Join(suite.tempDir, "util", "regexp-assemble", "data")
+	err = os.MkdirAll(suite.dataDir, fs.ModePerm)
+	suite.NoError(err)
 }
 
-func (suite *rootTestSuite) TearDownSuite() {
+func (suite *rootTestSuite) TearDownTest() {
 	err := os.RemoveAll(suite.tempDir)
 	suite.NoError(err)
 }
@@ -96,11 +102,18 @@ func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
 	s.NotNil(workingDirectoryFlag)
 	s.True(workingDirectoryFlag.Changed)
 
-	s.Equal(path.Clean(os.TempDir()), workingDirectoryFlag.Value.String())
+	s.Equal(path.Clean(s.tempDir), workingDirectoryFlag.Value.String())
 }
 
 func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
-	rootCmd.SetArgs([]string{"-d", "../homer", "regex", "compare", "123456"})
+	rootCmd.SetArgs([]string{"-d", "../util", "regex", "compare", "123456"})
+	cwd, err := os.Getwd()
+	s.NoError(err)
+	parentCwd := path.Dir(cwd)
+	err = os.MkdirAll(path.Join(parentCwd, "util", "regexp-assemble", "data"), fs.ModePerm)
+	s.NoError(err)
+	defer os.RemoveAll(path.Join(parentCwd, "util"))
+
 	cmd, _ := rootCmd.ExecuteC()
 
 	workingDirectoryFlag := cmd.Flags().Lookup("directory")
@@ -108,19 +121,10 @@ func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
 	s.True(workingDirectoryFlag.Changed)
 	s.True(path.IsAbs(workingDirectoryFlag.Value.String()))
 
-	cwd, err := os.Getwd()
-	s.NoError(err)
-	parentDir := path.Dir(cwd)
-	expectedPath := path.Join(parentDir, "homer")
-
-	s.Equal(path.Clean(expectedPath), workingDirectoryFlag.Value.String())
+	s.Equal(path.Clean(parentCwd), workingDirectoryFlag.Value.String())
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInRoot() {
-	err := os.MkdirAll(path.Join(s.tempDir, "util", "data", "include"), 0777)
-	s.NoError(err)
-
-	os.Setenv("PWD", s.tempDir)
 	root, err := findRootDirectory(s.tempDir)
 	if s.NoError(err) {
 		s.Equal(s.tempDir, root)
@@ -128,56 +132,43 @@ func (s *rootTestSuite) TestFindRootDirectoryInRoot() {
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInUtil() {
-	err := os.MkdirAll(path.Join(s.tempDir, "util", "data", "include"), 0777)
-	s.NoError(err)
-
-	os.Setenv("PWD", path.Join(s.tempDir, "util"))
-	root, err := findRootDirectory(s.tempDir)
+	root, err := findRootDirectory(path.Join(s.tempDir, "util"))
 	if s.NoError(err) {
 		s.Equal(s.tempDir, root)
 	}
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInData() {
-	err := os.MkdirAll(path.Join(s.tempDir, "util", "data", "include"), 0777)
-	s.NoError(err)
-
-	os.Setenv("PWD", path.Join(s.tempDir, "util", "data"))
-	root, err := findRootDirectory(s.tempDir)
+	root, err := findRootDirectory(s.dataDir)
 	if s.NoError(err) {
 		s.Equal(s.tempDir, root)
 	}
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInInclude() {
-	err := os.MkdirAll(path.Join(s.tempDir, "util", "data", "include"), 0777)
+	includeDir := path.Join(s.dataDir, "include")
+	err := os.Mkdir(includeDir, fs.ModePerm)
 	s.NoError(err)
-
-	os.Setenv("PWD", path.Join(s.tempDir, "util", "data", "include"))
-	root, err := findRootDirectory(s.tempDir)
+	root, err := findRootDirectory(includeDir)
 	if s.NoError(err) {
 		s.Equal(s.tempDir, root)
 	}
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInRules() {
-	err := os.MkdirAll(path.Join(s.tempDir, "util", "data", "include"), 0777)
-	s.NoError(err)
-	err = os.Mkdir(path.Join(s.tempDir, "rules"), 0777)
+	err := os.Mkdir(path.Join(s.tempDir, "rules"), fs.ModePerm)
 	s.NoError(err)
 
-	os.Setenv("PWD", path.Join(s.tempDir, "rules"))
-	root, err := findRootDirectory(s.tempDir)
+	root, err := findRootDirectory(path.Join(s.tempDir, "rules"))
 	if s.NoError(err) {
 		s.Equal(s.tempDir, root)
 	}
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryFails() {
-	err := os.MkdirAll(path.Join(s.tempDir, "util", "data"), 0777)
-	s.NoError(err)
+	root, err := findRootDirectory(os.TempDir())
+	if !s.Error(err) {
+		s.T().Logf("Unexpectedly found root directory %s, started at %s", root, os.TempDir())
+	}
 
-	os.Setenv("PWD", path.Join(s.tempDir))
-	_, err = findRootDirectory(s.tempDir)
-	s.Error(err)
 }

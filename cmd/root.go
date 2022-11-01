@@ -32,7 +32,7 @@ func Execute() {
 func init() {
 	zerolog.SetGlobalLevel(defaultLogLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "03:04:05"})
-	logger = log.With().Str("component", "cmd").Logger()
+	logger = log.With().Str("component", "cmd").Caller().Logger()
 
 	cwd, err := os.Getwd()
 	if err != nil {
