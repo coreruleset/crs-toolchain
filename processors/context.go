@@ -30,15 +30,11 @@ func NewContext(rootDir string) *Context {
 		rootDirectory:      rootDir,
 		rulesDirectory:     rootDir + "/rules",
 		utilDirectory:      rootDir + "/util",
-		dataFilesDirectory: rootDir + "/data",
-		includeFiles:       rootDir + "/data/include",
+		dataFilesDirectory: rootDir + "/util/regexp-assemble/data",
+		includeFiles:       rootDir + "/util/regexp-assemble/data/include",
 		singleRuleID:       0,
 		singleChainOffset:  false,
 	}
-	//self.single_rule_id = namespace.rule_id if namespace else None
-	//self.single_chain_offset = None
-	//if namespace and "chain_offset" in namespace:
-	//self.single_chain_offset = namespace.chain_offset
 	return ctx
 }
 
@@ -55,4 +51,9 @@ func (ctx *Context) DataDir() string {
 // IncludeDir returns the include directory. Used to include files that don't have an absolute path.
 func (ctx *Context) IncludeDir() string {
 	return ctx.includeFiles
+}
+
+// RulesDir returns the rules directory.
+func (ctx *Context) RulesDir() string {
+	return ctx.rulesDirectory
 }

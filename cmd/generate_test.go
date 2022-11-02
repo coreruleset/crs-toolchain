@@ -4,6 +4,9 @@
 package cmd
 
 import (
+	"io/fs"
+	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -11,10 +14,25 @@ import (
 
 type generateTestSuite struct {
 	suite.Suite
+	tempDir string
+	dataDir string
 }
 
-func (suite *generateTestSuite) SetupTest() {
+func (s *generateTestSuite) SetupTest() {
 	rebuildGenerateCommand()
+
+	tempDir, err := os.MkdirTemp("", "generate-tests")
+	s.NoError(err)
+	s.tempDir = tempDir
+
+	s.dataDir = path.Join(s.tempDir, "util", "regexp-assemble", "data")
+	err = os.MkdirAll(s.dataDir, fs.ModePerm)
+	s.NoError(err)
+}
+
+func (s *generateTestSuite) TearDownTest() {
+	err := os.RemoveAll(s.tempDir)
+	s.NoError(err)
 }
 
 func TestRunGenerateTestSuite(t *testing.T) {
@@ -22,7 +40,8 @@ func TestRunGenerateTestSuite(t *testing.T) {
 }
 
 func (s *generateTestSuite) TestGenerate_NormalRuleId() {
-	rootCmd.SetArgs([]string{"regex", "generate", "123456"})
+	s.writeDatafile("123456.data", "")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("generate", cmd.Name())
@@ -47,4 +66,9 @@ func (s *generateTestSuite) TestGenerate_Dash() {
 		s.True(ruleValues.useStdin)
 	}
 
+}
+
+func (s *generateTestSuite) writeDatafile(filename string, contents string) {
+	err := os.WriteFile(path.Join(s.dataDir, "123456.data"), []byte(contents), fs.ModePerm)
+	s.NoError(err)
 }
