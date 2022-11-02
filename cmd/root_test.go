@@ -62,7 +62,8 @@ func (s *rootTestSuite) TestRoot_LogLevelDefault() {
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelChanged() {
-	rootCmd.SetArgs([]string{"--log-level", "debug", "regex", "compare", "123456"})
+	s.writeDataFile("123456.data", "")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "--log-level", "debug", "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
@@ -73,7 +74,8 @@ func (s *rootTestSuite) TestRoot_LogLevelChanged() {
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
-	rootCmd.SetArgs([]string{"--log-level", "bizarre", "regex", "compare", "123456"})
+	s.writeDataFile("123456.data", "")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "--log-level", "bizarre", "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
@@ -84,7 +86,8 @@ func (s *rootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
-	rootCmd.SetArgs([]string{"regex", "compare", "--log-level", "debug", "123456"})
+	s.writeDataFile("123456.data", "")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "--log-level", "debug", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
@@ -95,7 +98,8 @@ func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
 }
 
 func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
-	rootCmd.SetArgs([]string{"--directory", s.tempDir, "regex", "compare", "123456"})
+	s.writeDataFile("123456.data", "")
+	rootCmd.SetArgs([]string{"--directory", s.tempDir, "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	workingDirectoryFlag := cmd.Flags().Lookup("directory")
@@ -106,15 +110,18 @@ func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
 }
 
 func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
-	rootCmd.SetArgs([]string{"-d", "../util", "regex", "compare", "123456"})
+	rootCmd.SetArgs([]string{"-d", "../util", "regex", "generate", "123456"})
 	cwd, err := os.Getwd()
 	s.NoError(err)
 	parentCwd := path.Dir(cwd)
 	err = os.MkdirAll(path.Join(parentCwd, "util", "regexp-assemble", "data"), fs.ModePerm)
 	s.NoError(err)
 	defer os.RemoveAll(path.Join(parentCwd, "util"))
+	err = os.WriteFile(path.Join(parentCwd, "util", "regexp-assemble", "data", "123456.data"), []byte{}, fs.ModePerm)
+	s.NoError(err)
 
-	cmd, _ := rootCmd.ExecuteC()
+	cmd, err := rootCmd.ExecuteC()
+	s.NoError(err)
 
 	workingDirectoryFlag := cmd.Flags().Lookup("directory")
 	s.NotNil(workingDirectoryFlag)
@@ -168,4 +175,9 @@ func (s *rootTestSuite) TestFindRootDirectoryInRules() {
 func (s *rootTestSuite) TestFindRootDirectoryFails() {
 	_, err := findRootDirectory(os.TempDir())
 	s.Error(err)
+}
+
+func (s *rootTestSuite) writeDataFile(filename string, contents string) {
+	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
+	s.NoError(err)
 }
