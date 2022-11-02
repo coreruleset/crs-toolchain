@@ -8,9 +8,8 @@ before:
 builds:
   - id: "crs-toolchain"
     env:
-      - GO111MODULE=on
       - CGO_ENABLED=0
-    binary: ftw
+    binary: crs-toolchain
     targets:
       - linux_amd64
       - linux_arm64
@@ -81,7 +80,7 @@ nfpms:
         file_name_template: "{{ .ProjectName }}-{{ .Version }}_{{ .Arch }}"
     vendor:
     homepage: https://github.com/theseion/crs-toolchain
-    maintainer: theseion@gmail.com
+    maintainer: th3s3ion@gmail.com
     description:
       CRS ToolChain helper
 
