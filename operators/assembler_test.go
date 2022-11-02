@@ -305,7 +305,7 @@ func (s *specialCasesTestSuite) TestBackslashSReplacesPerlEquivalentCharacterCla
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`\s`, output)
+	s.Equal(`[:space:]`, output)
 }
 
 func (s *preprocessorsTestSuite) TestSequentialPreprocessors() {
