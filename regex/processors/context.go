@@ -37,7 +37,7 @@ func (ctx *Context) Dump(w io.Writer) {
 	fmt.Printf("Context: %v\n", ctx)
 }
 
-// RootContext returns the the root context of the toolchain
+// RootContext returns the root context of the toolchain
 func (ctx *Context) RootContext() *context.Context {
 	return ctx.rootContext
 }
