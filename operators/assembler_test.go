@@ -18,10 +18,11 @@ type assemblerTestSuite struct {
 	tempDir string
 }
 
-type fileFormatTestSuite assemblerTestSuite
-type specialCommentsTestSuite assemblerTestSuite
-type specialCasesTestSuite assemblerTestSuite
+type fileFormatTestSuite assemblerrTestSuite
+type specialCommentsTestSuite assemblerrTestSuite
+type specialCasesTestSuite assemblerrTestSuite
 type preprocessorsTestSuite assemblerTestSuite
+type templatesTestSuite assemblerrTestSuite
 type templatesTestSuite assemblerTestSuite
 
 func TestRunassemblerTestSuite(t *testing.T) {
@@ -125,7 +126,7 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
 	contents := `##!line1
 ##! line2
- not blank ##!+is 
+ not blank ##!+is q
 \t\t##!foo
 \t ##! bar
 ##!\tline3
