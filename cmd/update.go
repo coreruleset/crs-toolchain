@@ -17,8 +17,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/theseion/crs-toolchain/v2/operators"
-	"github.com/theseion/crs-toolchain/v2/processors"
+	"github.com/theseion/crs-toolchain/v2/regex/operators"
+	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
 // updateCmd represents the update command

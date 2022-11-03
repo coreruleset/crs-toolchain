@@ -7,16 +7,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/theseion/crs-toolchain/v2/context"
 )
 
 type Context struct {
-	rootDirectory      string
-	rulesDirectory     string
-	utilDirectory      string
-	dataFilesDirectory string
-	includeFiles       string
-	singleRuleID       int
-	singleChainOffset  bool
+	rootDirectory         string
+	rulesDirectory        string
+	utilDirectory         string
+	dataFilesDirectory    string
+	includeFilesDirectory string
+	includeFiles          string
+	singleRuleID          int
+	singleChainOffset     bool
 }
 
 // NewContext creates a new processor context using the `rootDir` as the root directory.
@@ -26,16 +29,17 @@ func NewContext(rootDir string) *Context {
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("creating context: problem using %s as base directory.", rootDir)
 	}
-	ctx := &Context{
-		rootDirectory:      rootDir,
-		rulesDirectory:     rootDir + "/rules",
-		utilDirectory:      rootDir + "/util",
-		dataFilesDirectory: rootDir + "/util/regexp-assemble/data",
-		includeFiles:       rootDir + "/util/regexp-assemble/data/include",
-		singleRuleID:       0,
-		singleChainOffset:  false,
+
+	ctxt := context.New(rootDir)
+	return &Context{
+		rootDirectory:         ctxt.RootDirectory,
+		rulesDirectory:        ctxt.RulesDirectory,
+		utilDirectory:         ctxt.UtilDirectory,
+		dataFilesDirectory:    ctxt.DataFilesDirectory,
+		includeFilesDirectory: ctxt.IncludeFilesDirectory,
+		singleRuleID:          0,
+		singleChainOffset:     false,
 	}
-	return ctx
 }
 
 // Dump dumps the context to the passed io.Writer.
