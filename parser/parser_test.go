@@ -172,8 +172,8 @@ type parserDefinitionTestSuite struct {
 
 func (s *parserDefinitionTestSuite) SetupSuite() {
 	s.ctx = processors.NewContext(os.TempDir())
-	s.reader = strings.NewReader("##!> definition this-is-a-text [a-zA-J]+8\n" +
-		"##!> definition this-is-another-text [0-9](pine|apple)\n" +
+	s.reader = strings.NewReader("##!> define this-is-a-text [a-zA-J]+8\n" +
+		"##!> define this-is-another-text [0-9](pine|apple)\n" +
 		"{{this-is-a-text}} to see if definitions work.\n" +
 		"Second text for {{this-is-another-text}}.\n")
 }
@@ -207,8 +207,8 @@ func (s *parserIncludeWithDefinitions) SetupSuite() {
 			// Only the initial include goes to the reader
 			s.reader = strings.NewReader(fmt.Sprintf(
 				"##!> include %s\n"+
-					"##!> definition this-is-a-text [a-zA-J]+8\n"+
-					"##!> definition this-is-another-text [0-9](pine|apple)\n"+
+					"##!> define this-is-a-text [a-zA-J]+8\n"+
+					"##!> define this-is-another-text [0-9](pine|apple)\n"+
 					"{{this-is-a-text}} to see if definitions work.\n"+
 					"Second text for {{this-is-another-text}}.\n", file.Name()))
 		}

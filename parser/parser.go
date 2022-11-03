@@ -29,7 +29,7 @@ const (
 	includePatternName    string     = "include"
 	includePattern        string     = `^\s*##!>\s*include\s*(.*)$`
 	definitionPatternName string     = "definition"
-	definitionPattern     string     = `^\s*##!>\s*definition\s+([a-zA-Z0-9-_]+)\s+(.*)$`
+	definitionPattern     string     = `^\s*##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(.*)$`
 	commentPatternName    string     = "comment"
 	commentPattern        string     = `\s*##![^^$+><=]`
 	flagsPatternName      string     = "flags"
