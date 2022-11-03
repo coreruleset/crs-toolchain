@@ -49,8 +49,8 @@ func (a *Assemble) ProcessLine(line string) {
 
 	match = a.outputRegex.FindStringSubmatch(line)
 	if len(match) > 0 {
-		if err := a.store(match[1]); err != nil {
-			logger.Fatal().Err(err).Msgf("Failed to store input: %s", line)
+		if err := a.append(match[1]); err != nil {
+			logger.Fatal().Err(err).Msgf("Failed to append input: %s", line)
 		}
 	} else {
 		a.proc.lines = append(a.proc.lines, line)

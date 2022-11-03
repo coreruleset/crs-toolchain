@@ -24,7 +24,7 @@ type specialCasesTestSuite assemblerTestSuite
 type preprocessorsTestSuite assemblerTestSuite
 type templatesTestSuite assemblerTestSuite
 
-func TestRunAssembleTestSuite(t *testing.T) {
+func TestRunassemblerTestSuite(t *testing.T) {
 	suite.Run(t, new(fileFormatTestSuite))
 	suite.Run(t, new(specialCommentsTestSuite))
 	suite.Run(t, new(specialCasesTestSuite))
@@ -125,7 +125,7 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
 	contents := `##!line1
 ##! line2
- not blank ##!+is q
+ not blank ##!+is 
 \t\t##!foo
 \t ##! bar
 ##!\tline3
@@ -514,4 +514,323 @@ regex with {{slashes}} and {{dots}}
 	s.NoError(err)
 
 	s.Equal(`[/\x5c][,\.;]regex with [/\x5c] and [,\.;][/\x5c]+`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_Assembling_1() {
+	contents := `##!^ \W*\(
+##!^ two
+a+b|c
+d
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`[^0-9A-Z_a-z]*\(two(?:a+b|[c-d])`, output)
+
+}
+
+func (s *assemblerTestSuite) TestAssemble_Assembling_2() {
+	contents := `##!$ \W*\(
+##!$ two
+a+b|c
+d
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`(?:a+b|[c-d])[^0-9A-Z_a-z]*\(two`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_Assembling_3() {
+	contents := `##!> assemble
+line1
+##!=>
+  ##!> assemble
+ab
+cd
+  ##!<
+##!<
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`line1(?:ab|cd)`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_Assembling_4() {
+	contents := `##!> assemble
+ab
+##!=< myinput
+##!<
+##!> assemble
+##!=> myinput
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+	s.Equal(`ab`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_Concatenating() {
+	contents := `##!> assemble
+one
+two
+##!=>
+three
+four
+##!<
+five
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`(?:one|two)(?:three|four)|five`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_ConcatenatingMultipleSegments() {
+	contents := `##!> assemble
+one
+two
+##!=>
+three
+four
+##!=>
+five
+##!=>
+  ##!> assemble
+six
+seven
+  ##!=>
+eight
+nine
+  ##!<
+##!=>
+ten
+##!<
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`(?:one|two)(?:three|four)fives(?:ix|even)(?:eight|nine)ten`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_ConcatenatingMultipleSegments_() {
+	contents := `##!> assemble
+one
+two
+##!=>
+three
+four
+##!=>
+five
+##!=>
+  ##!> assemble
+six
+seven
+  ##!=>
+eight
+nine
+  ##!<
+ten
+##!<
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`(?:one|two)(?:three|four)five(?:s(?:ix|even)(?:eight|nine)|ten)`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_ConcatenatingWithStoredInput() {
+	contents := `##!> assemble
+##! slash patterns
+\x5c
+##! URI encoded
+%2f
+%5c
+##!=< slashes
+##!=> slashes
+
+##! dot patterns
+\.
+\.%00
+\.%01
+##!=>
+##!=> slashes
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`(?:\x5c|%(?:2f|5c))\.(?:%0[0-1])?(?:\x5c|%(?:2f|5c))`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_StoredInputIsGlobal() {
+	contents := `##!> assemble
+ab
+cd
+##!=< globalinput1
+##!<
+
+##!> assemble
+##!=> globalinput1
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`ab|cd`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_StoredInputIsntAvailableToInnerScope() {
+	contents := `##!> assemble
+ab
+cd
+##!=< globalinput2
+    ##!> assemble
+    ##!=> globalinput2
+    ##!<
+##!<
+`
+	assembler := NewAssembler(s.ctx)
+
+	_, err := assembler.Run(contents)
+	s.Error(err)
+
+}
+func (s *assemblerTestSuite) TestAssemble_StoredInputIsAvailableToOuterScope() {
+	contents := `##!> assemble
+  ##!> assemble
+ab
+cd
+  ##!=< globalinput
+  ##!<
+##!=> globalinput
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`ab|cd`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_ConcatenatingFailsWhenInputUnknown() {
+	contents := `##!> assemble
+##!=> unknown
+`
+	assembler := NewAssembler(s.ctx)
+
+	_, err := assembler.Run(contents)
+	s.Error(err)
+
+}
+func (s *assemblerTestSuite) TestAssemble_StoringAlternationAndConcatenation() {
+	contents := `##!> assemble
+  ##!> assemble
+a
+b
+  ##!=>
+c
+d
+  ##!=< input
+  ##!<
+  ##!<
+##!=> input
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`[a-b][c-d]`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_ConcatenationWithPrefixAndSuffix() {
+	contents := `##!^ prefix
+##!$ suffix
+  ##!> assemble
+a
+b
+  ##!=< input
+  ##!<
+##!=> input
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`prefix[a-b]suffix`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_AssembleWrappedInGroupWithTailConcatenation() {
+	contents := `##!> assemble
+a
+b
+  ##!=>
+c
+d
+  ##!<
+##!=>
+more
+##!=>
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`[a-b][c-d]more`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_AssembleWrappedInGroupWithTailAlternation() {
+	contents := `##!> assemble
+a
+b
+  ##!=>
+c
+d
+  ##!<
+more
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`[a-b][c-d]|more`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_NestedGroups() {
+	contents := `(?:(?:x))+
+prefix(?:(?:y))+
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`x+|prefixy+`, output)
+
+}
+func (s *assemblerTestSuite) TestAssemble_RemoveExtraGroups() {
+	contents := `(?:(?:a(?:b|c)(?:(?:d))))`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`a[b-c]d`, output)
 }
