@@ -109,12 +109,6 @@ func (c *CmdLine) ProcessLine(line string) {
 	}
 }
 
-// HasBody is a class method
-func (c *CmdLine) HasBody() bool {
-	// Empty method
-	return true
-}
-
 // Complete is the class method
 func (c *CmdLine) Complete() ([]string, error) {
 	assembly, err := rassemble.Join(c.proc.lines)

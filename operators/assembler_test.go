@@ -12,32 +12,34 @@ import (
 	"github.com/theseion/crs-toolchain/v2/processors"
 )
 
-type assembleTestSuite struct {
+type assemblerTestSuite struct {
 	suite.Suite
 	ctx     *processors.Context
 	tempDir string
 }
 
-type fileFormatTestSuite assembleTestSuite
-type specialCommentsTestSuite assembleTestSuite
-type specialCasesTestSuite assembleTestSuite
-type preprocessorsTestSuite assembleTestSuite
+type fileFormatTestSuite assemblerTestSuite
+type specialCommentsTestSuite assemblerTestSuite
+type specialCasesTestSuite assemblerTestSuite
+type preprocessorsTestSuite assemblerTestSuite
+type templatesTestSuite assemblerTestSuite
 
 func TestRunAssembleTestSuite(t *testing.T) {
 	suite.Run(t, new(fileFormatTestSuite))
 	suite.Run(t, new(specialCommentsTestSuite))
 	suite.Run(t, new(specialCasesTestSuite))
 	suite.Run(t, new(preprocessorsTestSuite))
+	suite.Run(t, new(templatesTestSuite))
 }
 
-func (s *assembleTestSuite) SetupSuite() {
+func (s *assemblerTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "assemble-test")
 	s.NoError(err)
 	s.ctx = processors.NewContext(s.tempDir)
 }
 
-func (s *assembleTestSuite) TearDownSuite() {
+func (s *assemblerTestSuite) TearDownSuite() {
 	err := os.RemoveAll(s.tempDir)
 	s.NoError(err)
 }
@@ -78,6 +80,18 @@ func (s *specialCasesTestSuite) TearDownSuite() {
 	s.NoError(err)
 }
 
+func (s *templatesTestSuite) SetupSuite() {
+	var err error
+	s.tempDir, err = os.MkdirTemp("", "templates-test")
+	s.NoError(err)
+	s.ctx = processors.NewContext(s.tempDir)
+}
+
+func (s *templatesTestSuite) TearDownSuite() {
+	err := os.RemoveAll(s.tempDir)
+	s.NoError(err)
+}
+
 func (s *fileFormatTestSuite) TestPreprocessIgnoresSimpleComments() {
 	contents := `##!line1
 ##! line2
@@ -111,7 +125,7 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
 	contents := `##!line1
 ##! line2
- not blank ##!+is 
+ not blank ##!+is q
 \t\t##!foo
 \t ##! bar
 ##!\tline3
@@ -305,7 +319,7 @@ func (s *specialCasesTestSuite) TestBackslashSReplacesPerlEquivalentCharacterCla
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`[:space:]`, output)
+	s.Equal(`[\s\v]`, output)
 }
 
 func (s *preprocessorsTestSuite) TestSequentialPreprocessors() {
@@ -352,10 +366,11 @@ func (s *preprocessorsTestSuite) TestComplexNestedPreprocessors() {
 	contents := `##!> assemble
     ##!> cmdline unix
 foo
-        ##!> assemble
+    ##!<
+  ##!=>
+    ##!> assemble
 ab
 cd
-        ##!<
     ##!<
     ##!> cmdline windows
 bar
@@ -373,5 +388,130 @@ eight
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|a[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?b[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?|[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?c[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?d|b[\"\^]*a[\"\^]*r|s(?:ix|even)|eight`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o(?:ab|cd|b[\"\^]*a[\"\^]*r)|our|ive)|s(?:ix|even)|eight`, output)
+}
+
+func (s *templatesTestSuite) TestTemplate_ReplacesTemplate() {
+	contents := `##!> template id __replaced__
+{{id}}
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal("__replaced__", output)
+}
+
+func (s *templatesTestSuite) TesTemplate_ReplacesMultipleTemplates() {
+	contents := `##!> template id __replaced__
+some
+{{id}}
+other
+{{id}}
+##! lines
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal("some|__replaced__|other", output)
+}
+
+func (s *templatesTestSuite) TestTemplate_IgnoresComments() {
+	contents := `##!> template id __replaced__
+##! {{id}}
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal("", output)
+}
+
+func (s *templatesTestSuite) TestTemplate_ReplacesMultiplePerLine() {
+	contents := `##!> template id __replaced__
+{{id}}some{{id}}other{{id}}
+##! lines
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal("__replaced__some__replaced__other__replaced__", output)
+}
+
+func (s *templatesTestSuite) TestTemplate_RetainsEscapes() {
+	contents := `##!> template id \n\s\b\v\t
+{{id}}
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`\n[\s\v]\b\v\t`, output)
+
+}
+
+func (s *templatesTestSuite) TestTemplate_ReplacseOnlySpecifiedTemplate() {
+	contents := `##!> template slashes [/\\]
+regex with {{slashes}} and {{dots}}
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`regex with [/\x5c] and \{\{dots\}\}`, output)
+}
+
+func (s *templatesTestSuite) TestTemplate_ReplacesAllNormalOrder() {
+	contents := `##!> template slashes [/\\]
+##!> template dots [.,;]
+regex with {{slashes}} and {{dots}}
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`regex with [/\x5c] and [,\.;]`, output)
+}
+
+func (s *templatesTestSuite) TestTemplate_ReplacesAllInverseOrder() {
+	contents := `##!> template slashes [/\\]
+##!> template dots [.,;]
+regex with {{dots}} and {{slashes}}
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`regex with [,\.;] and [/\x5c]`, output)
+}
+
+func (s *templatesTestSuite) TestTemplate_ReplacseOnAllLines() {
+	contents := `##!> template slashes [/\\]
+##!> template dots [.,;]
+##!> template other {{slashes}}+
+{{slashes}}
+##!=>
+{{dots}}
+##!=>
+regex with {{slashes}} and {{dots}}
+##!=>
+{{other}}
+##!=>
+`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+	s.NoError(err)
+
+	s.Equal(`[/\x5c][,\.;]regex with [/\x5c] and [,\.;][/\x5c]+`, output)
 }
