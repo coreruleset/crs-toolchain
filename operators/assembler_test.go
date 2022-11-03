@@ -18,19 +18,18 @@ type assemblerTestSuite struct {
 	tempDir string
 }
 
-type fileFormatTestSuite assemblerrTestSuite
-type specialCommentsTestSuite assemblerrTestSuite
-type specialCasesTestSuite assemblerrTestSuite
+type fileFormatTestSuite assemblerTestSuite
+type specialCommentsTestSuite assemblerTestSuite
+type specialCasesTestSuite assemblerTestSuite
 type preprocessorsTestSuite assemblerTestSuite
-type templatesTestSuite assemblerrTestSuite
-type templatesTestSuite assemblerTestSuite
+type definitionsTestSuite assemblerTestSuite
 
 func TestRunassemblerTestSuite(t *testing.T) {
 	suite.Run(t, new(fileFormatTestSuite))
 	suite.Run(t, new(specialCommentsTestSuite))
 	suite.Run(t, new(specialCasesTestSuite))
 	suite.Run(t, new(preprocessorsTestSuite))
-	suite.Run(t, new(templatesTestSuite))
+	suite.Run(t, new(definitionsTestSuite))
 }
 
 func (s *assemblerTestSuite) SetupSuite() {
@@ -81,14 +80,14 @@ func (s *specialCasesTestSuite) TearDownSuite() {
 	s.NoError(err)
 }
 
-func (s *templatesTestSuite) SetupSuite() {
+func (s *definitionsTestSuite) SetupSuite() {
 	var err error
-	s.tempDir, err = os.MkdirTemp("", "templates-test")
+	s.tempDir, err = os.MkdirTemp("", "definitions-test")
 	s.NoError(err)
 	s.ctx = processors.NewContext(s.tempDir)
 }
 
-func (s *templatesTestSuite) TearDownSuite() {
+func (s *definitionsTestSuite) TearDownSuite() {
 	err := os.RemoveAll(s.tempDir)
 	s.NoError(err)
 }
@@ -392,8 +391,8 @@ eight
 	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o(?:ab|cd|b[\"\^]*a[\"\^]*r)|our|ive)|s(?:ix|even)|eight`, output)
 }
 
-func (s *templatesTestSuite) TestTemplate_ReplacesTemplate() {
-	contents := `##!> template id __replaced__
+func (s *definitionsTestSuite) TestDefinition_ReplacesDefinition() {
+	contents := `##!> define id __replaced__
 {{id}}
 `
 	assembler := NewAssembler(s.ctx)
@@ -404,8 +403,8 @@ func (s *templatesTestSuite) TestTemplate_ReplacesTemplate() {
 	s.Equal("__replaced__", output)
 }
 
-func (s *templatesTestSuite) TesTemplate_ReplacesMultipleTemplates() {
-	contents := `##!> template id __replaced__
+func (s *definitionsTestSuite) TesDefinition_ReplacesMultipleDefinitions() {
+	contents := `##!> define id __replaced__
 some
 {{id}}
 other
@@ -420,8 +419,8 @@ other
 	s.Equal("some|__replaced__|other", output)
 }
 
-func (s *templatesTestSuite) TestTemplate_IgnoresComments() {
-	contents := `##!> template id __replaced__
+func (s *definitionsTestSuite) TestDefinition_IgnoresComments() {
+	contents := `##!> define id __replaced__
 ##! {{id}}
 `
 	assembler := NewAssembler(s.ctx)
@@ -432,8 +431,8 @@ func (s *templatesTestSuite) TestTemplate_IgnoresComments() {
 	s.Equal("", output)
 }
 
-func (s *templatesTestSuite) TestTemplate_ReplacesMultiplePerLine() {
-	contents := `##!> template id __replaced__
+func (s *definitionsTestSuite) TestDefinition_ReplacesMultiplePerLine() {
+	contents := `##!> define id __replaced__
 {{id}}some{{id}}other{{id}}
 ##! lines
 `
@@ -445,8 +444,8 @@ func (s *templatesTestSuite) TestTemplate_ReplacesMultiplePerLine() {
 	s.Equal("__replaced__some__replaced__other__replaced__", output)
 }
 
-func (s *templatesTestSuite) TestTemplate_RetainsEscapes() {
-	contents := `##!> template id \n\s\b\v\t
+func (s *definitionsTestSuite) TestDefinition_RetainsEscapes() {
+	contents := `##!> define id \n\s\b\v\t
 {{id}}
 `
 	assembler := NewAssembler(s.ctx)
@@ -458,8 +457,8 @@ func (s *templatesTestSuite) TestTemplate_RetainsEscapes() {
 
 }
 
-func (s *templatesTestSuite) TestTemplate_ReplacseOnlySpecifiedTemplate() {
-	contents := `##!> template slashes [/\\]
+func (s *definitionsTestSuite) TestDefinition_ReplacseOnlySpecifiedDefinition() {
+	contents := `##!> define slashes [/\\]
 regex with {{slashes}} and {{dots}}
 `
 	assembler := NewAssembler(s.ctx)
@@ -470,9 +469,9 @@ regex with {{slashes}} and {{dots}}
 	s.Equal(`regex with [/\x5c] and \{\{dots\}\}`, output)
 }
 
-func (s *templatesTestSuite) TestTemplate_ReplacesAllNormalOrder() {
-	contents := `##!> template slashes [/\\]
-##!> template dots [.,;]
+func (s *definitionsTestSuite) TestDefinition_ReplacesAllNormalOrder() {
+	contents := `##!> define slashes [/\\]
+##!> define dots [.,;]
 regex with {{slashes}} and {{dots}}
 `
 	assembler := NewAssembler(s.ctx)
@@ -483,9 +482,9 @@ regex with {{slashes}} and {{dots}}
 	s.Equal(`regex with [/\x5c] and [,\.;]`, output)
 }
 
-func (s *templatesTestSuite) TestTemplate_ReplacesAllInverseOrder() {
-	contents := `##!> template slashes [/\\]
-##!> template dots [.,;]
+func (s *definitionsTestSuite) TestDefinition_ReplacesAllInverseOrder() {
+	contents := `##!> define slashes [/\\]
+##!> define dots [.,;]
 regex with {{dots}} and {{slashes}}
 `
 	assembler := NewAssembler(s.ctx)
@@ -496,10 +495,10 @@ regex with {{dots}} and {{slashes}}
 	s.Equal(`regex with [,\.;] and [/\x5c]`, output)
 }
 
-func (s *templatesTestSuite) TestTemplate_ReplacseOnAllLines() {
-	contents := `##!> template slashes [/\\]
-##!> template dots [.,;]
-##!> template other {{slashes}}+
+func (s *definitionsTestSuite) TestDefinition_ReplacseOnAllLines() {
+	contents := `##!> define slashes [/\\]
+##!> define dots [.,;]
+##!> define other {{slashes}}+
 {{slashes}}
 ##!=>
 {{dots}}

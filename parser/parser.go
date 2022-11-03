@@ -207,14 +207,14 @@ func includeFile(ctx *processors.Context, filename string) (*bytes.Buffer, int) 
 
 func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
 	logger.Trace().Msgf("expanding definitions in: %v", src.String())
-	// Templates can contain templates themeselves
+	// Definitions can contain definitions themeselves
 	for needle, replacement := range variables {
 		needle := "{{" + needle + "}}"
 		for sourceName, source := range variables {
 			variables[sourceName] = strings.ReplaceAll(source, needle, replacement)
 		}
 	}
-	// Now replace templates in the rest of the file
+	// Now replace definitions in the rest of the file
 	for needle, replacement := range variables {
 		needle := "{{" + needle + "}}"
 		src = bytes.NewBuffer(bytes.ReplaceAll(src.Bytes(), []byte(needle), []byte(replacement)))
