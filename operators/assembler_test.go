@@ -126,7 +126,7 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotIgnoreSpecialComments() {
 func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() {
 	contents := `##!line1
 ##! line2
- not blank ##!+is q
+ not blank ##!+is 
 \t\t##!foo
 \t ##! bar
 ##!\tline3
