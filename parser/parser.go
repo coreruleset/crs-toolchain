@@ -3,7 +3,7 @@
 
 // Package parser implements the parsing logic to obtain the sequence of inputs ready for processing.
 // The two main thing it will do is to parse a data file and recursively solve all `includes` first, then
-// substitute all templates where neccesary.
+// substitute all definitions where neccesary.
 package parser
 
 import (
@@ -26,29 +26,29 @@ var logger = log.With().Str("component", "parser").Logger()
 type parsedType int
 
 const (
-	includePatternName  string     = "include"
-	includePattern      string     = `^\s*##!>\s*include\s*(.*)$`
-	templatePatternName string     = "template"
-	templatePattern     string     = `^\s*##!>\s*template\s+([a-zA-Z0-9-_]+)\s+(.*)$`
-	commentPatternName  string     = "comment"
-	commentPattern      string     = `\s*##![^^$+><=]`
-	flagsPatternName    string     = "flags"
-	flagsPattern        string     = `^\s*##!\+\s*(.*)\s*$`
-	prefixPatternName   string     = "prefix"
-	prefixPattern       string     = `^\s*##!\^\s*(.*)$`
-	suffixPatternName   string     = "suffix"
-	suffixPattern       string     = `^\s*##!\$\s*(.*)$`
-	regular             parsedType = iota
+	includePatternName    string     = "include"
+	includePattern        string     = `^\s*##!>\s*include\s*(.*)$`
+	definitionPatternName string     = "definition"
+	definitionPattern     string     = `^\s*##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(.*)$`
+	commentPatternName    string     = "comment"
+	commentPattern        string     = `\s*##![^^$+><=]`
+	flagsPatternName      string     = "flags"
+	flagsPattern          string     = `^\s*##!\+\s*(.*)\s*$`
+	prefixPatternName     string     = "prefix"
+	prefixPattern         string     = `^\s*##!\^\s*(.*)$`
+	suffixPatternName     string     = "suffix"
+	suffixPattern         string     = `^\s*##!\$\s*(.*)$`
+	regular               parsedType = iota
 	empty
 	include
-	template
+	definition
 	comment
 	flags
 	prefix
 	suffix
 )
 
-// Parser is the base parser type. It will provide processors with all the inclusions and templates resolved.
+// Parser is the base parser type. It will provide processors with all the inclusions and definitions resolved.
 type Parser struct {
 	ctx       *processors.Context
 	src       io.Reader
@@ -61,7 +61,7 @@ type Parser struct {
 }
 
 // ParsedLine will store the results of parsing the line. `parsedType` will discriminate how you read the results:
-// if the type is `include`, then the result map will store the file name in the "include" key. The template type
+// if the type is `include`, then the result map will store the file name in the "include" key. The definition type
 // will just use the map for the name:value.
 type ParsedLine struct {
 	parsedType parsedType
@@ -80,12 +80,12 @@ func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 		Prefixes:  []string{},
 		Suffixes:  []string{},
 		patterns: map[string]*regexp.Regexp{
-			includePatternName:  regexp.MustCompile(includePattern),
-			templatePatternName: regexp.MustCompile(templatePattern),
-			commentPatternName:  regexp.MustCompile(commentPattern),
-			flagsPatternName:    regexp.MustCompile(flagsPattern),
-			prefixPatternName:   regexp.MustCompile(prefixPattern),
-			suffixPatternName:   regexp.MustCompile(suffixPattern),
+			includePatternName:    regexp.MustCompile(includePattern),
+			definitionPatternName: regexp.MustCompile(definitionPattern),
+			commentPatternName:    regexp.MustCompile(commentPattern),
+			flagsPatternName:      regexp.MustCompile(flagsPattern),
+			prefixPatternName:     regexp.MustCompile(prefixPattern),
+			suffixPatternName:     regexp.MustCompile(suffixPattern),
 		},
 	}
 	return p
@@ -110,11 +110,11 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 		// remove comments and empty lines from the parsed line
 		case empty, comment:
 			continue
-		case template:
-			// merge maps p.variables and parseLine.template
+		case definition:
+			// merge maps p.variables and parseLine.definition
 			err := mergo.Merge(&p.variables, parsedLine.result)
 			if err != nil {
-				logger.Error().Err(err).Msg("error merging templates")
+				logger.Error().Err(err).Msg("error merging definitions")
 			}
 		case include:
 			// go read the included file and paste text here
@@ -139,9 +139,9 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 		wrote += n
 	}
 
-	// now that the file was parsed, we replace all templates
+	// now that the file was parsed, we replace all definitions
 	if len(p.variables) > 0 {
-		p.dest = expandTemplates(p.dest, p.variables)
+		p.dest = expandDefinitions(p.dest, p.variables)
 	}
 	return p.dest, wrote
 }
@@ -170,8 +170,8 @@ func (p *Parser) parseLine(line string) ParsedLine {
 			case includePatternName:
 				pl.parsedType = include
 				pl.result[name] = found[1]
-			case templatePatternName:
-				pl.parsedType = template
+			case definitionPatternName:
+				pl.parsedType = definition
 				pl.result[found[1]] = found[2]
 			case flagsPatternName:
 				pl.parsedType = flags
@@ -205,21 +205,21 @@ func includeFile(ctx *processors.Context, filename string) (*bytes.Buffer, int) 
 	return newP.Parse()
 }
 
-func expandTemplates(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
-	logger.Trace().Msgf("expanding templates in: %v", src.String())
-	// Templates can contain templates themeselves
+func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
+	logger.Trace().Msgf("expanding definitions in: %v", src.String())
+	// Definitions can contain definitions themeselves
 	for needle, replacement := range variables {
 		needle := "{{" + needle + "}}"
 		for sourceName, source := range variables {
 			variables[sourceName] = strings.ReplaceAll(source, needle, replacement)
 		}
 	}
-	// Now replace templates in the rest of the file
+	// Now replace definitions in the rest of the file
 	for needle, replacement := range variables {
 		needle := "{{" + needle + "}}"
 		src = bytes.NewBuffer(bytes.ReplaceAll(src.Bytes(), []byte(needle), []byte(replacement)))
 	}
-	logger.Trace().Msgf("expanded all templates in: %v", src.String())
+	logger.Trace().Msgf("expanded all definitions in: %v", src.String())
 	return src
 }
 
