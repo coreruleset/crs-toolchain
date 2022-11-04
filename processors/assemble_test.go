@@ -63,7 +63,7 @@ func (s *assembleTestSuite) TestAssemble_MultipleLines() {
 
 	s.NoError(err)
 	s.Len(output, 1)
-	s.Equal("homer|simpson", output[0])
+	s.Equal("(?:homer|simpson)", output[0])
 }
 
 func (s *assembleTestSuite) TestAssemble_RegularExpressions() {
@@ -74,7 +74,7 @@ func (s *assembleTestSuite) TestAssemble_RegularExpressions() {
 
 	s.NoError(err)
 	s.Len(output, 1)
-	s.Equal("home[,r]|(?-s:.)imps[a-c]{2}n", output[0])
+	s.Equal("(?:home[,r]|(?-s:.)imps[a-c]{2}n)", output[0])
 }
 
 func (s *assembleTestSuite) TestAssemble_InvalidRegularExpressionFails() {

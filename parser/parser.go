@@ -162,7 +162,7 @@ func (p *Parser) parseLine(line string) ParsedLine {
 		found := pattern.FindStringSubmatch(line)
 		// found[0] has the whole line that matched, found[N] has the subgroup
 		if len(found) > 0 {
-			logger.Trace().Msgf("found %s statement: %v", name, found)
+			logger.Trace().Msgf("found %s statement: %v", name, found[0])
 			switch name {
 			case commentPatternName:
 				pl.parsedType = comment
@@ -207,9 +207,16 @@ func includeFile(ctx *processors.Context, filename string) (*bytes.Buffer, int) 
 
 func expandTemplates(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
 	logger.Trace().Msgf("expanding templates in: %v", src.String())
+	// Templates can contain templates themeselves
 	for needle, replacement := range variables {
 		needle := "{{" + needle + "}}"
-		replacement := replacement
+		for sourceName, source := range variables {
+			variables[sourceName] = strings.ReplaceAll(source, needle, replacement)
+		}
+	}
+	// Now replace templates in the rest of the file
+	for needle, replacement := range variables {
+		needle := "{{" + needle + "}}"
 		src = bytes.NewBuffer(bytes.ReplaceAll(src.Bytes(), []byte(needle), []byte(replacement)))
 	}
 	logger.Trace().Msgf("expanded all templates in: %v", src.String())
