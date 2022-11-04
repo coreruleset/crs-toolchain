@@ -81,8 +81,8 @@ func rebuildUpdateCommand() {
 	buildUpdateCommand()
 }
 
-func performUpdate(process_all bool, ctx *processors.Context) {
-	if process_all {
+func performUpdate(processAll bool, ctx *processors.Context) {
+	if processAll {
 		err := filepath.WalkDir(ctx.DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
 				// fail

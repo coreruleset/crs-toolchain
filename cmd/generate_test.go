@@ -59,7 +59,7 @@ func (s *generateTestSuite) TestGenerate_NoRuleId() {
 }
 
 func (s *generateTestSuite) TestGenerate_Dash() {
-	rootCmd.SetArgs([]string{"regex", "generate", "-"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "-"})
 	_, err := rootCmd.ExecuteC()
 
 	if s.NoError(err) {
@@ -69,6 +69,6 @@ func (s *generateTestSuite) TestGenerate_Dash() {
 }
 
 func (s *generateTestSuite) writeDatafile(filename string, contents string) {
-	err := os.WriteFile(path.Join(s.dataDir, "123456.data"), []byte(contents), fs.ModePerm)
+	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
 	s.NoError(err)
 }

@@ -102,7 +102,7 @@ func (s *updateTestSuite) TestUpdate_DashReturnsError() {
 }
 
 func (s *updateTestSuite) writeDataFile(filename string, contents string) {
-	err := os.WriteFile(path.Join(s.dataDir, "123456.data"), []byte(contents), fs.ModePerm)
+	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
 	s.NoError(err)
 }
 

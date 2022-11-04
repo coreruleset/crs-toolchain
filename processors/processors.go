@@ -15,7 +15,6 @@ type Processor struct {
 }
 
 type IProcessor interface {
-	HasBody() bool
 	ProcessLine(line string)
 	Complete() ([]string, error)
 	Consume([]string)

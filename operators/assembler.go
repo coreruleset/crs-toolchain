@@ -211,16 +211,16 @@ func (a *Operator) useHexBackslashes(input string) string {
 // in newer versions of PCRE (both 3 and 2). Go's `regexp/syntax` package
 // uses Perl as the reference and, hence, generates `[\t-\n\f-\r ]` as the
 // character class for `\s`, i.e., `\v` is missing.
-// We simply replace the generated class with `[:space:]` to fix this.
+// We simply replace the generated class with `[\s\v]` to fix this.
 // Note that we could use `\s` for PCRE, but this will not work for re2
 // compatible engines.
 func (a *Operator) includeVerticalTabInSpaceClass(input string) string {
 	logger.Trace().Msg("Fixing up regex to include \\v in white space class matches")
-	result := strings.ReplaceAll(input, `[\t-\n\f-\r ]`, `[:space:]`)
-	result = strings.ReplaceAll(result, `[^\t-\n\f-\r ]`, `[:^space:]`)
+	result := strings.ReplaceAll(input, `[\t-\n\f-\r ]`, `[\s\v]`)
+	result = strings.ReplaceAll(result, `[^\t-\n\f-\r ]`, `[^\s\v]`)
 	// There's a range attached, can't just replace
-	result = strings.ReplaceAll(result, `\t-\n\f-\r -`, `[:space:] -`)
-	return strings.ReplaceAll(result, `\t-\n\f-\r `, `[:space:]`)
+	result = strings.ReplaceAll(result, `\t-\n\f-\r -`, `\s\v -`)
+	return strings.ReplaceAll(result, `\t-\n\f-\r `, `\s\v`)
 }
 
 // rassemble-go doesn't provide an option to specify literals.
