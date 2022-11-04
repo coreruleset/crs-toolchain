@@ -110,7 +110,7 @@ func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
 }
 
 func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
-	rootCmd.SetArgs([]string{"-d", "../testDir", "regex", "compare", "123456"})
+	rootCmd.SetArgs([]string{"-d", "../testDir", "regex", "generate", "-"})
 	cwd, err := os.Getwd()
 	s.NoError(err)
 	parentCwd := path.Dir(cwd)

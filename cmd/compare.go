@@ -18,7 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/theseion/crs-toolchain/v2/processors"
+	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
 // compareCmd represents the compare command
