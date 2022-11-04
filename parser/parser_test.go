@@ -26,8 +26,8 @@ func TestRunParserTestSuite(t *testing.T) {
 	suite.Run(t, new(parserTestSuite))
 	suite.Run(t, new(parserIncludeTestSuite))
 	suite.Run(t, new(parserMultiIncludeTestSuite))
-	suite.Run(t, new(parserTemplateTestSuite))
-	suite.Run(t, new(parserIncludeWithTemplates))
+	suite.Run(t, new(parserDefinitionTestSuite))
+	suite.Run(t, new(parserIncludeWithDefinitions))
 }
 
 func (s *parserTestSuite) TestParser_NewParser() {
@@ -40,12 +40,12 @@ func (s *parserTestSuite) TestParser_NewParser() {
 		Suffixes:  []string{},
 		variables: make(map[string]string),
 		patterns: map[string]*regexp.Regexp{
-			includePatternName:  regexp.MustCompile(includePattern),
-			templatePatternName: regexp.MustCompile(templatePattern),
-			commentPatternName:  regexp.MustCompile(commentPattern),
-			flagsPatternName:    regexp.MustCompile(flagsPattern),
-			prefixPatternName:   regexp.MustCompile(prefixPattern),
-			suffixPatternName:   regexp.MustCompile(suffixPattern),
+			includePatternName:    regexp.MustCompile(includePattern),
+			definitionPatternName: regexp.MustCompile(definitionPattern),
+			commentPatternName:    regexp.MustCompile(commentPattern),
+			flagsPatternName:      regexp.MustCompile(flagsPattern),
+			prefixPatternName:     regexp.MustCompile(prefixPattern),
+			suffixPatternName:     regexp.MustCompile(suffixPattern),
 		},
 	}
 	actual := NewParser(processors.NewContext(os.TempDir()), s.reader)
@@ -163,53 +163,53 @@ func (s *parserMultiIncludeTestSuite) TestParserMultiInclude_FromMultiFile() {
 	s.Equal(expected.Len(), n)
 }
 
-// Templates test suite
-type parserTemplateTestSuite struct {
+// Definitions test suite
+type parserDefinitionTestSuite struct {
 	suite.Suite
 	ctx    *processors.Context
 	reader io.Reader
 }
 
-func (s *parserTemplateTestSuite) SetupSuite() {
+func (s *parserDefinitionTestSuite) SetupSuite() {
 	s.ctx = processors.NewContext(os.TempDir())
-	s.reader = strings.NewReader("##!> template this-is-a-text [a-zA-J]+8\n" +
-		"##!> template this-is-another-text [0-9](pine|apple)\n" +
-		"{{this-is-a-text}} to see if templates work.\n" +
+	s.reader = strings.NewReader("##!> define this-is-a-text [a-zA-J]+8\n" +
+		"##!> define this-is-another-text [0-9](pine|apple)\n" +
+		"{{this-is-a-text}} to see if definitions work.\n" +
 		"Second text for {{this-is-another-text}}.\n")
 }
 
-func (s *parserTemplateTestSuite) TestParserTemplate_BasicTest() {
+func (s *parserDefinitionTestSuite) TestParserDefinition_BasicTest() {
 	parser := NewParser(s.ctx, s.reader)
 	actual, _ := parser.Parse()
-	expected := bytes.NewBufferString("[a-zA-J]+8 to see if templates work.\nSecond text for [0-9](pine|apple).\n")
+	expected := bytes.NewBufferString("[a-zA-J]+8 to see if definitions work.\nSecond text for [0-9](pine|apple).\n")
 
 	s.Greater(len(parser.variables), 0)
-	s.Equal(parser.variables["this-is-a-text"], "[a-zA-J]+8", "failed to found template variables in map")
-	s.Equal(parser.variables["this-is-another-text"], "[0-9](pine|apple)", "failed to found template variables in map")
+	s.Equal(parser.variables["this-is-a-text"], "[a-zA-J]+8", "failed to found definition variables in map")
+	s.Equal(parser.variables["this-is-another-text"], "[0-9](pine|apple)", "failed to found definition variables in map")
 	s.Equal(expected.String(), actual.String())
 }
 
-// Templates test suite
-type parserIncludeWithTemplates struct {
+// Definitions test suite
+type parserIncludeWithDefinitions struct {
 	suite.Suite
 	ctx         *processors.Context
 	reader      io.Reader
 	includeFile []*os.File
 }
 
-func (s *parserIncludeWithTemplates) SetupSuite() {
+func (s *parserIncludeWithDefinitions) SetupSuite() {
 	tmpdir := os.TempDir()
 	s.ctx = processors.NewContext(tmpdir)
 	for i := 0; i < 4; i++ {
-		file, err := os.CreateTemp(tmpdir, "multi-templates.data")
+		file, err := os.CreateTemp(tmpdir, "multi-definitions.data")
 		s.NoError(err, "couldn't create %s file", file.Name())
 		if i == 0 {
 			// Only the initial include goes to the reader
 			s.reader = strings.NewReader(fmt.Sprintf(
 				"##!> include %s\n"+
-					"##!> template this-is-a-text [a-zA-J]+8\n"+
-					"##!> template this-is-another-text [0-9](pine|apple)\n"+
-					"{{this-is-a-text}} to see if templates work.\n"+
+					"##!> define this-is-a-text [a-zA-J]+8\n"+
+					"##!> define this-is-another-text [0-9](pine|apple)\n"+
+					"{{this-is-a-text}} to see if definitions work.\n"+
 					"Second text for {{this-is-another-text}}.\n", file.Name()))
 		}
 		s.includeFile = append(s.includeFile, file)
@@ -219,27 +219,27 @@ func (s *parserIncludeWithTemplates) SetupSuite() {
 				fmt.Sprintf(
 					"##!> include %s\n"+
 						"This is comment %d.\n"+
-						"{{this-is-a-text}} to see if templates work when included\n", file.Name(), i))
+						"{{this-is-a-text}} to see if definitions work when included\n", file.Name(), i))
 			s.NoError(err, "writing temp include file failed")
 		}
 	}
 }
 
-func (s *parserIncludeWithTemplates) TestParser_IncludeWithTemplates() {
+func (s *parserIncludeWithDefinitions) TestParser_IncludeWithDefinitions() {
 	parser := NewParser(s.ctx, s.reader)
 	actual, _ := parser.Parse()
 	expected := bytes.NewBufferString(
 		"This is comment 3.\n" +
-			"[a-zA-J]+8 to see if templates work when included\n" +
+			"[a-zA-J]+8 to see if definitions work when included\n" +
 			"This is comment 2.\n" +
-			"[a-zA-J]+8 to see if templates work when included\n" +
+			"[a-zA-J]+8 to see if definitions work when included\n" +
 			"This is comment 1.\n" +
-			"[a-zA-J]+8 to see if templates work when included\n" +
-			"[a-zA-J]+8 to see if templates work.\n" +
+			"[a-zA-J]+8 to see if definitions work when included\n" +
+			"[a-zA-J]+8 to see if definitions work.\n" +
 			"Second text for [0-9](pine|apple).\n")
 
 	s.NotEmpty(parser.variables)
-	s.Equal(parser.variables["this-is-a-text"], "[a-zA-J]+8", "failed to found template variables in map")
-	s.Equal(parser.variables["this-is-another-text"], "[0-9](pine|apple)", "failed to found template variables in map")
+	s.Equal(parser.variables["this-is-a-text"], "[a-zA-J]+8", "failed to found definition variables in map")
+	s.Equal(parser.variables["this-is-another-text"], "[0-9](pine|apple)", "failed to found definition variables in map")
 	s.Equal(expected.String(), actual.String())
 }
