@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/theseion/crs-toolchain/v2/operators"
-	"github.com/theseion/crs-toolchain/v2/processors"
+	"github.com/theseion/crs-toolchain/v2/regex/operators"
+	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
 // generateCmd represents the generate command
@@ -49,7 +49,7 @@ from stdin.`,
 					logger.Fatal().Err(err).Msg("Failed to read from stdin")
 				}
 			} else {
-				filePath := path.Join(ctxt.DataDir(), ruleValues.fileName)
+				filePath := path.Join(ctxt.RootContext().DataDir(), ruleValues.fileName)
 				logger.Trace().Msgf("Reading from %s", filePath)
 				input, err = os.ReadFile(filePath)
 				if err != nil {

@@ -110,15 +110,13 @@ func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
 }
 
 func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
-	rootCmd.SetArgs([]string{"-d", "../util", "regex", "generate", "123456"})
+	rootCmd.SetArgs([]string{"-d", "../testDir", "regex", "generate", "-"})
 	cwd, err := os.Getwd()
 	s.NoError(err)
 	parentCwd := path.Dir(cwd)
-	err = os.MkdirAll(path.Join(parentCwd, "util", "regexp-assemble", "data"), fs.ModePerm)
+	err = os.MkdirAll(path.Join(parentCwd, "testDir", "util", "regexp-assemble", "data"), fs.ModePerm)
 	s.NoError(err)
-	defer os.RemoveAll(path.Join(parentCwd, "util"))
-	err = os.WriteFile(path.Join(parentCwd, "util", "regexp-assemble", "data", "123456.data"), []byte{}, fs.ModePerm)
-	s.NoError(err)
+	defer os.RemoveAll(path.Join(parentCwd, "testDir"))
 
 	cmd, err := rootCmd.ExecuteC()
 	s.NoError(err)
@@ -128,7 +126,7 @@ func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
 	s.True(workingDirectoryFlag.Changed)
 	s.True(path.IsAbs(workingDirectoryFlag.Value.String()))
 
-	s.Equal(path.Clean(parentCwd), workingDirectoryFlag.Value.String())
+	s.Equal(path.Join(parentCwd, "testDir"), workingDirectoryFlag.Value.String())
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInRoot() {

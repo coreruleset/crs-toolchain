@@ -18,7 +18,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 
-	"github.com/theseion/crs-toolchain/v2/processors"
+	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
 var logger = log.With().Str("component", "parser").Logger()
@@ -195,7 +195,7 @@ func includeFile(ctx *processors.Context, filename string) (*bytes.Buffer, int) 
 	// check if filename has an absolute path
 	// if it is relative, use the context to get the parent directory where we should search for the file.
 	if !filepath.IsAbs(filename) {
-		filename = filepath.Join(ctx.IncludeDir(), filename)
+		filename = filepath.Join(ctx.RootContext().IncludeDir(), filename)
 	}
 	readFile, err := os.Open(filename)
 	if err != nil {

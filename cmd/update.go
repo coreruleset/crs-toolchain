@@ -17,8 +17,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/theseion/crs-toolchain/v2/operators"
-	"github.com/theseion/crs-toolchain/v2/processors"
+	"github.com/theseion/crs-toolchain/v2/regex/operators"
+	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
 // updateCmd represents the update command
@@ -83,7 +83,7 @@ func rebuildUpdateCommand() {
 
 func performUpdate(processAll bool, ctx *processors.Context) {
 	if processAll {
-		err := filepath.WalkDir(ctx.DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
+		err := filepath.WalkDir(ctx.RootContext().DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
 				// fail
 				return err
@@ -113,7 +113,7 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 			logger.Fatal().Err(err).Msg("Failed to perform rule update(s)")
 		}
 	} else {
-		regex := runAssemble(path.Join(ctx.DataDir(), ruleValues.fileName), ctx)
+		regex := runAssemble(path.Join(ctx.RootContext().DataDir(), ruleValues.fileName), ctx)
 		processRegex(ruleValues.id, ruleValues.chainOffset, regex, ctx)
 	}
 }
@@ -148,7 +148,7 @@ func processRegex(ruleId string, chainOffset uint8, regex string, ctxt *processo
 	logger.Info().Msgf("Processing %s, chain offset %d", ruleId, chainOffset)
 
 	rulePrefix := ruleId[:3]
-	matches, err := filepath.Glob(fmt.Sprintf("%s/*-%s-*", ctxt.RulesDir(), rulePrefix))
+	matches, err := filepath.Glob(fmt.Sprintf("%s/*-%s-*", ctxt.RootContext().RulesDir(), rulePrefix))
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("Failed to find rule file for rule id %s", ruleId)
 	}

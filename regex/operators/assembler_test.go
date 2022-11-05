@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/theseion/crs-toolchain/v2/processors"
+	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
 type assemblerTestSuite struct {
