@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	preprocessorStartRegex = `\s*##!>\s*([a-z]+)(?:\s+([a-z]+))?`
-	preprocessorEndRegex   = `\s*##!<`
+	preprocessorStartRegex = `^##!>\s*([a-z]+)(?:\s+([a-z]+))?`
+	preprocessorEndRegex   = `^##!<`
 	doubleQuotesRegex      = `([^\\])"`
 )
 

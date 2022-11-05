@@ -65,7 +65,6 @@ func (s *generateTestSuite) TestGenerate_Dash() {
 	if s.NoError(err) {
 		s.True(ruleValues.useStdin)
 	}
-
 }
 
 func (s *generateTestSuite) writeDatafile(filename string, contents string) {
