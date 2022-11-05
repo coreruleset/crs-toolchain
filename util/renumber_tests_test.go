@@ -35,9 +35,9 @@ meta:
   enabled: true
   name: 123456.yaml
 tests:
-  - test_title: 123456 - 1
+  - test_title: 123456-1
     desc: "test 1"
-  - test_title: 123456 - 2
+  - test_title: 123456-2
     desc: "test 2"`
 	out, err := processYaml("123456", []byte(contents))
 	s.NoError(err)

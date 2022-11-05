@@ -76,7 +76,7 @@ func processYaml(ruleId string, contents []byte) ([]byte, error) {
 		matches := testTitleRegex.FindStringSubmatch(line)
 		if matches != nil {
 			index++
-			line = fmt.Sprint(matches[1], ruleId, " - ", index)
+			line = fmt.Sprint(matches[1], ruleId, "-", index)
 		}
 
 		if _, err := writer.WriteString(line); err != nil {
