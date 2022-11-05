@@ -22,7 +22,7 @@ var logger = log.With().Str("component", "renumber-tests").Logger()
 var testTitleRegex = regexp.MustCompile(`(.*test_title:\s*)"?([^"]+)"?\s*$`)
 
 func RenumberTests(ctxt *context.Context) {
-	err := filepath.WalkDir(ctxt.RegressionTestFilesDirectory, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(ctxt.RegressionTestsDir(), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// abort
 			return err

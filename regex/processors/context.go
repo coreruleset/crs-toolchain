@@ -12,14 +12,9 @@ import (
 )
 
 type Context struct {
-	rootDirectory         string
-	rulesDirectory        string
-	utilDirectory         string
-	dataFilesDirectory    string
-	includeFilesDirectory string
-	includeFiles          string
-	singleRuleID          int
-	singleChainOffset     bool
+	rootContext       *context.Context
+	singleRuleID      int
+	singleChainOffset bool
 }
 
 // NewContext creates a new processor context using the `rootDir` as the root directory.
@@ -30,15 +25,10 @@ func NewContext(rootDir string) *Context {
 		logger.Fatal().Err(err).Msgf("creating context: problem using %s as base directory.", rootDir)
 	}
 
-	ctxt := context.New(rootDir)
 	return &Context{
-		rootDirectory:         ctxt.RootDirectory,
-		rulesDirectory:        ctxt.RulesDirectory,
-		utilDirectory:         ctxt.UtilDirectory,
-		dataFilesDirectory:    ctxt.DataFilesDirectory,
-		includeFilesDirectory: ctxt.IncludeFilesDirectory,
-		singleRuleID:          0,
-		singleChainOffset:     false,
+		rootContext:       context.New(rootDir),
+		singleRuleID:      0,
+		singleChainOffset: false,
 	}
 }
 
@@ -47,17 +37,7 @@ func (ctx *Context) Dump(w io.Writer) {
 	fmt.Printf("Context: %v\n", ctx)
 }
 
-// DataDir returns the data directory. Used to find files that don't have an absolute path.
-func (ctx *Context) DataDir() string {
-	return ctx.dataFilesDirectory
-}
-
-// IncludeDir returns the include directory. Used to include files that don't have an absolute path.
-func (ctx *Context) IncludeDir() string {
-	return ctx.includeFiles
-}
-
-// RulesDir returns the rules directory.
-func (ctx *Context) RulesDir() string {
-	return ctx.rulesDirectory
+// RootContext returns the the root context of the toolchain
+func (ctx *Context) RootContext() *context.Context {
+	return ctx.rootContext
 }
