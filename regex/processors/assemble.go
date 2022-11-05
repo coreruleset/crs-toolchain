@@ -21,23 +21,19 @@ type Assemble struct {
 	proc        *Processor
 	inputRegex  *regexp.Regexp
 	outputRegex *regexp.Regexp
-	stash       map[string]string
 	output      strings.Builder
 }
 
 // NewAssemble creates a new assemble processor
 func NewAssemble(ctx *Context) *Assemble {
-	a := &Assemble{
+	return &Assemble{
 		proc:        NewProcessor(ctx),
 		inputRegex:  regexp.MustCompile(AssembleInput),
 		outputRegex: regexp.MustCompile(AssembleOutput),
-		stash:       make(map[string]string),
 	}
-
-	return a
 }
 
-// ProcessLine implements the line processor
+// ProcessLine applies the processors logic to a single line
 func (a *Assemble) ProcessLine(line string) {
 	match := a.inputRegex.FindStringSubmatch(line)
 	if len(match) > 0 {
@@ -57,6 +53,7 @@ func (a *Assemble) ProcessLine(line string) {
 	}
 }
 
+// Complete finalizes the processor, producing its output
 func (a *Assemble) Complete() ([]string, error) {
 	logger.Trace().Msg("Completing assembly")
 	regex, err := a.runAssemble()
@@ -74,6 +71,7 @@ func (a *Assemble) Complete() ([]string, error) {
 	return []string{result}, nil
 }
 
+// Consume applies the state of a nested processor
 func (a *Assemble) Consume(lines []string) {
 	for _, line := range lines {
 		a.ProcessLine(line)
@@ -89,11 +87,13 @@ func (a *Assemble) store(identifier string) error {
 		return err
 	}
 
-	logger.Debug().Msgf("Storing expression at %s: %s", identifier, a.outputRegex)
-	a.stash[identifier] = a.output.String()
+	outputString := a.output.String()
 	// reset output, the next call to `Complete` should not print
 	// the value we just stored
 	a.output.Reset()
+
+	logger.Debug().Msgf("Storing expression at %s: %s", identifier, outputString)
+	a.proc.ctx.stash[identifier] = outputString
 	return nil
 }
 
@@ -116,7 +116,8 @@ func (a *Assemble) append(identifier string) error {
 		}
 	} else {
 		logger.Debug().Msgf("Appending stored expression at %s", identifier)
-		_, err := a.output.WriteString(a.stash[identifier])
+		fmt.Print(a.proc.ctx.stash[identifier])
+		_, err := a.output.WriteString(a.proc.ctx.stash[identifier])
 		if err != nil {
 			return err
 		}

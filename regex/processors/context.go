@@ -15,6 +15,7 @@ type Context struct {
 	rootContext       *context.Context
 	singleRuleID      int
 	singleChainOffset bool
+	stash             map[string]string
 }
 
 // NewContext creates a new processor context using the `rootDir` as the root directory.
@@ -29,6 +30,7 @@ func NewContext(rootDir string) *Context {
 		rootContext:       context.New(rootDir),
 		singleRuleID:      0,
 		singleChainOffset: false,
+		stash:             map[string]string{},
 	}
 }
 
