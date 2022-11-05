@@ -51,8 +51,8 @@ func (s *assembleTestSuite) TestNewAssemble() {
 	assemble := NewAssemble(s.ctx)
 
 	s.NotNil(assemble)
-	s.Equal(assemble.proc.ctx.rootDirectory, s.tempDir)
-	s.Equal(assemble.proc.ctx.dataFilesDirectory, s.tempDir+"/util/regexp-assemble/data")
+	s.Equal(assemble.proc.ctx.RootContext().RootDir(), s.tempDir)
+	s.Equal(assemble.proc.ctx.RootContext().DataDir(), s.tempDir+"/util/regexp-assemble/data")
 }
 
 func (s *assembleTestSuite) TestAssemble_MultipleLines() {
