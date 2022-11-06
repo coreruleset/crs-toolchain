@@ -16,11 +16,11 @@ type Processor struct {
 
 type IProcessor interface {
 	// ProcessLine applies the processors logic to a single line
-	ProcessLine(line string)
+	ProcessLine(line string) error
 	// Complete finalizes the processor, producing its output
 	Complete() ([]string, error)
 	// Consume applies the state of a nested processor
-	Consume([]string)
+	Consume([]string) error
 }
 
 // NewProcessor creates a new processor with passed context.

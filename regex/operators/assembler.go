@@ -42,14 +42,17 @@ func (a *Operator) Run(input string) (string, error) {
 	assembleParser := parser.NewParser(a.ctx, strings.NewReader(input))
 	lines, _ := assembleParser.Parse()
 	logger.Trace().Msgf("Parsed lines: %v", lines)
-	assembled, err := a.Assemble(assembleParser, lines)
+	assembled, err := a.assemble(assembleParser, lines)
+	if err != nil {
+		return "", err
+	}
 	if p, _ := processorStack.top(); p != nil {
 		return assembled, errors.New("stack has unprocessed items")
 	}
 	return assembled, err
 }
 
-func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) (string, error) {
+func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) (string, error) {
 	fileScanner := bufio.NewScanner(bytes.NewReader(input.Bytes()))
 	fileScanner.Split(bufio.ScanLines)
 	processor = processors.NewAssemble(a.ctx)
@@ -68,10 +71,15 @@ func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 			if err != nil {
 				return "", err
 			}
-			processor.Consume(lines)
+			if err = processor.Consume(lines); err != nil {
+				return "", err
+			}
 		} else {
 			logger.Trace().Msg("Processor is processing line")
-			processor.ProcessLine(line)
+			if err := processor.ProcessLine(line); err != nil {
+				logger.Error().Err(err).Msgf("failed to process line %s", line)
+				return "", err
+			}
 		}
 	}
 
@@ -146,7 +154,10 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 func (a *Operator) runFinalPass() (string, error) {
 	processor := processors.NewAssemble(a.ctx)
 	for _, line := range a.lines {
-		processor.ProcessLine(line)
+		if err := processor.ProcessLine(line); err != nil {
+			logger.Error().Err(err).Msgf("failed to process line %s", line)
+			return "", err
+		}
 	}
 	result, err := processor.Complete()
 	if err != nil {
