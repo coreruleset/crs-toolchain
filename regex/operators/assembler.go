@@ -40,7 +40,7 @@ func (a *Operator) Run(input string) (string, error) {
 	processorStack = NewProcessorStack()
 	logger.Trace().Msg("Starting assembler")
 	assembleParser := parser.NewParser(a.ctx, strings.NewReader(input))
-	lines, _ := assembleParser.Parse()
+	lines, _ := assembleParser.Parse(false)
 	logger.Trace().Msgf("Parsed lines: %v", lines)
 	assembled, err := a.assemble(assembleParser, lines)
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 
 // generateCmd represents the generate command
 var regexCmd = createRegexCommand()
-var ruleIdRegex *regexp.Regexp
+var ruleIdRegex = regexp.MustCompile(`^(\d{6})(?:-chain(\d+))?(?:\.data)?$`)
 var ruleValues struct {
 	id          string
 	fileName    string
@@ -23,7 +23,6 @@ var ruleValues struct {
 }
 
 func init() {
-	ruleIdRegex = regexp.MustCompile(`^(\d{6})(?:-chain(\d+))?(?:\.data)?$`)
 	buildRegexCommand()
 }
 
