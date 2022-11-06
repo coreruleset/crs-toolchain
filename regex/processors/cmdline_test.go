@@ -49,14 +49,16 @@ func (s *cmdLineTestSuite) TestCmdLine_CmdLineTypeFromString() {
 	s.NoError(err)
 	cmd := NewCmdLine(s.ctx, t)
 
-	cmd.ProcessLine(`foo`)
+	err = cmd.ProcessLine(`foo`)
+	s.NoError(err)
 	s.Equal(`f[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o`, cmd.proc.lines[0])
 
 	t, err = CmdLineTypeFromString("windows")
 	s.NoError(err)
 	cmd = NewCmdLine(s.ctx, t)
 
-	cmd.ProcessLine(`foo`)
+	err = cmd.ProcessLine(`foo`)
+	s.NoError(err)
 	s.Equal(`f[\"\^]*o[\"\^]*o`, cmd.proc.lines[0])
 }
 
@@ -69,15 +71,17 @@ func (s *cmdLineTestSuite) TestCmdLine_BadCmdLineTypeFromString() {
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
 	cmd := NewCmdLine(s.ctx, CmdLineUnix)
 
-	cmd.ProcessLine(`foo`)
+	err := cmd.ProcessLine(`foo`)
 
+	s.NoError(err)
 	s.Equal(`f[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
 	cmd := NewCmdLine(s.ctx, CmdLineUnix)
 
-	cmd.ProcessLine(`gcc-10.`)
+	err := cmd.ProcessLine(`gcc-10.`)
+	s.NoError(err)
 
 	s.Equal(`g[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?c[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?c[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?\-[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?1[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?0[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?\.`, cmd.proc.lines[0])
 }
@@ -85,7 +89,8 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
 	cmd := NewCmdLine(s.ctx, CmdLineWindows)
 
-	cmd.ProcessLine(`foo`)
+	err := cmd.ProcessLine(`foo`)
+	s.NoError(err)
 
 	s.Equal(`f[\"\^]*o[\"\^]*o`, cmd.proc.lines[0])
 }

@@ -34,23 +34,26 @@ func NewAssemble(ctx *Context) *Assemble {
 }
 
 // ProcessLine applies the processors logic to a single line
-func (a *Assemble) ProcessLine(line string) {
+func (a *Assemble) ProcessLine(line string) error {
 	match := a.inputRegex.FindStringSubmatch(line)
 	if len(match) > 0 {
 		if err := a.store(match[1]); err != nil {
-			logger.Fatal().Err(err).Msgf("Failed to store input: %s", line)
+			logger.Error().Err(err).Msgf("Failed to store input: %s", line)
+			return err
 		}
-		return
+		return nil
 	}
 
 	match = a.outputRegex.FindStringSubmatch(line)
 	if len(match) > 0 {
 		if err := a.append(match[1]); err != nil {
-			logger.Fatal().Err(err).Msgf("Failed to append input: %s", line)
+			logger.Error().Err(err).Msgf("Failed to append input: %s", line)
+			return err
 		}
 	} else {
 		a.proc.lines = append(a.proc.lines, line)
 	}
+	return nil
 }
 
 // Complete finalizes the processor, producing its output
@@ -72,10 +75,13 @@ func (a *Assemble) Complete() ([]string, error) {
 }
 
 // Consume applies the state of a nested processor
-func (a *Assemble) Consume(lines []string) {
+func (a *Assemble) Consume(lines []string) error {
 	for _, line := range lines {
-		a.ProcessLine(line)
+		if err := a.ProcessLine(line); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (a *Assemble) store(identifier string) error {
@@ -115,9 +121,14 @@ func (a *Assemble) append(identifier string) error {
 			return err
 		}
 	} else {
+		stored, ok := a.proc.ctx.stash[identifier]
+		if !ok {
+			return fmt.Errorf("no entry in the stash for name '%s'", identifier)
+		}
 		logger.Debug().Msgf("Appending stored expression at %s", identifier)
-		fmt.Print(a.proc.ctx.stash[identifier])
-		_, err := a.output.WriteString(a.proc.ctx.stash[identifier])
+		logger.Trace().Msgf("Expression stored at %s is %s", identifier, stored)
+
+		_, err := a.output.WriteString(stored)
 		if err != nil {
 			return err
 		}
@@ -136,7 +147,8 @@ func (a *Assemble) runAssemble() (regex string, err error) {
 	}
 
 	a.proc.lines = []string{}
-	return regex, nil
+	// Wrap in non-capturing group to retain semantics
+	return "(?:" + regex + ")", nil
 }
 func (a *Assemble) wrapCompletedAssembly(regex string) (result string) {
 	if len(regex) == 0 && a.output.Len() == 0 {

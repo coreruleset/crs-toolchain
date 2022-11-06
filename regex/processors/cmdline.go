@@ -100,13 +100,14 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 }
 
 // ProcessLine applies the processors logic to a single line
-func (c *CmdLine) ProcessLine(line string) {
+func (c *CmdLine) ProcessLine(line string) error {
 	if len(line) != 0 {
 		processed := c.regexpStr(line)
 		c.proc.lines = append(c.proc.lines, processed)
 		logger.Trace().Msgf("cmdline in: %s", line)
 		logger.Trace().Msgf("cmdline out: %s", processed)
 	}
+	return nil
 }
 
 // Complete finalizes the processor, producing its output
@@ -120,10 +121,13 @@ func (c *CmdLine) Complete() ([]string, error) {
 }
 
 // Consume applies the state of a nested processor
-func (c *CmdLine) Consume(lines []string) {
+func (c *CmdLine) Consume(lines []string) error {
 	for _, line := range lines {
-		c.ProcessLine(line)
+		if err := c.ProcessLine(line); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // regexpStr converts a single line to regexp format, and insert anti-cmdline

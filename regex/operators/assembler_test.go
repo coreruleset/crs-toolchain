@@ -726,6 +726,7 @@ cd
   ##!=< globalinput
   ##!<
 ##!=> globalinput
+##!<
 `
 	assembler := NewAssembler(s.ctx)
 
@@ -735,14 +736,16 @@ cd
 	s.Equal(`ab|cd`, output)
 
 }
+
 func (s *assemblerTestSuite) TestAssemble_ConcatenatingFailsWhenInputUnknown() {
 	contents := `##!> assemble
 ##!=> unknown
+##!<
 `
 	assembler := NewAssembler(s.ctx)
 
 	_, err := assembler.Run(contents)
-	s.Error(err)
+	s.EqualError(err, "no entry in the stash for name 'unknown'")
 
 }
 func (s *assemblerTestSuite) TestAssemble_StoringAlternationAndConcatenation() {
