@@ -23,6 +23,7 @@ import (
 
 // updateCmd represents the update command
 var updateCmd = createUpdateCommand()
+var ruleRxRegex = regexp.MustCompile(`(.*"!?@rx ).*(" \\)`)
 
 func init() {
 	buildUpdateCommand()
@@ -97,7 +98,7 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 				return err
 			}
 
-			if path.Ext(dirEntry.Name()) == "data" {
+			if !dirEntry.IsDir() && path.Ext(dirEntry.Name()) == ".data" {
 				subs := ruleIdRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
 				if subs == nil {
 					// continue
@@ -111,8 +112,8 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 				if err != nil && len(chainOffsetString) > 0 {
 					return errors.New("failed to match chain offset. Value must not be larger than 255")
 				}
-				regex := runAssemble(filePath, ctx)
-				processRegex(id, uint8(chainOffset), regex, ctx)
+
+				processRule(id, uint8(chainOffset), filePath, ctx)
 				return nil
 			}
 			return nil
@@ -121,8 +122,8 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 			logger.Fatal().Err(err).Msg("Failed to perform rule update(s)")
 		}
 	} else {
-		regex := runAssemble(path.Join(ctx.RootContext().DataDir(), ruleValues.fileName), ctx)
-		processRegex(ruleValues.id, ruleValues.chainOffset, regex, ctx)
+		filePath := path.Join(ctx.RootContext().DataDir(), ruleValues.fileName)
+		processRule(ruleValues.id, ruleValues.chainOffset, filePath, ctx)
 	}
 }
 
@@ -152,8 +153,9 @@ func runAssemble(filePath string, ctx *processors.Context) string {
 	return assembly
 }
 
-func processRegex(ruleId string, chainOffset uint8, regex string, ctxt *processors.Context) {
+func processRule(ruleId string, chainOffset uint8, dataFilePath string, ctxt *processors.Context) {
 	logger.Info().Msgf("Processing %s, chain offset %d", ruleId, chainOffset)
+	regex := runAssemble(dataFilePath, ctxt)
 
 	rulePrefix := ruleId[:3]
 	matches, err := filepath.Glob(fmt.Sprintf("%s/*-%s-*", ctxt.RootContext().RulesDir(), rulePrefix))
@@ -164,10 +166,10 @@ func processRegex(ruleId string, chainOffset uint8, regex string, ctxt *processo
 		logger.Fatal().Msgf("Failed to find rule file for rule id %s", ruleId)
 	}
 
-	filePath := matches[0]
-	logger.Debug().Msgf("Processing data file %s", filePath)
+	ruleFilePath := matches[0]
+	logger.Debug().Msgf("Processing rule file %s for rule %s", ruleFilePath, ruleId)
 
-	updateRegex(filePath, ruleId, chainOffset, regex)
+	updateRegex(ruleFilePath, ruleId, chainOffset, regex)
 }
 
 func updateRegex(filePath string, ruleId string, chainOffset uint8, regex string) {
@@ -187,8 +189,7 @@ func updateRegex(filePath string, ruleId string, chainOffset uint8, regex string
 		}
 	}
 	regexLine := lines[index-1]
-	regexRegex := regexp.MustCompile(`(.*"@rx ).*(" \\)`)
-	found := regexRegex.FindAllStringSubmatch(string(regexLine), -1)
+	found := ruleRxRegex.FindAllStringSubmatch(string(regexLine), -1)
 	if len(found) == 0 {
 		logger.Fatal().Msgf("Failed to find rule %s in %s", ruleId, filePath)
 	}

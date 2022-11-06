@@ -4,6 +4,8 @@
 package main
 
 import (
+	_ "github.com/theseion/crs-toolchain/v2/logger"
+
 	"github.com/theseion/crs-toolchain/v2/cmd"
 )
 

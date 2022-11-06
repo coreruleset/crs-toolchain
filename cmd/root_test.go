@@ -11,6 +11,8 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
+
+	loggerConfig "github.com/theseion/crs-toolchain/v2/logger"
 )
 
 type rootTestSuite struct {
@@ -58,7 +60,7 @@ func (s *rootTestSuite) TestRoot_LogLevelDefault() {
 	s.NotNil(logLevelFlag)
 	s.False(logLevelFlag.Changed)
 
-	s.Equal(zerolog.ErrorLevel, zerolog.GlobalLevel())
+	s.Equal(loggerConfig.DefaultLogLevel, zerolog.GlobalLevel())
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelChanged() {
@@ -82,7 +84,7 @@ func (s *rootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
 	s.NotNil(logLevelFlag)
 	s.True(logLevelFlag.Changed)
 
-	s.Equal(zerolog.GlobalLevel(), zerolog.ErrorLevel)
+	s.Equal(zerolog.GlobalLevel(), loggerConfig.DefaultLogLevel)
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {

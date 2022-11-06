@@ -101,6 +101,43 @@ func (s *updateTestSuite) TestUpdate_DashReturnsError() {
 	s.EqualError(err, "failed to match rule ID")
 }
 
+func (s *updateTestSuite) TestUpdate_UpdatesAllWithAllFlag() {
+	s.writeDataFile("123456.data", "homer")
+	s.writeDataFile("123457.data", "simpson")
+	s.writeRuleFile("123456", `SecRule ARGS "@rx regex1" \
+	"id:123456"
+SecRule ARGS "@rx regex2" \
+	"id:123457"
+SecRule ARGS '@rx regex3" \
+	"id:123458"`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `SecRule ARGS "@rx homer" \
+	"id:123456"
+SecRule ARGS "@rx simpson" \
+	"id:123457"
+SecRule ARGS '@rx regex3" \
+	"id:123458"`
+	actual := s.readRuleFile("123456")
+	s.Equal(expected, actual)
+}
+
+func (s *updateTestSuite) TestUpdate_UpdatesInverseRx() {
+	s.writeDataFile("123456.data", "homer")
+	s.writeRuleFile("123456", `SecRule ARGS "!@rx regex1" \
+	"id:123456"`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `SecRule ARGS "!@rx homer" \
+	"id:123456"`
+	actual := s.readRuleFile("123456")
+	s.Equal(expected, actual)
+}
+
 func (s *updateTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
 	s.NoError(err)
@@ -111,4 +148,13 @@ func (s *updateTestSuite) writeRuleFile(ruleId string, contents string) {
 	fileName := fmt.Sprintf("prefix-%s-suffix.conf", prefix)
 	err := os.WriteFile(path.Join(s.rulesDir, fileName), []byte(contents), fs.ModePerm)
 	s.NoError(err)
+}
+
+func (s *updateTestSuite) readRuleFile(ruleId string) string {
+	prefix := ruleId[:3]
+	fileName := fmt.Sprintf("prefix-%s-suffix.conf", prefix)
+	contents, err := os.ReadFile(path.Join(s.rulesDir, fileName))
+	s.NoError(err)
+
+	return string(contents)
 }
