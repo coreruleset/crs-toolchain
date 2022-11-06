@@ -20,6 +20,7 @@ import (
 var addLicenseVersion = "v1.0.0" // https://github.com/google/addlicense
 var golangCILintVer = "v1.48.0"  // https://github.com/golangci/golangci-lint/releases
 var gosImportsVer = "v0.1.5"     // https://github.com/rinchsan/gosimports/releases/tag/v0.1.5
+var goGciVer = "v0.8.2"          // https://github.com/daixiang0/gci/releases/tag/v0.8.2
 
 var errCommitFormatting = errors.New("files not formatted, please commit formatting changes")
 var errNoGitDir = errors.New("no .git directory found")
@@ -39,10 +40,26 @@ func Format() error {
 		"-ignore", "examples/**", "."); err != nil {
 		return err
 	}
-	return sh.RunV("go", "run", fmt.Sprintf("github.com/rinchsan/gosimports/cmd/gosimports@%s", gosImportsVer),
+	if err := sh.RunV("go", "run", fmt.Sprintf("github.com/rinchsan/gosimports/cmd/gosimports@%s", gosImportsVer),
 		"-w",
 		"-local",
 		"github.com/theseion/crs-toolchain",
+		"."); err != nil {
+		return err
+	}
+
+	return sh.RunV("go", "run", fmt.Sprintf("github.com/daixiang0/gci@%s", goGciVer),
+		"write",
+		"--section",
+		"standard",
+		"--section",
+		"default",
+		"--section",
+		"blank",
+		"--section",
+		"prefix(github.com/theseion/crs-toolchain)",
+		"--custom-order",
+		"--skip-generated",
 		".")
 }
 
