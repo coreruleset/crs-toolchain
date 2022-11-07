@@ -27,17 +27,17 @@ type parsedType int
 
 const (
 	includePatternName    string     = "include"
-	includePattern        string     = `^\s*##!>\s*include\s*(.*)$`
+	includePattern        string     = `^##!>\s*include\s*(.*)$`
 	definitionPatternName string     = "definition"
-	definitionPattern     string     = `^\s*##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(.*)$`
+	definitionPattern     string     = `^##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(.*)$`
 	commentPatternName    string     = "comment"
-	commentPattern        string     = `\s*##![^^$+><=]`
+	commentPattern        string     = `^##![^^$+><=]`
 	flagsPatternName      string     = "flags"
-	flagsPattern          string     = `^\s*##!\+\s*(.*)\s*$`
+	flagsPattern          string     = `^##!\+\s*(.*)\s*$`
 	prefixPatternName     string     = "prefix"
-	prefixPattern         string     = `^\s*##!\^\s*(.*)$`
+	prefixPattern         string     = `^##!\^\s*(.*)$`
 	suffixPatternName     string     = "suffix"
-	suffixPattern         string     = `^\s*##!\$\s*(.*)$`
+	suffixPattern         string     = `^##!\$\s*(.*)$`
 	regular               parsedType = iota
 	empty
 	include
@@ -101,6 +101,8 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
+		// remove indentation
+		line = strings.TrimLeft(line, " \t")
 		text = "" // empty text each iteration
 		logger.Trace().Msgf("parsing line: %q", line)
 		parsedLine := p.parseLine(line)

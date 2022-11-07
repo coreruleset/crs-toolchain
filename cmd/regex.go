@@ -35,18 +35,6 @@ func createRegexCommand() *cobra.Command {
 For example, they generate regular expressions from data files, update regular expressions
 in rule files, or compare the regular expressions in rule files against what would be
 generated from the current data file.`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return nil
-			}
-			err := parseRuleId(args[0])
-			if err != nil {
-				cmd.PrintErrf("failed to parse the rule ID from the input '%s'\n", args[0])
-				return err
-			}
-
-			return nil
-		},
 	}
 
 }
@@ -69,13 +57,6 @@ func rebuildRegexCommand() {
 }
 
 func parseRuleId(idAndChainOffset string) error {
-	// Validation has already occurred, so we know that when the value
-	// is `-`, it's ok.
-	if idAndChainOffset == "-" {
-		ruleValues.useStdin = true
-		return nil
-	}
-
 	ruleValues.useStdin = false
 
 	subs := ruleIdRegex.FindAllStringSubmatch(idAndChainOffset, -1)

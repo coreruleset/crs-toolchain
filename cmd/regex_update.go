@@ -7,38 +7,35 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
-	"math"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/theseion/crs-toolchain/v2/regex/operators"
 	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
-// compareCmd represents the compare command
-var compareCmd = createCompareCommand()
+// updateCmd represents the update command
+var updateCmd = createUpdateCommand()
 
 func init() {
-	buildCompareCommand()
+	buildUpdateCommand()
 }
 
-func createCompareCommand() *cobra.Command {
+func createUpdateCommand() *cobra.Command {
+
 	return &cobra.Command{
-		Use:   "compare [RULE_ID | -]",
-		Short: "Compare generated regular expressions with the contents of associated rules",
-		Long: `Compare generated regular expressions with the contents of associated
-rules.
-This command is mainly used for debugging.
-It prints regular expressions in fixed sized chunks and detects the
-first change.
-You can use this command to quickly check whether any rules are out of
-sync with their data file.
+		Use:   "update [RULE_ID]",
+		Short: "Update regular expressions in rule files",
+		Long: `Update regular expressions in rule files.
+This command will generate regulare expressions from the data
+files and update the associated rule.
 
 RULE_ID is the ID of the rule, e.g., 932100, or the data file name.
 If the rule is a chained rule, RULE_ID must be specified with the
@@ -50,41 +47,49 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 				return errors.New("expected either RULE_ID or flag, found neither")
 			} else if allFlag.Changed && len(args) > 0 {
 				return errors.New("expected either RULE_ID or flag, found both")
-			} else if len(args) == 1 && args[0] == "-" {
-				return errors.New("invalid argument '-'")
+			}
+			return nil
+		}),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return nil
+			}
+			err := parseRuleId(args[0])
+			if err != nil {
+				cmd.PrintErrf("failed to parse the rule ID from the input '%s'\n", args[0])
+				return err
 			}
 
 			return nil
-		}),
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			ctxt := processors.NewContext(rootValues.workingDirectory.String())
 			processAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
 				logger.Fatal().Err(err).Msg("Failed to read value for 'all' flag")
 			}
-			performCompare(processAll, ctxt)
+			performUpdate(processAll, ctxt)
 		},
 	}
 
 }
 
-func buildCompareCommand() {
-	regexCmd.AddCommand(compareCmd)
-	compareCmd.PersistentFlags().BoolP("all", "a", false, `Instead of supplying a RULE_ID, you can tell the script to
+func buildUpdateCommand() {
+	regexCmd.AddCommand(updateCmd)
+	updateCmd.Flags().BoolP("all", "a", false, `Instead of supplying a RULE_ID, you can tell the script to
 update all rules from their data files`)
 }
 
-func rebuildCompareCommand() {
-	if compareCmd != nil {
-		compareCmd.Parent().RemoveCommand(compareCmd)
+func rebuildUpdateCommand() {
+	if updateCmd != nil {
+		updateCmd.Parent().RemoveCommand(updateCmd)
 	}
 
-	compareCmd = createCompareCommand()
-	buildCompareCommand()
+	updateCmd = createUpdateCommand()
+	buildUpdateCommand()
 }
 
-// FIXME: duplicated in update.go
-func performCompare(processAll bool, ctx *processors.Context) {
+func performUpdate(processAll bool, ctx *processors.Context) {
 	if processAll {
 		err := filepath.WalkDir(ctx.RootContext().DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
@@ -117,10 +122,37 @@ func performCompare(processAll bool, ctx *processors.Context) {
 		}
 	} else {
 		regex := runAssemble(path.Join(ctx.RootContext().DataDir(), ruleValues.fileName), ctx)
-		processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
+		processRegex(ruleValues.id, ruleValues.chainOffset, regex, ctx)
 	}
 }
-func processRegexForCompare(ruleId string, chainOffset uint8, regex string, ctxt *processors.Context) {
+
+func runAssemble(filePath string, ctx *processors.Context) string {
+	// FIXME: duplicated in generate.go
+	ctxt := processors.NewContext(rootValues.workingDirectory.String())
+	assembler := operators.NewAssembler(ctxt)
+	var input []byte
+	var err error
+	if ruleValues.useStdin {
+		logger.Trace().Msg("Reading from stdin")
+		input, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to read from stdin")
+		}
+	} else {
+		logger.Trace().Msgf("Reading from %s", filePath)
+		input, err = os.ReadFile(filePath)
+		if err != nil {
+			logger.Fatal().Err(err).Msgf("Failed to read data file %s", filePath)
+		}
+	}
+	assembly, err := assembler.Run(string(input))
+	if err != nil {
+		logger.Fatal().Err(err).Send()
+	}
+	return assembly
+}
+
+func processRegex(ruleId string, chainOffset uint8, regex string, ctxt *processors.Context) {
 	logger.Info().Msgf("Processing %s, chain offset %d", ruleId, chainOffset)
 
 	rulePrefix := ruleId[:3]
@@ -135,11 +167,10 @@ func processRegexForCompare(ruleId string, chainOffset uint8, regex string, ctxt
 	filePath := matches[0]
 	logger.Debug().Msgf("Processing data file %s", filePath)
 
-	currentRegex := readCurrentRegex(filePath, ruleId, chainOffset)
-	compareRegex(filePath, ruleId, chainOffset, regex, currentRegex)
+	updateRegex(filePath, ruleId, chainOffset, regex)
 }
 
-func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string {
+func updateRegex(filePath string, ruleId string, chainOffset uint8, regex string) {
 	contents, err := os.ReadFile(filePath)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("Failed to read rule file %s", filePath)
@@ -156,63 +187,16 @@ func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string 
 		}
 	}
 	regexLine := lines[index-1]
-	regexRegex := regexp.MustCompile(`.*"@rx (.*)" \\`)
+	regexRegex := regexp.MustCompile(`(.*"@rx ).*(" \\)`)
 	found := regexRegex.FindAllStringSubmatch(string(regexLine), -1)
 	if len(found) == 0 {
 		logger.Fatal().Msgf("Failed to find rule %s in %s", ruleId, filePath)
 	}
-	return found[0][1]
-}
+	updatedLine := found[0][1] + regex + found[0][2]
+	lines[index-1] = []byte(updatedLine)
 
-func compareRegex(filePath string, ruleId string, chainOffset uint8, generatedRegex string, currentRegex string) {
-	if currentRegex == generatedRegex {
-		fmt.Println("Regex of ", ruleId, " has not changed")
-		return
+	err = os.WriteFile(filePath, bytes.Join(lines, []byte("\n")), fs.ModePerm)
+	if err != nil {
+		logger.Fatal().Err(err).Msgf("Failed to write rule file %s", filePath)
 	}
-
-	fmt.Println("Regex of", ruleId, " has changed!")
-	diffFound := false
-	maxChunks := int(math.Ceil((math.Max(float64(len(currentRegex)), float64(len(generatedRegex))) / 50)))
-	for index := 0; index < maxChunks*50; index += 50 {
-		currentChunk := ""
-		generatedChunk := ""
-		counter := ""
-		endIndex := int(math.Min(float64(len(currentRegex)), float64(index+50)))
-		if endIndex > index {
-			currentChunk = currentRegex[index:endIndex]
-		}
-		endIndex = int(math.Min(float64(len(generatedRegex)), float64(index+50)))
-		if endIndex > index {
-			generatedChunk = generatedRegex[index:endIndex]
-		}
-
-		printFirstDiff := !diffFound && currentChunk != generatedChunk
-
-		if printFirstDiff {
-			diffFound = true
-			fmt.Printf("\n===========\nfirst difference\n-----------")
-		}
-		if currentChunk != "" {
-			fmt.Printf("\ncurrent:  ")
-			fmt.Print(strings.Repeat(" ", 5), currentChunk)
-			counter := fmt.Sprint("(", (index/50)+1, " / ", maxChunks, ")")
-			if currentChunk != generatedChunk {
-				counter = "~ " + counter
-			}
-			fmt.Print(strings.Repeat(" ", 60-len(currentChunk)), counter)
-		}
-		if generatedChunk != "" {
-			fmt.Printf("\ngenerated: ")
-			fmt.Print(strings.Repeat(" ", 4), generatedChunk)
-			counter = fmt.Sprint("(", (index/50)+1, " / ", maxChunks, ")")
-			if currentChunk != generatedChunk {
-				counter = "~ " + counter
-			}
-			fmt.Println(strings.Repeat(" ", 59-len(generatedChunk)), counter)
-		}
-		if printFirstDiff {
-			fmt.Println("===========")
-		}
-	}
-	fmt.Printf("\n")
 }

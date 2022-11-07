@@ -13,16 +13,17 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type compareTestSuite struct {
+type updateTestSuite struct {
 	suite.Suite
 	tempDir  string
 	dataDir  string
 	rulesDir string
 }
 
-func (s *compareTestSuite) SetupTest() {
-	rebuildCompareCommand()
-	tempDir, err := os.MkdirTemp("", "compare-tests")
+func (s *updateTestSuite) SetupTest() {
+	rebuildUpdateCommand()
+
+	tempDir, err := os.MkdirTemp("", "update-tests")
 	s.NoError(err)
 	s.tempDir = tempDir
 
@@ -35,22 +36,22 @@ func (s *compareTestSuite) SetupTest() {
 	s.NoError(err)
 }
 
-func (s *compareTestSuite) TearDownTest() {
+func (s *updateTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
 	s.NoError(err)
 }
 
-func TestRunCompareTestSuite(t *testing.T) {
-	suite.Run(t, new(compareTestSuite))
+func TestRunUpdateTestSuite(t *testing.T) {
+	suite.Run(t, new(updateTestSuite))
 }
 
-func (s *compareTestSuite) TestCompare_NormalRuleId() {
+func (s *updateTestSuite) TestUpdate_NormalRuleId() {
 	s.writeDataFile("123456.data", "")
-	s.writeRuleFile("123456", `SecRule... "@rx regex" \\`+"\nid:123456")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "123456"})
+	s.writeRuleFile("123456", `SecRule "@rx regex" \\`+"\nid:123456")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
-	s.Equal("compare", cmd.Name())
+	s.Equal("update", cmd.Name())
 
 	flags := cmd.Flags()
 	args := flags.Args()
@@ -63,15 +64,11 @@ func (s *compareTestSuite) TestCompare_NormalRuleId() {
 	}
 }
 
-func (s *compareTestSuite) TestCompare_AllFlag() {
-	s.writeDataFile("123456.data", "foo")
-	s.writeRuleFile("123456", `SecRule... "@rx oldfoo" \\`+"\nid:123456")
-	s.writeDataFile("123457.data", "bar")
-	s.writeRuleFile("123457", `SecRule... "@rx oldbar" \\`+"\nid:123457")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
+func (s *updateTestSuite) TestUpdate_AllFlag() {
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
 	cmd, _ := rootCmd.ExecuteC()
 
-	s.Equal("compare", cmd.Name())
+	s.Equal("update", cmd.Name())
 
 	flags := cmd.Flags()
 	args := flags.Args()
@@ -83,31 +80,33 @@ func (s *compareTestSuite) TestCompare_AllFlag() {
 	}
 }
 
-func (s *compareTestSuite) TestCompare_NoRuleIdNoAllFlagReturnsError() {
-	rootCmd.SetArgs([]string{"regex", "compare"})
+func (s *updateTestSuite) TestUpdate_NoRuleIdNoAllFlagReturnsError() {
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update"})
 	_, err := rootCmd.ExecuteC()
+
 	s.EqualError(err, "expected either RULE_ID or flag, found neither")
 }
 
-func (s *compareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
-	rootCmd.SetArgs([]string{"regex", "compare", "123456", "--all"})
+func (s *updateTestSuite) TestUpdate_BothRuleIdAndAllFlagReturnsError() {
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "123456", "--all"})
 	_, err := rootCmd.ExecuteC()
+
 	s.EqualError(err, "expected either RULE_ID or flag, found both")
 }
 
-func (s *updateTestSuite) TestCompare_DashReturnsError() {
-	rootCmd.SetArgs([]string{"regex", "compare", "-"})
+func (s *updateTestSuite) TestUpdate_DashReturnsError() {
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "-"})
 	_, err := rootCmd.ExecuteC()
 
-	s.EqualError(err, "invalid argument '-'")
+	s.EqualError(err, "failed to match rule ID")
 }
 
-func (s *compareTestSuite) writeDataFile(filename string, contents string) {
+func (s *updateTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
 	s.NoError(err)
 }
 
-func (s *compareTestSuite) writeRuleFile(ruleId string, contents string) {
+func (s *updateTestSuite) writeRuleFile(ruleId string, contents string) {
 	prefix := ruleId[:3]
 	fileName := fmt.Sprintf("prefix-%s-suffix.conf", prefix)
 	err := os.WriteFile(path.Join(s.rulesDir, fileName), []byte(contents), fs.ModePerm)
