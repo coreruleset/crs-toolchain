@@ -24,7 +24,7 @@ type specialCasesTestSuite assemblerTestSuite
 type preprocessorsTestSuite assemblerTestSuite
 type definitionsTestSuite assemblerTestSuite
 
-func TestRunassemblerTestSuite(t *testing.T) {
+func TestRunAssemblerTestSuite(t *testing.T) {
 	suite.Run(t, new(fileFormatTestSuite))
 	suite.Run(t, new(specialCommentsTestSuite))
 	suite.Run(t, new(specialCasesTestSuite))
@@ -126,8 +126,8 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() 
 	contents := `##!line1
 ##! line2
  not blank ##!+is 
-\t\t##!foo
-\t ##! bar
+		##!foo
+	 ##! bar
 ##!\tline3
 `
 	assembler := NewAssembler(s.ctx)
@@ -135,8 +135,8 @@ func (s *fileFormatTestSuite) TestPreprocessDoesNotRequireCommentsToStartLine() 
 	output, err := assembler.Run(contents)
 
 	s.NoError(err)
-	s.Len(output, 18)
-	s.Equal(` not blank ##!+is `, output)
+	s.Len(output, 17)
+	s.Equal(`not blank ##!+is `, output)
 }
 
 func (s *fileFormatTestSuite) TestPreprocessHandlesPreprocessorComments() {

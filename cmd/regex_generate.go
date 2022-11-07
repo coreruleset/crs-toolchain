@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path"
@@ -37,6 +38,22 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.
 The special token '-' will cause the script to accept input
 from stdin.`,
 		Args: cobra.ExactArgs(1),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errors.New("no argument provided")
+			}
+			if args[0] == "-" {
+				ruleValues.useStdin = true
+				return nil
+			}
+			err := parseRuleId(args[0])
+			if err != nil {
+				cmd.PrintErrf("failed to parse the rule ID from the input '%s'\n", args[0])
+				return err
+			}
+
+			return nil
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			ctxt := processors.NewContext(rootValues.workingDirectory.String())
 			assembler := operators.NewAssembler(ctxt)
