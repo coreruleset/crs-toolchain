@@ -99,17 +99,18 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 	return a
 }
 
-// ProcessLine implements the line processor
-func (c *CmdLine) ProcessLine(line string) {
+// ProcessLine applies the processors logic to a single line
+func (c *CmdLine) ProcessLine(line string) error {
 	if len(line) != 0 {
 		processed := c.regexpStr(line)
 		c.proc.lines = append(c.proc.lines, processed)
 		logger.Trace().Msgf("cmdline in: %s", line)
 		logger.Trace().Msgf("cmdline out: %s", processed)
 	}
+	return nil
 }
 
-// Complete is the class method
+// Complete finalizes the processor, producing its output
 func (c *CmdLine) Complete() ([]string, error) {
 	assembly, err := rassemble.Join(c.proc.lines)
 	if err != nil {
@@ -117,6 +118,16 @@ func (c *CmdLine) Complete() ([]string, error) {
 	}
 	logger.Trace().Msgf("cmdLine Complete result: %v", assembly)
 	return []string{assembly}, nil
+}
+
+// Consume applies the state of a nested processor
+func (c *CmdLine) Consume(lines []string) error {
+	for _, line := range lines {
+		if err := c.ProcessLine(line); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // regexpStr converts a single line to regexp format, and insert anti-cmdline
@@ -157,10 +168,4 @@ func (c *CmdLine) regexpChar(char byte) string {
 	}
 	logger.Trace().Msgf("regexpChar out: %s", chars)
 	return strings.Replace(chars, " ", "\\s+", -1)
-}
-
-func (c *CmdLine) Consume(lines []string) {
-	for _, line := range lines {
-		c.ProcessLine(line)
-	}
 }

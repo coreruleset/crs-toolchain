@@ -57,29 +57,35 @@ func (s *assembleTestSuite) TestNewAssemble() {
 
 func (s *assembleTestSuite) TestAssemble_MultipleLines() {
 	assemble := NewAssemble(s.ctx)
-	assemble.ProcessLine("homer")
-	assemble.ProcessLine("simpson")
+	err := assemble.ProcessLine("homer")
+	s.NoError(err)
+	err = assemble.ProcessLine("simpson")
+	s.NoError(err)
 	output, err := assemble.Complete()
 
 	s.NoError(err)
 	s.Len(output, 1)
-	s.Equal("(?:homer|simpson)", output[0])
+	s.Equal("(?:(?:homer|simpson))", output[0])
 }
 
 func (s *assembleTestSuite) TestAssemble_RegularExpressions() {
 	assemble := NewAssemble(s.ctx)
-	assemble.ProcessLine("home[r,]")
-	assemble.ProcessLine(".imps[a-c]{2}n")
+	err := assemble.ProcessLine("home[r,]")
+	s.NoError(err)
+	err = assemble.ProcessLine(".imps[a-c]{2}n")
+	s.NoError(err)
 	output, err := assemble.Complete()
 
 	s.NoError(err)
 	s.Len(output, 1)
-	s.Equal("(?:home[,r]|(?-s:.)imps[a-c]{2}n)", output[0])
+	s.Equal("(?:(?:home[,r]|(?-s:.)imps[a-c]{2}n))", output[0])
 }
 
 func (s *assembleTestSuite) TestAssemble_InvalidRegularExpressionFails() {
 	assemble := NewAssemble(s.ctx)
-	assemble.ProcessLine("home[r")
-	_, err := assemble.Complete()
+	err := assemble.ProcessLine("home[r")
+	s.NoError(err)
+
+	_, err = assemble.Complete()
 	s.Error(err)
 }
