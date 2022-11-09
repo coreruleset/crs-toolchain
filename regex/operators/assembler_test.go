@@ -26,6 +26,7 @@ type definitionsTestSuite assemblerTestSuite
 
 func TestRunAssemblerTestSuite(t *testing.T) {
 	suite.Run(t, new(fileFormatTestSuite))
+	suite.Run(t, new(assemblerTestSuite))
 	suite.Run(t, new(specialCommentsTestSuite))
 	suite.Run(t, new(specialCasesTestSuite))
 	suite.Run(t, new(preprocessorsTestSuite))
@@ -567,12 +568,13 @@ ab
 ##!<
 ##!> assemble
 ##!=> myinput
+##!<
 `
 	assembler := NewAssembler(s.ctx)
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`ab`, output)
+	s.Equal("ab", output)
 
 }
 func (s *assemblerTestSuite) TestAssemble_Concatenating() {
@@ -650,6 +652,7 @@ ten
 	s.Equal(`(?:one|two)(?:three|four)five(?:s(?:ix|even)(?:eight|nine)|ten)`, output)
 
 }
+
 func (s *assemblerTestSuite) TestAssemble_ConcatenatingWithStoredInput() {
 	contents := `##!> assemble
 ##! slash patterns
@@ -666,6 +669,7 @@ func (s *assemblerTestSuite) TestAssemble_ConcatenatingWithStoredInput() {
 \.%01
 ##!=>
 ##!=> slashes
+##!<
 `
 	assembler := NewAssembler(s.ctx)
 
@@ -675,6 +679,7 @@ func (s *assemblerTestSuite) TestAssemble_ConcatenatingWithStoredInput() {
 	s.Equal(`(?:\x5c|%(?:2f|5c))\.(?:%0[0-1])?(?:\x5c|%(?:2f|5c))`, output)
 
 }
+
 func (s *assemblerTestSuite) TestAssemble_StoredInputIsGlobal() {
 	contents := `##!> assemble
 ab
@@ -684,6 +689,7 @@ cd
 
 ##!> assemble
 ##!=> globalinput1
+##!<
 `
 	assembler := NewAssembler(s.ctx)
 
@@ -693,7 +699,8 @@ cd
 	s.Equal(`ab|cd`, output)
 
 }
-func (s *assemblerTestSuite) TestAssemble_StoredInputIsntAvailableToInnerScope() {
+
+func (s *assemblerTestSuite) TestAssemble_StoredInputIsAvailableToInnerScope() {
 	contents := `##!> assemble
 ab
 cd
@@ -705,10 +712,12 @@ cd
 `
 	assembler := NewAssembler(s.ctx)
 
-	_, err := assembler.Run(contents)
-	s.Error(err)
+	output, err := assembler.Run(contents)
+	s.NoError(err)
 
+	s.Equal("ab|cd", output)
 }
+
 func (s *assemblerTestSuite) TestAssemble_StoredInputIsAvailableToOuterScope() {
 	contents := `##!> assemble
   ##!> assemble
@@ -717,6 +726,7 @@ cd
   ##!=< globalinput
   ##!<
 ##!=> globalinput
+##!<
 `
 	assembler := NewAssembler(s.ctx)
 
@@ -726,14 +736,16 @@ cd
 	s.Equal(`ab|cd`, output)
 
 }
+
 func (s *assemblerTestSuite) TestAssemble_ConcatenatingFailsWhenInputUnknown() {
 	contents := `##!> assemble
 ##!=> unknown
+##!<
 `
 	assembler := NewAssembler(s.ctx)
 
 	_, err := assembler.Run(contents)
-	s.Error(err)
+	s.EqualError(err, "no entry in the stash for name 'unknown'")
 
 }
 func (s *assemblerTestSuite) TestAssemble_StoringAlternationAndConcatenation() {
@@ -833,4 +845,76 @@ func (s *assemblerTestSuite) TestAssemble_RemoveExtraGroups() {
 	s.NoError(err)
 
 	s.Equal(`a[b-c]d`, output)
+}
+
+// The Go regexp/syntax library will convert a dot (`.`) into `(?-s:.)`.
+// We want to retain the original dot.
+func (s *assemblerTestSuite) TestAssemble_DotRemainsDot() {
+	contents := "a.b"
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.NoError(err)
+	s.Equal("a.b", output)
+}
+
+// The Go regexp/syntax library will convert a dot (`.`) into `(?s:.)`.
+// We want to retain the original dot.
+func (s *assemblerTestSuite) TestAssemble_DotRemainsDotWithSflag() {
+	contents := "##!+ s\na.b"
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.NoError(err)
+	s.Equal("(?s)a.b", output)
+}
+
+// The Go regexp/syntax library will convert a caret (`^`) into `(?m:^)`.
+// We want to retain the original dot.
+func (s *assemblerTestSuite) TestAssemble_CaretRemainsCaret() {
+	contents := "^a|b"
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.NoError(err)
+	s.Equal("^a|b", output)
+}
+
+// The Go regexp/syntax library will convert a caret (`^`) into `(?m:^)`.
+// We want to retain the original dot.
+func (s *assemblerTestSuite) TestAssemble_CaretRemainsCaretWithSflag() {
+	contents := "##!+ s\n^a|b"
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.NoError(err)
+	s.Equal("(?s)^a|b", output)
+}
+
+// The Go regexp/syntax library will convert a dollar (`$`) into `(?m:$)`.
+// We want to retain the original dot.
+func (s *assemblerTestSuite) TestAssemble_DollarRemainsDollar() {
+	contents := "a|b$"
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.NoError(err)
+	s.Equal("a|b$", output)
+}
+
+// The Go regexp/syntax library will convert a dollar (`$`) into `(?m:$)`.
+// We want to retain the original dot.
+func (s *assemblerTestSuite) TestAssemble_DollarRemainsDollarWithSflag() {
+	contents := "##!+ s\na|b$"
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.NoError(err)
+	s.Equal("(?s)a|b$", output)
 }

@@ -15,16 +15,18 @@ type Processor struct {
 }
 
 type IProcessor interface {
-	ProcessLine(line string)
+	// ProcessLine applies the processors logic to a single line
+	ProcessLine(line string) error
+	// Complete finalizes the processor, producing its output
 	Complete() ([]string, error)
-	Consume([]string)
+	// Consume applies the state of a nested processor
+	Consume([]string) error
 }
 
 // NewProcessor creates a new processor with passed context.
 func NewProcessor(ctx *Context) *Processor {
-	p := &Processor{
+	return &Processor{
 		ctx:   ctx,
 		lines: []string{},
 	}
-	return p
 }

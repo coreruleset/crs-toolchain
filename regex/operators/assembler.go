@@ -18,21 +18,8 @@ import (
 	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
-const (
-	preprocessorStartRegex = `^##!>\s*([a-z]+)(?:\s+([a-z]+))?`
-	preprocessorEndRegex   = `^##!<`
-	doubleQuotesRegex      = `([^\\])"`
-)
-
-var regexes = struct {
-	preprocessorStart regexp.Regexp
-	preprocessorEnd   regexp.Regexp
-	doubleQuotesRegex regexp.Regexp
-}{
-	preprocessorStart: *regexp.MustCompile(preprocessorStartRegex),
-	preprocessorEnd:   *regexp.MustCompile(preprocessorEndRegex),
-	doubleQuotesRegex: *regexp.MustCompile(doubleQuotesRegex),
-}
+var preprocessorStart = regexp.MustCompile(`^##!>\s*([a-z]+)(?:\s+([a-z]+))?`)
+var preprocessorEnd = regexp.MustCompile(`^##!<`)
 
 // Create the processor stack
 var processorStack ProcessorStack
@@ -40,14 +27,13 @@ var processor processors.IProcessor
 
 // NewAssembler creates a new Operator based on context.
 func NewAssembler(ctx *processors.Context) *Operator {
-	a := &Operator{
+	return &Operator{
 		name:    "assemble",
 		details: make(map[string]string),
 		lines:   []string{},
 		ctx:     ctx,
 		stats:   NewStats(),
 	}
-	return a
 }
 
 func (a *Operator) Run(input string) (string, error) {
@@ -56,14 +42,17 @@ func (a *Operator) Run(input string) (string, error) {
 	assembleParser := parser.NewParser(a.ctx, strings.NewReader(input))
 	lines, _ := assembleParser.Parse()
 	logger.Trace().Msgf("Parsed lines: %v", lines)
-	assembled, err := a.Assemble(assembleParser, lines)
+	assembled, err := a.assemble(assembleParser, lines)
+	if err != nil {
+		return "", err
+	}
 	if p, _ := processorStack.top(); p != nil {
 		return assembled, errors.New("stack has unprocessed items")
 	}
 	return assembled, err
 }
 
-func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) (string, error) {
+func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) (string, error) {
 	fileScanner := bufio.NewScanner(bytes.NewReader(input.Bytes()))
 	fileScanner.Split(bufio.ScanLines)
 	processor = processors.NewAssemble(a.ctx)
@@ -73,19 +62,24 @@ func (a *Operator) Assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 		line := fileScanner.Text()
 		logger.Trace().Msgf("parsing line: %q", line)
 
-		if procline := regexes.preprocessorStart.FindStringSubmatch(line); len(procline) > 0 {
+		if procline := preprocessorStart.FindStringSubmatch(line); len(procline) > 0 {
 			if err := a.startPreprocessor(procline[1], procline[2:]); err != nil {
 				return "", err
 			}
-		} else if regexes.preprocessorEnd.MatchString(line) {
+		} else if preprocessorEnd.MatchString(line) {
 			lines, err := a.endPreprocessor()
 			if err != nil {
 				return "", err
 			}
-			processor.Consume(lines)
+			if err = processor.Consume(lines); err != nil {
+				return "", err
+			}
 		} else {
 			logger.Trace().Msg("Processor is processing line")
-			processor.ProcessLine(line)
+			if err := processor.ProcessLine(line); err != nil {
+				logger.Error().Err(err).Msgf("failed to process line %s", line)
+				return "", err
+			}
 		}
 	}
 
@@ -146,6 +140,8 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		logger.Trace().Msgf("After use hex backslashes: %s\n", result)
 		result = a.includeVerticalTabInSpaceClass(result)
 		logger.Trace().Msgf("After including vertical tabs: %s\n", result)
+		result = a.dontUseFlagsForMetaCharacters(result)
+		logger.Trace().Msgf("After removing meta character flags: %s\n", result)
 	}
 
 	if len(flagsPrefix) > 0 && len(result) > 0 {
@@ -158,7 +154,10 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 func (a *Operator) runFinalPass() (string, error) {
 	processor := processors.NewAssemble(a.ctx)
 	for _, line := range a.lines {
-		processor.ProcessLine(line)
+		if err := processor.ProcessLine(line); err != nil {
+			logger.Error().Err(err).Msgf("failed to process line %s", line)
+			return "", err
+		}
 	}
 	result, err := processor.Complete()
 	if err != nil {
@@ -252,6 +251,15 @@ func (a *Operator) useHexEscapes(input string) string {
 		}
 	}
 	return sb.String()
+}
+
+// The Go regexp/syntax library will convert a dot (`.`) into `(?-s:.)`,
+// `^` to `(?m:^)`, `$` to (?m:$)`.
+// We want to retain the original dot.
+func (a *Operator) dontUseFlagsForMetaCharacters(input string) string {
+	result := strings.ReplaceAll(input, "(?-s:.)", ".")
+	result = strings.ReplaceAll(result, "(?m:^)", "^")
+	return strings.ReplaceAll(result, "(?m:$)", "$")
 }
 
 func (a *Operator) startPreprocessor(processorName string, args []string) error {
