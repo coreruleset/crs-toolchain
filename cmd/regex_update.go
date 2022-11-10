@@ -24,6 +24,7 @@ import (
 // updateCmd represents the update command
 var updateCmd = createUpdateCommand()
 var ruleRxRegex = regexp.MustCompile(`(.*"!?@rx ).*(" \\)`)
+var secRuleRegex = regexp.MustCompile(`\s*SecRule`)
 
 func init() {
 	buildUpdateCommand()
@@ -183,18 +184,35 @@ func updateRegex(filePath string, ruleId string, chainOffset uint8, regex string
 	idRegex := regexp.MustCompile(fmt.Sprintf("id:%s", ruleId))
 	index := 0
 	var line []byte
+	foundRule := false
+	chainCount := uint8(0)
 	for index, line = range lines {
-		if idRegex.Match(line) {
+		if !foundRule && idRegex.Match(line) {
+			foundRule = true
+			if chainOffset == 0 {
+				index--
+				break
+			}
+			continue
+		}
+		if foundRule && secRuleRegex.Match(line) {
+			chainCount++
+		}
+		if foundRule && chainCount == chainOffset {
 			break
 		}
 	}
-	regexLine := lines[index-1]
+	if !foundRule || chainOffset != chainCount {
+		logger.Fatal().Msgf("Failed to find rule %s, chain offset, %d in %s", ruleId, chainOffset, filePath)
+	}
+
+	regexLine := lines[index]
 	found := ruleRxRegex.FindAllStringSubmatch(string(regexLine), -1)
 	if len(found) == 0 {
 		logger.Fatal().Msgf("Failed to find rule %s in %s", ruleId, filePath)
 	}
 	updatedLine := found[0][1] + regex + found[0][2]
-	lines[index-1] = []byte(updatedLine)
+	lines[index] = []byte(updatedLine)
 
 	err = os.WriteFile(filePath, bytes.Join(lines, []byte("\n")), fs.ModePerm)
 	if err != nil {

@@ -138,6 +138,24 @@ func (s *updateTestSuite) TestUpdate_UpdatesInverseRx() {
 	s.Equal(expected, actual)
 }
 
+func (s *updateTestSuite) TestUpdate_UpdatesChainedRule() {
+	s.writeDataFile("123456-chain1.data", "homer")
+	s.writeRuleFile("123456", `SecRule ARGS "@rx regex1" \
+	"id:123456, \
+	chain"
+		SecRule ARGS "@rx regex2" \`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `SecRule ARGS "@rx regex1" \
+	"id:123456, \
+	chain"
+		SecRule ARGS "@rx homer" \`
+	actual := s.readRuleFile("123456")
+	s.Equal(expected, actual)
+}
+
 func (s *updateTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
 	s.NoError(err)
