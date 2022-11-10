@@ -116,7 +116,7 @@ func performCompare(processAll bool, ctx *processors.Context) {
 					return errors.New("failed to match chain offset. Value must not be larger than 255")
 				}
 				regex := runAssemble(filePath, ctx)
-				processRegex(id, uint8(chainOffset), regex, ctx)
+				processRule(id, uint8(chainOffset), regex, ctx)
 				return nil
 			}
 			return nil

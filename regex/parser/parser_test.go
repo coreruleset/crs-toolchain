@@ -7,7 +7,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 	"testing"
@@ -40,12 +42,12 @@ func (s *parserTestSuite) TestParser_NewParser() {
 		Suffixes:  []string{},
 		variables: make(map[string]string),
 		patterns: map[string]*regexp.Regexp{
-			includePatternName:    regexp.MustCompile(includePattern),
-			definitionPatternName: regexp.MustCompile(definitionPattern),
-			commentPatternName:    regexp.MustCompile(commentPattern),
-			flagsPatternName:      regexp.MustCompile(flagsPattern),
-			prefixPatternName:     regexp.MustCompile(prefixPattern),
-			suffixPatternName:     regexp.MustCompile(suffixPattern),
+			includePatternName:    regexp.MustCompile(IncludePattern),
+			definitionPatternName: regexp.MustCompile(DefinitionPattern),
+			commentPatternName:    regexp.MustCompile(CommentPattern),
+			flagsPatternName:      regexp.MustCompile(FlagsPattern),
+			prefixPatternName:     regexp.MustCompile(PrefixPattern),
+			suffixPatternName:     regexp.MustCompile(SuffixPattern),
 		},
 	}
 	actual := NewParser(processors.NewContext(os.TempDir()), s.reader)
@@ -57,7 +59,7 @@ func (s *parserTestSuite) TestParser_ParseTwoComments() {
 	reader := strings.NewReader("##! This is a comment.\n##! This is another line.\n")
 	parser := NewParser(processors.NewContext(os.TempDir()), reader)
 
-	actual, n := parser.Parse()
+	actual, n := parser.Parse(false)
 	expected := bytes.NewBufferString("")
 
 	s.Equal(expected.String(), actual.String())
@@ -68,7 +70,7 @@ func (s *parserTestSuite) TestIgnoresEmptyLines() {
 	contents := "some line\n\nanother line"
 	reader := strings.NewReader(contents)
 	parser := NewParser(processors.NewContext(os.TempDir()), reader)
-	actual, n := parser.Parse()
+	actual, n := parser.Parse(false)
 
 	expected := "some line\nanother line\n"
 	s.Equal(expected, actual.String())
@@ -80,39 +82,47 @@ func (s *parserTestSuite) TestPanicsOnUnrecognizedFlag() {
 	reader := strings.NewReader(contents)
 	parser := NewParser(processors.NewContext(os.TempDir()), reader)
 
-	s.PanicsWithValue("flag 'f' is not supported", func() { parser.Parse() }, "should panic because flags are not supported")
+	s.PanicsWithValue("flag 'f' is not supported", func() { parser.Parse(false) }, "should panic because flags are not supported")
 
 }
 
 type parserIncludeTestSuite struct {
 	suite.Suite
-	ctx           *processors.Context
-	reader        io.Reader
-	testDirectory string
-	includeFile   *os.File
+	ctx         *processors.Context
+	reader      io.Reader
+	tempDir     string
+	includeDir  string
+	includeFile *os.File
 }
 
 func (s *parserIncludeTestSuite) SetupSuite() {
 	var err error
-	s.testDirectory, err = os.MkdirTemp("", "include-tests")
+	s.tempDir, err = os.MkdirTemp("", "include-tests")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.testDirectory)
-	s.includeFile, err = os.CreateTemp(s.testDirectory, "test.data")
+
+	s.includeDir = path.Join(s.tempDir, "util", "regexp-assemble", "data", "include")
+	err = os.MkdirAll(s.includeDir, fs.ModePerm)
+	s.NoError(err)
+
+	s.ctx = processors.NewContext(s.tempDir)
+	s.includeFile, err = os.Create(path.Join(s.includeDir, "test.data"))
 	s.NoError(err, "couldn't create %s file", s.includeFile.Name())
+
 	n, err := s.includeFile.WriteString("This data comes from the included file.\n")
 	s.NoError(err, "writing temp include file failed")
+
 	s.Equal(len("This data comes from the included file.\n"), n)
 	s.reader = strings.NewReader(fmt.Sprintf("##!> include %s\n##! This is a comment line.\n", s.includeFile.Name()))
 }
 
 func (s *parserIncludeTestSuite) TearDownSuite() {
 	s.NoError(s.includeFile.Close())
-	s.NoError(os.RemoveAll(s.testDirectory))
+	s.NoError(os.RemoveAll(s.tempDir))
 }
 
 func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
 	parser := NewParser(s.ctx, s.reader)
-	actual, n := parser.Parse()
+	actual, n := parser.Parse(false)
 	expected := bytes.NewBufferString("This data comes from the included file.\n")
 
 	s.Equal(expected.String(), actual.String())
@@ -120,19 +130,27 @@ func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
 }
 
 // Test Suite to perform multiple inclusions
-
 type parserMultiIncludeTestSuite struct {
 	suite.Suite
 	ctx         *processors.Context
 	reader      io.Reader
+	tempDir     string
+	includeDir  string
 	includeFile []*os.File
 }
 
 func (s *parserMultiIncludeTestSuite) SetupSuite() {
-	tmpdir := os.TempDir()
-	s.ctx = processors.NewContext(tmpdir)
+	tempDir, err := os.MkdirTemp("", "include-multi-tests")
+	s.NoError(err)
+	s.tempDir = tempDir
+
+	s.includeDir = path.Join(s.tempDir, "util", "regexp-assemble", "data", "include")
+	err = os.MkdirAll(s.includeDir, fs.ModePerm)
+	s.NoError(err)
+
+	s.ctx = processors.NewContext(s.tempDir)
 	for i := 0; i < 4; i++ {
-		file, err := os.CreateTemp(tmpdir, "multi-include.data")
+		file, err := os.Create(path.Join(s.includeDir, fmt.Sprintf("multi-include-%d.data", i)))
 		s.NoError(err, "couldn't create %s file", file.Name())
 		if i == 0 {
 			// Only the initial include goes to the reader
@@ -148,15 +166,13 @@ func (s *parserMultiIncludeTestSuite) SetupSuite() {
 }
 
 func (s *parserMultiIncludeTestSuite) TearDownSuite() {
-	for i := 0; i < 4; i++ {
-		s.NoError(s.includeFile[i].Close())
-		s.NoError(os.Remove(s.includeFile[i].Name()))
-	}
+	err := os.RemoveAll(s.tempDir)
+	s.NoError(err)
 }
 
 func (s *parserMultiIncludeTestSuite) TestParserMultiInclude_FromMultiFile() {
 	parser := NewParser(s.ctx, s.reader)
-	actual, n := parser.Parse()
+	actual, n := parser.Parse(false)
 	expected := bytes.NewBufferString("This is comment 3.\nThis is comment 2.\nThis is comment 1.\nThis is comment 0.\n")
 
 	s.Equal(expected.String(), actual.String())
@@ -180,7 +196,7 @@ func (s *parserDefinitionTestSuite) SetupSuite() {
 
 func (s *parserDefinitionTestSuite) TestParserDefinition_BasicTest() {
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse()
+	actual, _ := parser.Parse(false)
 	expected := bytes.NewBufferString("[a-zA-J]+8 to see if definitions work.\nSecond text for [0-9](pine|apple).\n")
 
 	s.Greater(len(parser.variables), 0)
@@ -194,14 +210,23 @@ type parserIncludeWithDefinitions struct {
 	suite.Suite
 	ctx         *processors.Context
 	reader      io.Reader
+	tempDir     string
+	includeDir  string
 	includeFile []*os.File
 }
 
 func (s *parserIncludeWithDefinitions) SetupSuite() {
-	tmpdir := os.TempDir()
-	s.ctx = processors.NewContext(tmpdir)
+	tempDir, err := os.MkdirTemp("", "include-multi-tests")
+	s.NoError(err)
+	s.tempDir = tempDir
+
+	s.includeDir = path.Join(s.tempDir, "util", "regexp-assemble", "data", "include")
+	err = os.MkdirAll(s.includeDir, fs.ModePerm)
+	s.NoError(err)
+
+	s.ctx = processors.NewContext(s.tempDir)
 	for i := 0; i < 4; i++ {
-		file, err := os.CreateTemp(tmpdir, "multi-definitions.data")
+		file, err := os.Create(path.Join(s.tempDir, fmt.Sprintf("multi-definitions-%d.data", i)))
 		s.NoError(err, "couldn't create %s file", file.Name())
 		if i == 0 {
 			// Only the initial include goes to the reader
@@ -227,7 +252,7 @@ func (s *parserIncludeWithDefinitions) SetupSuite() {
 
 func (s *parserIncludeWithDefinitions) TestParser_IncludeWithDefinitions() {
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse()
+	actual, _ := parser.Parse(false)
 	expected := bytes.NewBufferString(
 		"This is comment 3.\n" +
 			"[a-zA-J]+8 to see if definitions work when included\n" +

@@ -46,8 +46,15 @@ func (a *Assemble) ProcessLine(line string) error {
 
 	match = a.outputRegex.FindStringSubmatch(line)
 	if len(match) > 0 {
-		if err := a.append(match[1]); err != nil {
-			logger.Error().Err(err).Msgf("Failed to append input: %s", line)
+		identifier := match[1]
+		if err := a.append(identifier); err != nil {
+			var message string
+			if identifier != "" {
+				message = fmt.Sprintf("Failed to append output with name %s", identifier)
+			} else {
+				message = "Failed to append output of previous block"
+			}
+			logger.Error().Err(err).Msg(message)
 			return err
 		}
 	} else {
@@ -65,7 +72,7 @@ func (a *Assemble) Complete() ([]string, error) {
 	}
 
 	result := a.wrapCompletedAssembly(regex)
-	logger.Debug().Msgf("Completed assembly: %s", result)
+	logger.Trace().Msgf("Completed assembly: %s", result)
 
 	if result == "" {
 		return []string{}, nil
@@ -105,7 +112,7 @@ func (a *Assemble) store(identifier string) error {
 
 func (a *Assemble) append(identifier string) error {
 	if len(identifier) == 0 {
-		if len(identifier) == 1 {
+		if len(a.proc.lines) == 1 {
 			// Treat as literal, could be start of a group or a range expresssion.
 			// Those can not be parsed by rassemble-go, since they are not valid
 			// expressions.

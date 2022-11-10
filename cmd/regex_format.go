@@ -7,11 +7,13 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -21,8 +23,13 @@ import (
 
 // formatCmd represents the generate command
 var formatCmd = createFormatCommand()
-var preprocessorStartRegex = regexp.MustCompile(`^##!>`)
-var preprocessorEndRegex = regexp.MustCompile(`^##!<`)
+var blockStartRegex = regexp.MustCompile(`^##!>\s*(assemble|cmdline)\s*(\S+)?`)
+var blockEndRegex = regexp.MustCompile(`^##!<`)
+var includeRegex = regexp.MustCompile(parser.IncludePattern)
+var definitionRegex = regexp.MustCompile(parser.DefinitionPattern)
+var prefixRegex = regexp.MustCompile(parser.PrefixPattern)
+var suffixRegex = regexp.MustCompile(parser.SuffixPattern)
+var flagsRegex = regexp.MustCompile(parser.FlagsPattern)
 
 func init() {
 	buildFormatCommand()
@@ -97,7 +104,7 @@ func rebuildFormatCommand() {
 }
 
 func processAll(ctxt *processors.Context) error {
-	err := filepath.WalkDir(ctxt.RootContext().DataDir(), func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(ctxt.RootContext().DataDir(), func(filePath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// abort
 			logger.Error().Err(err).Msg("failed to walk directories")
@@ -108,7 +115,10 @@ func processAll(ctxt *processors.Context) error {
 			return nil
 		}
 
-		return processFile(path, ctxt)
+		if path.Ext(d.Name()) == ".data" {
+			return processFile(filePath, ctxt)
+		}
+		return nil
 	})
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to walk directories")
@@ -118,13 +128,15 @@ func processAll(ctxt *processors.Context) error {
 }
 
 func processFile(filePath string, ctxt *processors.Context) error {
+	filename := path.Base(filePath)
+	logger.Info().Msgf("Formatting %s", filename)
 	file, err := os.Open(filePath)
 	if err != nil {
 		logger.Error().Err(err).Msgf("failed to open file %s", filePath)
 		return err
 	}
 	parser := parser.NewParser(ctxt, file)
-	parsedBytes, _ := parser.Parse()
+	parsedBytes, _ := parser.Parse(true)
 	if err = file.Close(); err != nil {
 		logger.Error().Err(err).Msgf("file already closed %s", filePath)
 		return err
@@ -132,22 +144,21 @@ func processFile(filePath string, ctxt *processors.Context) error {
 
 	scanner := bufio.NewScanner(parsedBytes)
 	scanner.Split(bufio.ScanLines)
-	buffer := new(bytes.Buffer)
+	lines := []string{}
 
 	indent := 0
 	for scanner.Scan() {
 		line := scanner.Bytes()
-		line, indent = processLine(line, indent)
-		buffer.Write(line)
-		buffer.WriteRune('\n')
+		line, indent, err = processLine(line, indent)
+		if err != nil {
+			logger.Error().Err(err).Msgf("failed to format %s", filename)
+		}
+		lines = append(lines, string(line))
 	}
 
-	outputBytes := buffer.Bytes()
-	if len(outputBytes) > 0 {
-		// trim superfluous newline character
-		outputBytes = outputBytes[:len(outputBytes)-1]
-	}
-	err = os.WriteFile(filePath, outputBytes, fs.ModePerm)
+	lines = formatEndOfFile(lines)
+
+	err = os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), fs.ModePerm)
 	if err != nil {
 		logger.Error().Err(err).Msgf("failed to write file %s", filePath)
 		return err
@@ -156,22 +167,67 @@ func processFile(filePath string, ctxt *processors.Context) error {
 	return nil
 }
 
-func processLine(line []byte, indent int) ([]byte, int) {
+func processLine(line []byte, indent int) ([]byte, int, error) {
 	trimmedLine := bytes.TrimLeft(line, " \t")
-	blockIndent := indent
-	nextIndent := indent
-	if preprocessorStartRegex.Match(line) {
-		blockIndent = indent
-		nextIndent = blockIndent + 1
+	if len(trimmedLine) == 0 {
+		return trimmedLine, indent, nil
 	}
 
-	if preprocessorEndRegex.Match(line) {
+	blockIndent := indent
+	nextIndent := indent
+	if matches := blockStartRegex.FindSubmatch(line); matches != nil {
+		newLine := fmt.Sprintf("##!> %s", matches[1])
+		if len(matches[2]) > 0 {
+			newLine += " " + string(matches[2])
+		}
+		trimmedLine = []byte(newLine)
+		blockIndent = indent
+		nextIndent = blockIndent + 1
+	} else if blockEndRegex.Match(line) {
+		if blockIndent == 0 {
+			return nil, 0, errors.New("unbalanced processor block")
+		}
 		blockIndent = indent - 1
 		nextIndent = blockIndent
+	} else if matches := flagsRegex.FindSubmatch(line); matches != nil {
+		trimmedLine = []byte(fmt.Sprintf("##!+ %s", matches[1]))
+		blockIndent = 0
+	} else if matches := prefixRegex.FindSubmatch(line); matches != nil {
+		trimmedLine = []byte(fmt.Sprintf("##!^ %s", matches[1]))
+		blockIndent = 0
+	} else if matches := suffixRegex.FindSubmatch(line); matches != nil {
+		trimmedLine = []byte(fmt.Sprintf("##!$ %s", matches[1]))
+		blockIndent = 0
+	} else if matches := definitionRegex.FindSubmatch(line); matches != nil {
+		trimmedLine = []byte(fmt.Sprintf("##!> define %s %s", matches[1], matches[2]))
+	} else if matches := includeRegex.FindSubmatch(line); matches != nil {
+		trimmedLine = []byte(fmt.Sprintf("##!> include %s", matches[1]))
 	}
 
 	adjustment := bytes.Repeat([]byte(" "), blockIndent*2)
 	trimmedLine = append(adjustment, trimmedLine...)
 
-	return trimmedLine, nextIndent
+	return trimmedLine, nextIndent, nil
+}
+
+func formatEndOfFile(lines []string) []string {
+	eof := len(lines) - 1
+	if eof < 0 {
+		// Lines will be joined with newlines, so
+		// two empty lines will result in a single
+		// newline character
+		return append(lines, "", "")
+	}
+
+	for i := eof; i >= 0; i-- {
+		line := lines[i]
+		if line == "" {
+			eof--
+		} else {
+			break
+		}
+	}
+	// Append a single empty line, which will be joined
+	// to the others by newline
+	return append(lines[:eof+1], "")
 }
