@@ -11,11 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const defaultLogLevel = zerolog.ErrorLevel
+const defaultLogLevel = zerolog.InfoLevel
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = createRootCommand()
-var logger zerolog.Logger
+var logger = log.With().Str("component", "cmd").Logger()
 var rootValues = struct {
 	output           outputType
 	logLevel         logLevel
@@ -30,10 +30,6 @@ func Execute() {
 }
 
 func init() {
-	zerolog.SetGlobalLevel(defaultLogLevel)
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "03:04:05"})
-	logger = log.With().Str("component", "cmd").Caller().Logger()
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to resolve working directory")
@@ -44,7 +40,7 @@ func init() {
 		workingDirectory workingDirectory
 	}{
 		output:           text,
-		logLevel:         logLevel(zerolog.LevelErrorValue),
+		logLevel:         logLevel(defaultLogLevel.String()),
 		workingDirectory: workingDirectory(cwd),
 	}
 
@@ -60,7 +56,7 @@ func createRootCommand() *cobra.Command {
 
 func buildRootCommand() {
 	rootCmd.PersistentFlags().VarP(&rootValues.logLevel, "log-level", "l",
-		`Set the application log level. Default: 'error'.
+		`Set the application log level. Default: 'info'.
 Options: 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic', 'disabled`)
 	rootCmd.PersistentFlags().VarP(&rootValues.output, "output", "o", "Output format. One of 'text', 'github'. Default: 'text'")
 	rootCmd.PersistentFlags().VarP(&rootValues.workingDirectory, "directory", "d",

@@ -20,6 +20,11 @@ import (
 
 var preprocessorStart = regexp.MustCompile(`^##!>\s*([a-z]+)(?:\s+([a-z]+))?`)
 var preprocessorEnd = regexp.MustCompile(`^##!<`)
+var metaGroupReplacements = map[string]string{
+	"(?-s:.)": ".",
+	"(?m:^)":  "^",
+	"(?m:$)":  "$",
+}
 
 // Create the processor stack
 var processorStack ProcessorStack
@@ -40,7 +45,7 @@ func (a *Operator) Run(input string) (string, error) {
 	processorStack = NewProcessorStack()
 	logger.Trace().Msg("Starting assembler")
 	assembleParser := parser.NewParser(a.ctx, strings.NewReader(input))
-	lines, _ := assembleParser.Parse()
+	lines, _ := assembleParser.Parse(false)
 	logger.Trace().Msgf("Parsed lines: %v", lines)
 	assembled, err := a.assemble(assembleParser, lines)
 	if err != nil {
@@ -202,7 +207,6 @@ func (a *Operator) escapeDoublequotes(input string) string {
 // readbility reasons, as Apache httpd handles sequences of backslashes
 // differently than nginx.
 func (a *Operator) useHexBackslashes(input string) string {
-	logger.Trace().Msg("Replacing literal backslashes with \\x5c")
 	return strings.ReplaceAll(input, `\\`, `\x5c`)
 }
 
@@ -215,6 +219,7 @@ func (a *Operator) useHexBackslashes(input string) string {
 // compatible engines.
 func (a *Operator) includeVerticalTabInSpaceClass(input string) string {
 	logger.Trace().Msg("Fixing up regex to include \\v in white space class matches")
+	// Note: replacement order is important. Don't use a map.
 	result := strings.ReplaceAll(input, `[\t-\n\f-\r ]`, `[\s\v]`)
 	result = strings.ReplaceAll(result, `[^\t-\n\f-\r ]`, `[^\s\v]`)
 	// There's a range attached, can't just replace
@@ -253,13 +258,17 @@ func (a *Operator) useHexEscapes(input string) string {
 	return sb.String()
 }
 
-// The Go regexp/syntax library will convert a dot (`.`) into `(?-s:.)`,
-// `^` to `(?m:^)`, `$` to (?m:$)`.
+// The Go regexp/syntax library will convert:
+// - a dot (`.`) into `(?-s:.)`
+// - a caret (`^`) into `(?m:^)`
+// - a dollar (`$`) into (?m:$)`
 // We want to retain the original dot.
 func (a *Operator) dontUseFlagsForMetaCharacters(input string) string {
-	result := strings.ReplaceAll(input, "(?-s:.)", ".")
-	result = strings.ReplaceAll(result, "(?m:^)", "^")
-	return strings.ReplaceAll(result, "(?m:$)", "$")
+	result := input
+	for needle, replacement := range metaGroupReplacements {
+		result = strings.ReplaceAll(result, needle, replacement)
+	}
+	return result
 }
 
 func (a *Operator) startPreprocessor(processorName string, args []string) error {

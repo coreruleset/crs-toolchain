@@ -110,7 +110,7 @@ func (c *CmdLine) ProcessLine(line string) error {
 	return nil
 }
 
-// Complete finalizes the processor, producing its output
+// Complete is the class method
 func (c *CmdLine) Complete() ([]string, error) {
 	assembly, err := rassemble.Join(c.proc.lines)
 	if err != nil {

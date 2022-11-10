@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -27,17 +28,17 @@ type parsedType int
 
 const (
 	includePatternName    string     = "include"
-	includePattern        string     = `^##!>\s*include\s*(.*)$`
+	IncludePattern        string     = `^##!>\s*include\s*(.*)$`
 	definitionPatternName string     = "definition"
-	definitionPattern     string     = `^##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(.*)$`
+	DefinitionPattern     string     = `^##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(.*)$`
 	commentPatternName    string     = "comment"
-	commentPattern        string     = `^##![^^$+><=]`
+	CommentPattern        string     = `^##![^^$+><=]`
 	flagsPatternName      string     = "flags"
-	flagsPattern          string     = `^##!\+\s*(.*)\s*$`
+	FlagsPattern          string     = `^##!\+\s*(.*)\s*$`
 	prefixPatternName     string     = "prefix"
-	prefixPattern         string     = `^##!\^\s*(.*)$`
+	PrefixPattern         string     = `^##!\^\s*(.*)$`
 	suffixPatternName     string     = "suffix"
-	suffixPattern         string     = `^##!\$\s*(.*)$`
+	SuffixPattern         string     = `^##!\$\s*(.*)$`
 	regular               parsedType = iota
 	empty
 	include
@@ -80,12 +81,12 @@ func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 		Prefixes:  []string{},
 		Suffixes:  []string{},
 		patterns: map[string]*regexp.Regexp{
-			includePatternName:    regexp.MustCompile(includePattern),
-			definitionPatternName: regexp.MustCompile(definitionPattern),
-			commentPatternName:    regexp.MustCompile(commentPattern),
-			flagsPatternName:      regexp.MustCompile(flagsPattern),
-			prefixPatternName:     regexp.MustCompile(prefixPattern),
-			suffixPatternName:     regexp.MustCompile(suffixPattern),
+			includePatternName:    regexp.MustCompile(IncludePattern),
+			definitionPatternName: regexp.MustCompile(DefinitionPattern),
+			commentPatternName:    regexp.MustCompile(CommentPattern),
+			flagsPatternName:      regexp.MustCompile(FlagsPattern),
+			prefixPatternName:     regexp.MustCompile(PrefixPattern),
+			suffixPatternName:     regexp.MustCompile(SuffixPattern),
 		},
 	}
 	return p
@@ -93,7 +94,7 @@ func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 
 // Parse does the parsing and returns a buffer with all the bytes to process or an error if the reader
 // could not be parsed.
-func (p *Parser) Parse() (*bytes.Buffer, int) {
+func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
 	fileScanner := bufio.NewScanner(p.src)
 	fileScanner.Split(bufio.ScanLines)
 	wrote := 0
@@ -111,17 +112,20 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 			text = line + "\n"
 		// remove comments and empty lines from the parsed line
 		case empty, comment:
-			continue
 		case definition:
-			// merge maps p.variables and parseLine.definition
-			err := mergo.Merge(&p.variables, parsedLine.result)
-			if err != nil {
-				logger.Error().Err(err).Msg("error merging definitions")
+			if !formatOnly {
+				// merge maps p.variables and parseLine.definition
+				err := mergo.Merge(&p.variables, parsedLine.result)
+				if err != nil {
+					logger.Error().Err(err).Msg("error merging definitions")
+				}
 			}
 		case include:
-			// go read the included file and paste text here
-			content, _ := includeFile(p.ctx, parsedLine.result[includePatternName])
-			text = content.String()
+			if !formatOnly {
+				// go read the included file and paste text here
+				content, _ := includeFile(p.ctx, parsedLine.result[includePatternName])
+				text = content.String()
+			}
 		case flags:
 			for _, flag := range parsedLine.result[flagsPatternName] {
 				if flagIsAllowed(flag) {
@@ -135,8 +139,14 @@ func (p *Parser) Parse() (*bytes.Buffer, int) {
 		case suffix:
 			p.Suffixes = append(p.Suffixes, parsedLine.result[suffixPatternName])
 		}
-		// err is always nil
+		if formatOnly {
+			text = line + "\n"
+		} else if text == "" {
+			continue
+		}
+
 		logger.Trace().Msgf("** ADDING text: %q", text)
+		// err is always nil
 		n, _ := p.dest.WriteString(text)
 		wrote += n
 	}
@@ -192,8 +202,13 @@ func (p *Parser) parseLine(line string) ParsedLine {
 }
 
 // includeFile does just a new call to the Parser on the named file. It will use the context to find files that have relative filenames.
-func includeFile(ctx *processors.Context, filename string) (*bytes.Buffer, int) {
-	logger.Trace().Msgf("reading filename: %v", filename)
+func includeFile(ctx *processors.Context, includeName string) (*bytes.Buffer, int) {
+	filename := includeName
+	logger.Trace().Msgf("reading include file: %v", filename)
+	if path.Ext(filename) != ".data" {
+		filename += ".data"
+	}
+
 	// check if filename has an absolute path
 	// if it is relative, use the context to get the parent directory where we should search for the file.
 	if !filepath.IsAbs(filename) {
@@ -204,7 +219,7 @@ func includeFile(ctx *processors.Context, filename string) (*bytes.Buffer, int) 
 		logger.Fatal().Msgf("cannot open file for inclusion: %v", err.Error())
 	}
 	newP := NewParser(ctx, bufio.NewReader(readFile))
-	return newP.Parse()
+	return newP.Parse(false)
 }
 
 func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {

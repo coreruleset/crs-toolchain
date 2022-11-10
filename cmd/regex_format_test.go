@@ -98,7 +98,8 @@ func (s *formatTestSuite) TestFormat_TrimsTabs() {
 	s.NoError(err)
 
 	expected := `line1	
-line2`
+line2
+`
 	output := s.readDataFile("123456.data")
 	s.Equal(expected, output)
 }
@@ -111,7 +112,8 @@ func (s *formatTestSuite) TestFormat_TrimsSpaces() {
 	s.NoError(err)
 
 	expected := `line1    
-line2`
+line2
+`
 	output := s.readDataFile("123456.data")
 	s.Equal(expected, output)
 }
@@ -126,7 +128,8 @@ func (s *formatTestSuite) TestFormat_IndentsAssembleBlock() {
 
 	expected := `##!> assemble
   line
-##!<`
+##!<
+`
 	output := s.readDataFile("123456.data")
 	s.Equal(expected, output)
 }
@@ -165,7 +168,170 @@ func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
     ##!<
     ##!=>	
   ##!<
-##!<`
+##!<
+`
+	output := s.readDataFile("123456.data")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterNoNewLine() {
+	s.writeDataFile("123456.data", `##!> assemble
+    		line
+##!<`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!> assemble
+  line
+##!<
+`
+	output := s.readDataFile("123456.data")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterOneNewLine() {
+	s.writeDataFile("123456.data", `##!> assemble
+    		line
+##!<
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!> assemble
+  line
+##!<
+`
+	output := s.readDataFile("123456.data")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterTwoNewLines() {
+	s.writeDataFile("123456.data", `##!> assemble
+    		line
+##!<
+
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!> assemble
+  line
+##!<
+`
+	output := s.readDataFile("123456.data")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineIfEmpty() {
+	s.writeDataFile("123456.data", "")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := "\n"
+	output := s.readDataFile("123456.data")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_DoesNotRemoveEmptyLines() {
+	s.writeDataFile("123456.data", `        
+	
+##!> assemble
+      
+  line
+	   
+##!<`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `
+
+##!> assemble
+
+  line
+
+##!<
+`
+	output := s.readDataFile("123456.data")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_DoesNotRemoveComments() {
+	s.writeDataFile("123456.data", `
+##! a comment	
+##!> assemble
+##! a comment	
+  line
+##! a comment	
+##!<`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `
+##! a comment	
+##!> assemble
+  ##! a comment	
+  line
+  ##! a comment	
+##!<
+`
+	output := s.readDataFile("123456.data")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_OnlyIndentsAssembleProcessor() {
+	s.writeDataFile("123456.data", `##!> assemble
+##!> include bart
+##!> assemble
+##!+ i
+##!^ prefix
+##!$ suffix
+##!> define homer simpson 
+##!<
+
+##!<`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!> assemble
+  ##!> include bart
+  ##!> assemble
+##!+ i
+##!^ prefix
+##!$ suffix
+    ##!> define homer simpson 
+  ##!<
+
+##!<
+`
+	output := s.readDataFile("123456.data")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_FormatsProcessors() {
+	s.writeDataFile("123456.data", `##!>assemble
+##!> include 	   bart
+##!>       	 cmdline  	windows
+##!> define 	homer   	simpson 
+##!<
+##!<`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!> assemble
+  ##!> include bart
+  ##!> cmdline windows
+    ##!> define homer simpson 
+  ##!<
+##!<
+`
 	output := s.readDataFile("123456.data")
 	s.Equal(expected, output)
 }
