@@ -97,7 +97,7 @@ type parserIncludeTestSuite struct {
 	includeFile *os.File
 }
 
-func (s *parserIncludeTestSuite) SetupSuite() {
+func (s *parserIncludeTestSuite) SetupTest() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "include-tests")
 	s.NoError(err)
@@ -109,26 +109,110 @@ func (s *parserIncludeTestSuite) SetupSuite() {
 	s.ctx = processors.NewContext(s.tempDir)
 	s.includeFile, err = os.Create(path.Join(s.includeDir, "test.data"))
 	s.NoError(err, "couldn't create %s file", s.includeFile.Name())
-
-	n, err := s.includeFile.WriteString("This data comes from the included file.\n")
-	s.NoError(err, "writing temp include file failed")
-
-	s.Equal(len("This data comes from the included file.\n"), n)
-	s.reader = strings.NewReader(fmt.Sprintf("##!> include %s\n##! This is a comment line.\n", s.includeFile.Name()))
 }
 
-func (s *parserIncludeTestSuite) TearDownSuite() {
+func (s *parserIncludeTestSuite) TearDownTest() {
 	s.NoError(s.includeFile.Close())
 	s.NoError(os.RemoveAll(s.tempDir))
 }
 
 func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
+	s.writeDataFile("This data comes from the include file.\n", "##!This is a comment\n")
 	parser := NewParser(s.ctx, s.reader)
 	actual, n := parser.Parse(false)
-	expected := bytes.NewBufferString("This data comes from the included file.\n")
+	expected := bytes.NewBufferString("##!> assemble\nThis data comes from the include file.\n##!<\n")
 
 	s.Equal(expected.String(), actual.String())
 	s.Equal(expected.Len(), n)
+}
+
+func (s *parserIncludeTestSuite) TestParserInclude_Flags() {
+	s.writeDataFile(`##!+si
+included regex`, "data regex")
+	parser := NewParser(s.ctx, s.reader)
+	actual, _ := parser.Parse(false)
+	expected := bytes.NewBufferString(`##!> assemble
+(?is)
+##!=>
+included regex
+##!<
+data regex
+`)
+
+	s.Equal(expected.String(), actual.String())
+}
+
+func (s *parserIncludeTestSuite) TestParserInclude_Prefixes() {
+	s.writeDataFile(`##!^ prefix1
+##!^ prefix2
+included regex`, "data regex")
+	parser := NewParser(s.ctx, s.reader)
+	actual, _ := parser.Parse(false)
+	expected := bytes.NewBufferString(`##!> assemble
+prefix1
+##!=>
+prefix2
+##!=>
+included regex
+##!<
+data regex
+`)
+	s.Equal(expected.String(), actual.String())
+}
+
+func (s *parserIncludeTestSuite) TestParserInclude_Suffixes() {
+	s.writeDataFile(`##!$ suffix1
+##!$ suffix2
+included regex`, "data regex")
+	parser := NewParser(s.ctx, s.reader)
+	actual, _ := parser.Parse(false)
+	expected := bytes.NewBufferString(`##!> assemble
+included regex
+
+##!=>
+suffix1
+##!=>
+
+##!=>
+suffix2
+##!=>
+##!<
+data regex
+`)
+
+	s.Equal(expected.String(), actual.String())
+}
+
+func (s *parserIncludeTestSuite) TestParserInclude_FlagsPrefixesSuffixes() {
+	s.writeDataFile(`##!$ suffix1
+##!$ suffix2
+##!^ prefix1
+##!^ prefix2
+##!+ si
+included regex`, "data regex")
+	parser := NewParser(s.ctx, s.reader)
+	actual, _ := parser.Parse(false)
+	expected := bytes.NewBufferString(`##!> assemble
+(?is)
+##!=>
+prefix1
+##!=>
+prefix2
+##!=>
+included regex
+
+##!=>
+suffix1
+##!=>
+
+##!=>
+suffix2
+##!=>
+##!<
+data regex
+`)
+
+	s.Equal(expected.String(), actual.String())
 }
 
 // Test Suite to perform multiple inclusions
@@ -175,7 +259,19 @@ func (s *parserMultiIncludeTestSuite) TearDownSuite() {
 func (s *parserMultiIncludeTestSuite) TestParserMultiInclude_FromMultiFile() {
 	parser := NewParser(s.ctx, s.reader)
 	actual, n := parser.Parse(false)
-	expected := bytes.NewBufferString("This is comment 3.\nThis is comment 2.\nThis is comment 1.\nThis is comment 0.\n")
+	expected := bytes.NewBufferString(
+		"##!> assemble\n" +
+			"##!> assemble\n" +
+			"##!> assemble\n" +
+			"##!> assemble\n" +
+			"##!<\n" +
+			"This is comment 3.\n" +
+			"##!<\n" +
+			"This is comment 2.\n" +
+			"##!<\n" +
+			"This is comment 1.\n" +
+			"##!<\n" +
+			"This is comment 0.\n")
 
 	s.Equal(expected.String(), actual.String())
 	s.Equal(expected.Len(), n)
@@ -256,12 +352,20 @@ func (s *parserIncludeWithDefinitions) TestParser_IncludeWithDefinitions() {
 	parser := NewParser(s.ctx, s.reader)
 	actual, _ := parser.Parse(false)
 	expected := bytes.NewBufferString(
-		"This is comment 3.\n" +
+		"##!> assemble\n" +
+			"##!> assemble\n" +
+			"##!> assemble\n" +
+			"##!> assemble\n" +
+			"##!<\n" +
+			"This is comment 3.\n" +
 			"[a-zA-J]+8 to see if definitions work when included\n" +
+			"##!<\n" +
 			"This is comment 2.\n" +
 			"[a-zA-J]+8 to see if definitions work when included\n" +
+			"##!<\n" +
 			"This is comment 1.\n" +
 			"[a-zA-J]+8 to see if definitions work when included\n" +
+			"##!<\n" +
 			"[a-zA-J]+8 to see if definitions work.\n" +
 			"Second text for [0-9](pine|apple).\n")
 
@@ -285,4 +389,11 @@ func (s *parserIncludeWithDefinitions) TestParser_DanglingDefinitions() {
 	s.Equal(expected.String(), actual.String())
 
 	s.Contains(out.String(), "no match found for definition: {{hallo}}")
+}
+
+func (s *parserIncludeTestSuite) writeDataFile(includeContents string, dataContents string) {
+	_, err := s.includeFile.WriteString(includeContents)
+	s.NoError(err, "writing temp include file failed")
+
+	s.reader = strings.NewReader(fmt.Sprintf("##!> include %s\n%s", s.includeFile.Name(), dataContents))
 }
