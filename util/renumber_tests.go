@@ -11,15 +11,14 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/theseion/crs-toolchain/v2/context"
+	"github.com/theseion/crs-toolchain/v2/regex"
 )
 
 var logger = log.With().Str("component", "renumber-tests").Logger()
-var testTitleRegex = regexp.MustCompile(`(.*test_title:\s*)"?([^"]+)"?\s*$`)
 
 func RenumberTests(ctxt *context.Context) {
 	err := filepath.WalkDir(ctxt.RegressionTestsDir(), func(path string, d fs.DirEntry, err error) error {
@@ -73,7 +72,7 @@ func processYaml(ruleId string, contents []byte) ([]byte, error) {
 	index := 0
 	for scanner.Scan() {
 		line := scanner.Text()
-		matches := testTitleRegex.FindStringSubmatch(line)
+		matches := regex.TestTitleRegex.FindStringSubmatch(line)
 		if matches != nil {
 			index++
 			line = fmt.Sprint(matches[1], ruleId, "-", index)

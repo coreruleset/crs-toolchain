@@ -5,16 +5,16 @@ package cmd
 
 import (
 	"errors"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/theseion/crs-toolchain/v2/regex"
 )
 
 // generateCmd represents the generate command
 var regexCmd = createRegexCommand()
-var ruleIdRegex = regexp.MustCompile(`^(\d{6})(?:-chain(\d+))?(?:\.data)?$`)
 var ruleValues struct {
 	id          string
 	fileName    string
@@ -58,7 +58,7 @@ func rebuildRegexCommand() {
 func parseRuleId(idAndChainOffset string) error {
 	ruleValues.useStdin = false
 
-	subs := ruleIdRegex.FindAllStringSubmatch(idAndChainOffset, -1)
+	subs := regex.RuleIdFileNameRegex.FindAllStringSubmatch(idAndChainOffset, -1)
 	if subs == nil {
 		return errors.New("failed to match rule ID")
 	}

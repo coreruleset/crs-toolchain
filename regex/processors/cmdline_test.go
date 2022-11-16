@@ -5,7 +5,6 @@ package processors
 
 import (
 	"os"
-	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -30,8 +29,6 @@ func (s *cmdLineTestSuite) TestCmdLine_NewParser() {
 			ctx:   s.ctx,
 			lines: []string{},
 		},
-		input:   regexp.MustCompile(AssembleInput),
-		output:  regexp.MustCompile(AssembleOutput),
 		cmdType: CmdLineUnix,
 		evasionPatterns: map[EvasionPatterns]string{
 			evasionPattern:        `[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?`,

@@ -18,8 +18,16 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/theseion/crs-toolchain/v2/regex"
 	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
+
+type ComparisonError struct {
+}
+
+func (n *ComparisonError) Error() string {
+	return "regular expressions did not match"
+}
 
 // compareCmd represents the compare command
 var compareCmd = createCompareCommand()
@@ -94,6 +102,7 @@ func rebuildCompareCommand() {
 
 // FIXME: duplicated in update.go
 func performCompare(processAll bool, ctx *processors.Context) {
+	failed := false
 	if processAll {
 		err := filepath.WalkDir(ctx.RootContext().DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
@@ -101,8 +110,8 @@ func performCompare(processAll bool, ctx *processors.Context) {
 				return err
 			}
 
-			if path.Ext(dirEntry.Name()) == "data" {
-				subs := ruleIdRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
+			if path.Ext(dirEntry.Name()) == ".data" {
+				subs := regex.RuleIdFileNameRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
 				if subs == nil {
 					// continue
 					return nil
@@ -116,36 +125,49 @@ func performCompare(processAll bool, ctx *processors.Context) {
 					return errors.New("failed to match chain offset. Value must not be larger than 255")
 				}
 				regex := runAssemble(filePath, ctx)
-				processRule(id, uint8(chainOffset), regex, ctx)
+				err = processRegexForCompare(id, uint8(chainOffset), regex, ctx)
+				if err != nil && errors.Is(err, &ComparisonError{}) {
+					failed = true
+					return nil
+				}
+				if err != nil {
+					return err
+				}
 				return nil
 			}
 			return nil
 		})
 		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to perform rule update(s)")
+			logger.Fatal().Err(err).Msg("Failed to compare expressions")
+		}
+		if failed && rootValues.output == gitHub {
+			fmt.Println("::error::All rules need to be up to date." +
+				" Please run `crs-toolchain regex update --all")
 		}
 	} else {
 		regex := runAssemble(path.Join(ctx.RootContext().DataDir(), ruleValues.fileName), ctx)
-		processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
+		_ = processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
 	}
 }
-func processRegexForCompare(ruleId string, chainOffset uint8, regex string, ctxt *processors.Context) {
+func processRegexForCompare(ruleId string, chainOffset uint8, regex string, ctxt *processors.Context) error {
 	logger.Info().Msgf("Processing %s, chain offset %d", ruleId, chainOffset)
 
 	rulePrefix := ruleId[:3]
 	matches, err := filepath.Glob(fmt.Sprintf("%s/*-%s-*", ctxt.RootContext().RulesDir(), rulePrefix))
 	if err != nil {
-		logger.Fatal().Err(err).Msgf("Failed to find rule file for rule id %s", ruleId)
+		logger.Error().Err(err).Msgf("Failed to find rule file for rule id %s", ruleId)
+		return err
 	}
 	if matches == nil || len(matches) > 1 {
-		logger.Fatal().Msgf("Failed to find rule file for rule id %s", ruleId)
+		logger.Error().Msgf("Failed to find rule file for rule id %s", ruleId)
+		return err
 	}
 
 	filePath := matches[0]
 	logger.Debug().Msgf("Processing data file %s", filePath)
 
 	currentRegex := readCurrentRegex(filePath, ruleId, chainOffset)
-	compareRegex(filePath, ruleId, chainOffset, regex, currentRegex)
+	return compareRegex(filePath, ruleId, chainOffset, regex, currentRegex)
 }
 
 func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string {
@@ -159,24 +181,39 @@ func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string 
 	idRegex := regexp.MustCompile(fmt.Sprintf("id:%s", ruleId))
 	index := 0
 	var line []byte
+	foundRule := false
+	chainCount := uint8(0)
 	for index, line = range lines {
-		if idRegex.Match(line) {
+		if !foundRule && idRegex.Match(line) {
+			foundRule = true
+			if chainOffset == 0 {
+				index--
+				break
+			}
+			continue
+		}
+		if foundRule && regex.SecRuleRegex.Match(line) {
+			chainCount++
+		}
+		if foundRule && chainCount == chainOffset {
 			break
 		}
 	}
-	regexLine := lines[index-1]
-	regexRegex := regexp.MustCompile(`.*"@rx (.*)" \\`)
-	found := regexRegex.FindAllStringSubmatch(string(regexLine), -1)
+	if !foundRule || chainOffset != chainCount {
+		logger.Fatal().Msgf("Failed to find rule %s, chain offset, %d in %s", ruleId, chainOffset, filePath)
+	}
+	regexLine := lines[index]
+	found := regex.RuleRxRegex.FindAllStringSubmatch(string(regexLine), -1)
 	if len(found) == 0 {
 		logger.Fatal().Msgf("Failed to find rule %s in %s", ruleId, filePath)
 	}
 	return found[0][1]
 }
 
-func compareRegex(filePath string, ruleId string, chainOffset uint8, generatedRegex string, currentRegex string) {
+func compareRegex(filePath string, ruleId string, chainOffset uint8, generatedRegex string, currentRegex string) error {
 	if currentRegex == generatedRegex {
 		fmt.Println("Regex of ", ruleId, " has not changed")
-		return
+		return nil
 	}
 
 	fmt.Println("Regex of", ruleId, " has changed!")
@@ -224,4 +261,5 @@ func compareRegex(filePath string, ruleId string, chainOffset uint8, generatedRe
 		}
 	}
 	fmt.Printf("\n")
+	return &ComparisonError{}
 }

@@ -20,6 +20,18 @@ type compareTestSuite struct {
 	rulesDir string
 }
 
+func (s *compareTestSuite) writeDataFile(filename string, contents string) {
+	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
+	s.NoError(err)
+}
+
+func (s *compareTestSuite) writeRuleFile(ruleId string, contents string) {
+	prefix := ruleId[:3]
+	fileName := fmt.Sprintf("prefix-%s-suffix.conf", prefix)
+	err := os.WriteFile(path.Join(s.rulesDir, fileName), []byte(contents), fs.ModePerm)
+	s.NoError(err)
+}
+
 func (s *compareTestSuite) SetupTest() {
 	rebuildCompareCommand()
 	tempDir, err := os.MkdirTemp("", "compare-tests")
@@ -64,10 +76,13 @@ func (s *compareTestSuite) TestCompare_NormalRuleId() {
 }
 
 func (s *compareTestSuite) TestCompare_AllFlag() {
+	s.writeRuleFile("123456",
+		`SecRule... "@rx oldfoo" \
+id:123456
+SecRule... "@rx oldbar" \
+id:123457`)
 	s.writeDataFile("123456.data", "foo")
-	s.writeRuleFile("123456", `SecRule... "@rx oldfoo" \\`+"\nid:123456")
 	s.writeDataFile("123457.data", "bar")
-	s.writeRuleFile("123457", `SecRule... "@rx oldbar" \\`+"\nid:123457")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -93,16 +108,4 @@ func (s *compareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
 	rootCmd.SetArgs([]string{"regex", "compare", "123456", "--all"})
 	_, err := rootCmd.ExecuteC()
 	s.EqualError(err, "expected either RULE_ID or flag, found both")
-}
-
-func (s *compareTestSuite) writeDataFile(filename string, contents string) {
-	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
-}
-
-func (s *compareTestSuite) writeRuleFile(ruleId string, contents string) {
-	prefix := ruleId[:3]
-	fileName := fmt.Sprintf("prefix-%s-suffix.conf", prefix)
-	err := os.WriteFile(path.Join(s.rulesDir, fileName), []byte(contents), fs.ModePerm)
-	s.NoError(err)
 }
