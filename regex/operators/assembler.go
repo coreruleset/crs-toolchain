@@ -8,18 +8,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/itchyny/rassemble-go"
 
+	"github.com/theseion/crs-toolchain/v2/regex"
 	"github.com/theseion/crs-toolchain/v2/regex/parser"
 	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
-var preprocessorStart = regexp.MustCompile(`^##!>\s*([a-z]+)(?:\s+([a-z]+))?`)
-var preprocessorEnd = regexp.MustCompile(`^##!<`)
 var metaGroupReplacements = map[string]string{
 	"(?-s:.)": ".",
 	"(?m:^)":  "^",
@@ -67,11 +65,11 @@ func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 		line := fileScanner.Text()
 		logger.Trace().Msgf("parsing line: %q", line)
 
-		if procline := preprocessorStart.FindStringSubmatch(line); len(procline) > 0 {
+		if procline := regex.ProcessorStartRegex.FindStringSubmatch(line); len(procline) > 0 {
 			if err := a.startPreprocessor(procline[1], procline[2:]); err != nil {
 				return "", err
 			}
-		} else if preprocessorEnd.MatchString(line) {
+		} else if regex.ProcessorEndRegex.MatchString(line) {
 			lines, err := a.endPreprocessor()
 			if err != nil {
 				return "", err

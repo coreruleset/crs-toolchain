@@ -6,7 +6,6 @@ package processors
 import (
 	"bytes"
 	"errors"
-	"regexp"
 	"strings"
 
 	"github.com/itchyny/rassemble-go"
@@ -28,8 +27,6 @@ type EvasionPatterns int
 
 type CmdLine struct {
 	proc            *Processor
-	input           *regexp.Regexp
-	output          *regexp.Regexp
 	cmdType         CmdLineType
 	evasionPatterns map[EvasionPatterns]string
 }
@@ -51,8 +48,6 @@ func CmdLineTypeFromString(t string) (CmdLineType, error) {
 func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 	a := &CmdLine{
 		proc:            NewProcessor(ctx),
-		input:           regexp.MustCompile(AssembleInput),
-		output:          regexp.MustCompile(AssembleOutput),
 		cmdType:         cmdType,
 		evasionPatterns: make(map[EvasionPatterns]string),
 	}

@@ -17,14 +17,13 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/theseion/crs-toolchain/v2/regex"
 	"github.com/theseion/crs-toolchain/v2/regex/operators"
 	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
 // updateCmd represents the update command
 var updateCmd = createUpdateCommand()
-var ruleRxRegex = regexp.MustCompile(`(.*"!?@rx ).*(" \\)`)
-var secRuleRegex = regexp.MustCompile(`\s*SecRule`)
 
 func init() {
 	buildUpdateCommand()
@@ -100,7 +99,7 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 			}
 
 			if !dirEntry.IsDir() && path.Ext(dirEntry.Name()) == ".data" {
-				subs := ruleIdRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
+				subs := regex.RuleIdRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
 				if subs == nil {
 					// continue
 					return nil
@@ -173,7 +172,7 @@ func processRule(ruleId string, chainOffset uint8, dataFilePath string, ctxt *pr
 	updateRegex(ruleFilePath, ruleId, chainOffset, regex)
 }
 
-func updateRegex(filePath string, ruleId string, chainOffset uint8, regex string) {
+func updateRegex(filePath string, ruleId string, chainOffset uint8, newRegex string) {
 	contents, err := os.ReadFile(filePath)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("Failed to read rule file %s", filePath)
@@ -195,7 +194,7 @@ func updateRegex(filePath string, ruleId string, chainOffset uint8, regex string
 			}
 			continue
 		}
-		if foundRule && secRuleRegex.Match(line) {
+		if foundRule && regex.SecRuleRegex.Match(line) {
 			chainCount++
 		}
 		if foundRule && chainCount == chainOffset {
@@ -207,11 +206,11 @@ func updateRegex(filePath string, ruleId string, chainOffset uint8, regex string
 	}
 
 	regexLine := lines[index]
-	found := ruleRxRegex.FindAllStringSubmatch(string(regexLine), -1)
+	found := regex.RuleRxRegex.FindAllStringSubmatch(string(regexLine), -1)
 	if len(found) == 0 {
 		logger.Fatal().Msgf("Failed to find rule %s in %s", ruleId, filePath)
 	}
-	updatedLine := found[0][1] + regex + found[0][2]
+	updatedLine := found[0][1] + newRegex + found[0][2]
 	lines[index] = []byte(updatedLine)
 
 	err = os.WriteFile(filePath, bytes.Join(lines, []byte("\n")), fs.ModePerm)

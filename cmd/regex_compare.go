@@ -18,6 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/theseion/crs-toolchain/v2/regex"
 	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
@@ -110,7 +111,7 @@ func performCompare(processAll bool, ctx *processors.Context) {
 			}
 
 			if path.Ext(dirEntry.Name()) == ".data" {
-				subs := ruleIdRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
+				subs := regex.RuleIdRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
 				if subs == nil {
 					// continue
 					return nil
@@ -191,7 +192,7 @@ func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string 
 			}
 			continue
 		}
-		if foundRule && secRuleRegex.Match(line) {
+		if foundRule && regex.SecRuleRegex.Match(line) {
 			chainCount++
 		}
 		if foundRule && chainCount == chainOffset {
@@ -202,7 +203,7 @@ func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string 
 		logger.Fatal().Msgf("Failed to find rule %s, chain offset, %d in %s", ruleId, chainOffset, filePath)
 	}
 	regexLine := lines[index]
-	found := ruleRxRegex.FindAllStringSubmatch(string(regexLine), -1)
+	found := regex.RuleRxRegex.FindAllStringSubmatch(string(regexLine), -1)
 	if len(found) == 0 {
 		logger.Fatal().Msgf("Failed to find rule %s in %s", ruleId, filePath)
 	}

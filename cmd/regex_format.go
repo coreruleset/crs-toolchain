@@ -12,24 +12,24 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/theseion/crs-toolchain/v2/regex"
 	"github.com/theseion/crs-toolchain/v2/regex/parser"
 	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
 // formatCmd represents the generate command
 var formatCmd = createFormatCommand()
-var blockStartRegex = regexp.MustCompile(`^##!>\s*(assemble|cmdline)\s*(\S+)?`)
-var blockEndRegex = regexp.MustCompile(`^##!<`)
-var includeRegex = regexp.MustCompile(parser.IncludePattern)
-var definitionRegex = regexp.MustCompile(parser.DefinitionPattern)
-var prefixRegex = regexp.MustCompile(parser.PrefixPattern)
-var suffixRegex = regexp.MustCompile(parser.SuffixPattern)
-var flagsRegex = regexp.MustCompile(parser.FlagsPattern)
+var blockStartRegex = regex.ProcessorBlockStartRegex
+var blockEndRegex = regex.ProcessorEndRegex
+var includeRegex = regex.IncludeRegex
+var definitionRegex = regex.DefinitionRegex
+var prefixRegex = regex.PrefixRegex
+var suffixRegex = regex.SuffixRegex
+var flagsRegex = regex.FlagsRegex
 
 func init() {
 	buildFormatCommand()

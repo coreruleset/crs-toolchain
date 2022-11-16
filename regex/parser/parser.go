@@ -19,6 +19,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 
+	"github.com/theseion/crs-toolchain/v2/regex"
 	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
@@ -28,17 +29,11 @@ type parsedType int
 
 const (
 	includePatternName    string     = "include"
-	IncludePattern        string     = `^##!>\s*include\s*(.*)$`
 	definitionPatternName string     = "definition"
-	DefinitionPattern     string     = `^##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(.*)$`
 	commentPatternName    string     = "comment"
-	CommentPattern        string     = `^##![^^$+><=]`
 	flagsPatternName      string     = "flags"
-	FlagsPattern          string     = `^##!\+\s*(.*)\s*$`
 	prefixPatternName     string     = "prefix"
-	PrefixPattern         string     = `^##!\^\s*(.*)$`
 	suffixPatternName     string     = "suffix"
-	SuffixPattern         string     = `^##!\$\s*(.*)$`
 	regular               parsedType = iota
 	empty
 	include
@@ -81,12 +76,12 @@ func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 		Prefixes:  []string{},
 		Suffixes:  []string{},
 		patterns: map[string]*regexp.Regexp{
-			includePatternName:    regexp.MustCompile(IncludePattern),
-			definitionPatternName: regexp.MustCompile(DefinitionPattern),
-			commentPatternName:    regexp.MustCompile(CommentPattern),
-			flagsPatternName:      regexp.MustCompile(FlagsPattern),
-			prefixPatternName:     regexp.MustCompile(PrefixPattern),
-			suffixPatternName:     regexp.MustCompile(SuffixPattern),
+			includePatternName:    regex.IncludeRegex,
+			definitionPatternName: regex.DefinitionRegex,
+			commentPatternName:    regex.CommentRegex,
+			flagsPatternName:      regex.FlagsRegex,
+			prefixPatternName:     regex.PrefixRegex,
+			suffixPatternName:     regex.SuffixRegex,
 		},
 	}
 	return p
