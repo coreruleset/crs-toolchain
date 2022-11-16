@@ -6,10 +6,11 @@ package processors
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/itchyny/rassemble-go"
+
+	"github.com/theseion/crs-toolchain/v2/regex"
 )
 
 const (
@@ -18,24 +19,20 @@ const (
 )
 
 type Assemble struct {
-	proc        *Processor
-	inputRegex  *regexp.Regexp
-	outputRegex *regexp.Regexp
-	output      strings.Builder
+	proc   *Processor
+	output strings.Builder
 }
 
 // NewAssemble creates a new assemble processor
 func NewAssemble(ctx *Context) *Assemble {
 	return &Assemble{
-		proc:        NewProcessor(ctx),
-		inputRegex:  regexp.MustCompile(AssembleInput),
-		outputRegex: regexp.MustCompile(AssembleOutput),
+		proc: NewProcessor(ctx),
 	}
 }
 
 // ProcessLine applies the processors logic to a single line
 func (a *Assemble) ProcessLine(line string) error {
-	match := a.inputRegex.FindStringSubmatch(line)
+	match := regex.AssembleInputRegex.FindStringSubmatch(line)
 	if len(match) > 0 {
 		if err := a.store(match[1]); err != nil {
 			logger.Error().Err(err).Msgf("Failed to store input: %s", line)
@@ -44,7 +41,7 @@ func (a *Assemble) ProcessLine(line string) error {
 		return nil
 	}
 
-	match = a.outputRegex.FindStringSubmatch(line)
+	match = regex.AssembleOutputRegex.FindStringSubmatch(line)
 	if len(match) > 0 {
 		identifier := match[1]
 		if err := a.append(identifier); err != nil {

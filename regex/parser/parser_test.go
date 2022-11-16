@@ -16,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/theseion/crs-toolchain/v2/regex"
 	"github.com/theseion/crs-toolchain/v2/regex/processors"
 )
 
@@ -42,12 +43,12 @@ func (s *parserTestSuite) TestParser_NewParser() {
 		Suffixes:  []string{},
 		variables: make(map[string]string),
 		patterns: map[string]*regexp.Regexp{
-			includePatternName:    regexp.MustCompile(IncludePattern),
-			definitionPatternName: regexp.MustCompile(DefinitionPattern),
-			commentPatternName:    regexp.MustCompile(CommentPattern),
-			flagsPatternName:      regexp.MustCompile(FlagsPattern),
-			prefixPatternName:     regexp.MustCompile(PrefixPattern),
-			suffixPatternName:     regexp.MustCompile(SuffixPattern),
+			includePatternName:    regex.IncludeRegex,
+			definitionPatternName: regex.DefinitionRegex,
+			commentPatternName:    regex.CommentRegex,
+			flagsPatternName:      regex.FlagsRegex,
+			prefixPatternName:     regex.PrefixRegex,
+			suffixPatternName:     regex.SuffixRegex,
 		},
 	}
 	actual := NewParser(processors.NewContext(os.TempDir()), s.reader)
