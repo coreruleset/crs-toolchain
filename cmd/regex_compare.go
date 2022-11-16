@@ -111,7 +111,7 @@ func performCompare(processAll bool, ctx *processors.Context) {
 			}
 
 			if path.Ext(dirEntry.Name()) == ".data" {
-				subs := regex.RuleIdRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
+				subs := regex.RuleIdFileNameRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
 				if subs == nil {
 					// continue
 					return nil

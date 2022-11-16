@@ -58,7 +58,7 @@ func rebuildRegexCommand() {
 func parseRuleId(idAndChainOffset string) error {
 	ruleValues.useStdin = false
 
-	subs := regex.RuleIdRegex.FindAllStringSubmatch(idAndChainOffset, -1)
+	subs := regex.RuleIdFileNameRegex.FindAllStringSubmatch(idAndChainOffset, -1)
 	if subs == nil {
 		return errors.New("failed to match rule ID")
 	}
