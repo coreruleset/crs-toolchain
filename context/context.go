@@ -6,7 +6,6 @@ package context
 type Context struct {
 	rootDirectory                string
 	rulesDirectory               string
-	utilDirectory                string
 	dataFilesDirectory           string
 	includeFilesDirectory        string
 	regressionTestFilesDirectory string
@@ -16,7 +15,6 @@ func New(rootDir string) *Context {
 	return &Context{
 		rootDirectory:                rootDir,
 		rulesDirectory:               rootDir + "/rules",
-		utilDirectory:                rootDir + "/util",
 		dataFilesDirectory:           rootDir + "/data",
 		includeFilesDirectory:        rootDir + "/data/include",
 		regressionTestFilesDirectory: rootDir + "/tests/regression/tests",
@@ -41,11 +39,6 @@ func (ctx *Context) IncludeDir() string {
 // RulesDir returns the 'rules' directory.
 func (ctx *Context) RulesDir() string {
 	return ctx.rulesDirectory
-}
-
-// UtilDir returns the 'util' directory.
-func (ctx *Context) UtilDir() string {
-	return ctx.utilDirectory
 }
 
 // RegressionTestsDir returns the 'tests' directory of regression tests.
