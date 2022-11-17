@@ -14,7 +14,7 @@ var IncludeRegex = regexp.MustCompile(`^##!>\s*include\s*(.*)$`)
 var DefinitionRegex = regexp.MustCompile(`^##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(.*)$`)
 
 // CommentRegex matches a comment line (##!, no other directives)
-var CommentRegex = regexp.MustCompile(`^##![^^$+><=]`)
+var CommentRegex = regexp.MustCompile(`^##!(?:[^^$+><=]|$)`)
 
 // FlagsRegex matches a flags line (##!+ <value>).
 // The value is captured in group 1.

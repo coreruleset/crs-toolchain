@@ -225,6 +225,13 @@ func includeFile(rootParser *Parser, includeName string) (*bytes.Buffer, int) {
 // All of these need to be treated as local to the source parser.
 func mergeFlagsPrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffer) *bytes.Buffer {
 	logger.Trace().Msg("merging flags, prefixes, suffixes from included file")
+	// IMPORTANT: don't write the assemble block at all if there are no flags, prefixes, or
+	// suffixes. Enclosing the output in an assemble block can change the semantics, for example,
+	// when the included content is processed by the cmdline processor in the including file.
+	if len(source.Flags) == 0 && len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
+		return out
+	}
+
 	newOut := new(bytes.Buffer)
 	newOut.WriteString("##!> assemble\n")
 

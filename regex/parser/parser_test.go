@@ -120,7 +120,7 @@ func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
 	s.writeDataFile("This data comes from the include file.\n", "##!This is a comment\n")
 	parser := NewParser(s.ctx, s.reader)
 	actual, n := parser.Parse(false)
-	expected := bytes.NewBufferString("##!> assemble\nThis data comes from the include file.\n##!<\n")
+	expected := bytes.NewBufferString("This data comes from the include file.\n")
 
 	s.Equal(expected.String(), actual.String())
 	s.Equal(expected.Len(), n)
@@ -260,17 +260,9 @@ func (s *parserMultiIncludeTestSuite) TestParserMultiInclude_FromMultiFile() {
 	parser := NewParser(s.ctx, s.reader)
 	actual, n := parser.Parse(false)
 	expected := bytes.NewBufferString(
-		"##!> assemble\n" +
-			"##!> assemble\n" +
-			"##!> assemble\n" +
-			"##!> assemble\n" +
-			"##!<\n" +
-			"This is comment 3.\n" +
-			"##!<\n" +
+		"This is comment 3.\n" +
 			"This is comment 2.\n" +
-			"##!<\n" +
 			"This is comment 1.\n" +
-			"##!<\n" +
 			"This is comment 0.\n")
 
 	s.Equal(expected.String(), actual.String())
@@ -352,20 +344,12 @@ func (s *parserIncludeWithDefinitions) TestParser_IncludeWithDefinitions() {
 	parser := NewParser(s.ctx, s.reader)
 	actual, _ := parser.Parse(false)
 	expected := bytes.NewBufferString(
-		"##!> assemble\n" +
-			"##!> assemble\n" +
-			"##!> assemble\n" +
-			"##!> assemble\n" +
-			"##!<\n" +
-			"This is comment 3.\n" +
+		"This is comment 3.\n" +
 			"[a-zA-J]+8 to see if definitions work when included\n" +
-			"##!<\n" +
 			"This is comment 2.\n" +
 			"[a-zA-J]+8 to see if definitions work when included\n" +
-			"##!<\n" +
 			"This is comment 1.\n" +
 			"[a-zA-J]+8 to see if definitions work when included\n" +
-			"##!<\n" +
 			"[a-zA-J]+8 to see if definitions work.\n" +
 			"Second text for [0-9](pine|apple).\n")
 
