@@ -76,3 +76,11 @@ var TestTitleRegex = regexp.MustCompile(`(.*test_title:).*$`)
 // DefinitionReferenceRegex matches any reference to a definition.
 // The matched reference name will be captured in group 1.
 var DefinitionReferenceRegex = regexp.MustCompile(`{{([a-zA-Z0-9-_]+)}}`)
+
+// CRSVersionRegex matches the version contained on every rules file.
+// The version declared on the file is captured in group 1.
+var CRSVersionRegex = regexp.MustCompile(`^(# OWASP ModSecurity Core Rule Set ver\.)(.+)$`)
+
+// CRSCopyrightYear matches the year of the copyright text on every rules file.
+// The "to" year is captured in group 1.
+var CRSCopyrightYear = regexp.MustCompile(`^(# Copyright \(c\) 2021-)(\d{4})( Core Rule Set project. All rights reserved.)$`)
