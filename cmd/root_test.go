@@ -21,23 +21,23 @@ type rootTestSuite struct {
 	dataDir string
 }
 
-func (suite *rootTestSuite) SetupTest() {
+func (s *rootTestSuite) SetupTest() {
 	rebuildRootCommand()
 	rebuildRegexCommand()
 	zerolog.SetGlobalLevel(defaultLogLevel)
 
 	tempDir, err := os.MkdirTemp("", "root-tests")
-	suite.NoError(err)
-	suite.tempDir = tempDir
+	s.NoError(err)
+	s.tempDir = tempDir
 
-	suite.dataDir = path.Join(suite.tempDir, "util", "regexp-assemble", "data")
-	err = os.MkdirAll(suite.dataDir, fs.ModePerm)
-	suite.NoError(err)
+	s.dataDir = path.Join(s.tempDir, "data")
+	err = os.MkdirAll(s.dataDir, fs.ModePerm)
+	s.NoError(err)
 }
 
-func (suite *rootTestSuite) TearDownTest() {
-	err := os.RemoveAll(suite.tempDir)
-	suite.NoError(err)
+func (s *rootTestSuite) TearDownTest() {
+	err := os.RemoveAll(s.tempDir)
+	s.NoError(err)
 }
 
 func TestRunRootTestSuite(t *testing.T) {
@@ -116,7 +116,7 @@ func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
 	cwd, err := os.Getwd()
 	s.NoError(err)
 	parentCwd := path.Dir(cwd)
-	err = os.MkdirAll(path.Join(parentCwd, "testDir", "util", "regexp-assemble", "data"), fs.ModePerm)
+	err = os.MkdirAll(path.Join(parentCwd, "testDir", "data"), fs.ModePerm)
 	s.NoError(err)
 	defer os.RemoveAll(path.Join(parentCwd, "testDir"))
 

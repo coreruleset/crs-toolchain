@@ -25,7 +25,7 @@ func (s *generateTestSuite) SetupTest() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.dataDir = path.Join(s.tempDir, "util", "regexp-assemble", "data")
+	s.dataDir = path.Join(s.tempDir, "data")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.NoError(err)
 }

@@ -101,7 +101,7 @@ func (s *parserIncludeTestSuite) SetupSuite() {
 	s.tempDir, err = os.MkdirTemp("", "include-tests")
 	s.NoError(err)
 
-	s.includeDir = path.Join(s.tempDir, "util", "regexp-assemble", "data", "include")
+	s.includeDir = path.Join(s.tempDir, "data", "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.NoError(err)
 
@@ -145,7 +145,7 @@ func (s *parserMultiIncludeTestSuite) SetupSuite() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.includeDir = path.Join(s.tempDir, "util", "regexp-assemble", "data", "include")
+	s.includeDir = path.Join(s.tempDir, "data", "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.NoError(err)
 
@@ -221,7 +221,7 @@ func (s *parserIncludeWithDefinitions) SetupSuite() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.includeDir = path.Join(s.tempDir, "util", "regexp-assemble", "data", "include")
+	s.includeDir = path.Join(s.tempDir, "data", "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.NoError(err)
 
