@@ -30,14 +30,14 @@ func (s *rootTestSuite) SetupTest() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s = path.Join(s.tempDir, "data")
-	err = os.MkdirAll(suite.dataDir, fs.ModePerm)
-	suite.NoError(err)
+	s.dataDir = path.Join(s.tempDir, "data")
+	err = os.MkdirAll(s.dataDir, fs.ModePerm)
+	s.NoError(err)
 }
 
 func (s *rootTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	suite.NoError(err)
+	s.NoError(err)
 }
 
 func TestRunRootTestSuite(t *testing.T) {
