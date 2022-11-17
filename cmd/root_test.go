@@ -21,22 +21,22 @@ type rootTestSuite struct {
 	dataDir string
 }
 
-func (suite *rootTestSuite) SetupTest() {
+func (s *rootTestSuite) SetupTest() {
 	rebuildRootCommand()
 	rebuildRegexCommand()
 	zerolog.SetGlobalLevel(defaultLogLevel)
 
 	tempDir, err := os.MkdirTemp("", "root-tests")
-	suite.NoError(err)
-	suite.tempDir = tempDir
+	s.NoError(err)
+	s.tempDir = tempDir
 
-	suite.dataDir = path.Join(s.tempDir, "data")
+	s = path.Join(s.tempDir, "data")
 	err = os.MkdirAll(suite.dataDir, fs.ModePerm)
 	suite.NoError(err)
 }
 
-func (suite *rootTestSuite) TearDownTest() {
-	err := os.RemoveAll(suite.tempDir)
+func (s *rootTestSuite) TearDownTest() {
+	err := os.RemoveAll(s.tempDir)
 	suite.NoError(err)
 }
 
