@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/theseion/crs-toolchain/v2/regex"
@@ -268,4 +269,20 @@ func (s *parserIncludeWithDefinitions) TestParser_IncludeWithDefinitions() {
 	s.Equal(parser.variables["this-is-a-text"], "[a-zA-J]+8", "failed to found definition variables in map")
 	s.Equal(parser.variables["this-is-another-text"], "[0-9](pine|apple)", "failed to found definition variables in map")
 	s.Equal(expected.String(), actual.String())
+}
+
+func (s *parserIncludeWithDefinitions) TestParser_DanglingDefinitions() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	reader := strings.NewReader("##!> define hello world\n{{hello}}\n{{hallo}}\n")
+	parser := NewParser(processors.NewContext(os.TempDir()), reader)
+
+	actual, _ := parser.Parse(false)
+	expected := bytes.NewBufferString("world\n{{hallo}}\n")
+	s.Equal(expected.String(), actual.String())
+
+	s.Contains(out.String(), "no match found for definition: {{hallo}}")
 }
