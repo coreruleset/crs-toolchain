@@ -101,7 +101,7 @@ func (w *workingDirectory) Type() string {
 
 func findRootDirectory(startPath string) (string, error) {
 	logger.Trace().Msgf("Searching for root directory starting at %s", startPath)
-	dataPath := path.Join("util", "regexp-assemble", "data")
+	dataPath := path.Join("data")
 	currentPath := startPath
 	// root directory only will have a separator as the last rune
 	for currentPath[len(currentPath)-1] != filepath.Separator {
