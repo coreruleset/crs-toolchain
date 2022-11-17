@@ -17,8 +17,8 @@ func New(rootDir string) *Context {
 		rootDirectory:                rootDir,
 		rulesDirectory:               rootDir + "/rules",
 		utilDirectory:                rootDir + "/util",
-		dataFilesDirectory:           rootDir + "/util/regexp-assemble/data",
-		includeFilesDirectory:        rootDir + "/util/regexp-assemble/data/include",
+		dataFilesDirectory:           rootDir + "/data",
+		includeFilesDirectory:        rootDir + "/data/include",
 		regressionTestFilesDirectory: rootDir + "/tests/regression/tests",
 	}
 }

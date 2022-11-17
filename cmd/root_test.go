@@ -30,7 +30,7 @@ func (suite *rootTestSuite) SetupTest() {
 	suite.NoError(err)
 	suite.tempDir = tempDir
 
-	suite.dataDir = path.Join(suite.tempDir, "util", "regexp-assemble", "data")
+	suite.dataDir = path.Join(s.tempDir, "data")
 	err = os.MkdirAll(suite.dataDir, fs.ModePerm)
 	suite.NoError(err)
 }
@@ -116,7 +116,7 @@ func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
 	cwd, err := os.Getwd()
 	s.NoError(err)
 	parentCwd := path.Dir(cwd)
-	err = os.MkdirAll(path.Join(parentCwd, "testDir", "util", "regexp-assemble", "data"), fs.ModePerm)
+	err = os.MkdirAll(path.Join(parentCwd, "testDir", "data"), fs.ModePerm)
 	s.NoError(err)
 	defer os.RemoveAll(path.Join(parentCwd, "testDir"))
 
