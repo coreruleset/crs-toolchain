@@ -231,6 +231,12 @@ func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Bu
 		needle := "{{" + needle + "}}"
 		src = bytes.NewBuffer(bytes.ReplaceAll(src.Bytes(), []byte(needle), []byte(replacement)))
 	}
+	// After all replacements, check if we have dangling names around. They mean that no definition was created
+	// yet, or there is a typo.
+	dangling := regex.DefinitionReferenceRegex.FindSubmatch(src.Bytes())
+	if dangling != nil {
+		logger.Warn().Msgf("no match found for definition: {{%s}}. could be a typo, or you forgot to define it?", string(dangling[1]))
+	}
 	logger.Trace().Msgf("expanded all definitions in: %v", src.String())
 	return src
 }
