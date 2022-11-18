@@ -95,6 +95,7 @@ func (s *definitionsTestSuite) TearDownSuite() {
 
 func (s *fileFormatTestSuite) TestPreprocessIgnoresSimpleComments() {
 	contents := `##!line1
+##!
 ##! line2
 ##!\tline3
 `
