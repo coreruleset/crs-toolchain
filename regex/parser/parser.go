@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/imdario/mergo"
@@ -118,7 +119,7 @@ func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
 		case include:
 			if !formatOnly {
 				// go read the included file and paste text here
-				content, _ := includeFile(p.ctx, parsedLine.result[includePatternName])
+				content, _ := includeFile(p, parsedLine.result[includePatternName])
 				text = content.String()
 			}
 		case flags:
@@ -197,7 +198,7 @@ func (p *Parser) parseLine(line string) ParsedLine {
 }
 
 // includeFile does just a new call to the Parser on the named file. It will use the context to find files that have relative filenames.
-func includeFile(ctx *processors.Context, includeName string) (*bytes.Buffer, int) {
+func includeFile(rootParser *Parser, includeName string) (*bytes.Buffer, int) {
 	filename := includeName
 	logger.Trace().Msgf("reading include file: %v", filename)
 	if path.Ext(filename) != ".data" {
@@ -207,14 +208,56 @@ func includeFile(ctx *processors.Context, includeName string) (*bytes.Buffer, in
 	// check if filename has an absolute path
 	// if it is relative, use the context to get the parent directory where we should search for the file.
 	if !filepath.IsAbs(filename) {
-		filename = filepath.Join(ctx.RootContext().IncludeDir(), filename)
+		filename = filepath.Join(rootParser.ctx.RootContext().IncludeDir(), filename)
 	}
 	readFile, err := os.Open(filename)
 	if err != nil {
 		logger.Fatal().Msgf("cannot open file for inclusion: %v", err.Error())
 	}
-	newP := NewParser(ctx, bufio.NewReader(readFile))
-	return newP.Parse(false)
+	newP := NewParser(rootParser.ctx, bufio.NewReader(readFile))
+	out, _ := newP.Parse(false)
+	newOut := mergeFlagsPrefixesSuffixes(rootParser, newP, out)
+	logger.Trace().Msg(newOut.String())
+	return newOut, newOut.Len()
+}
+
+// Merge flags, prefixes, and suffixes from include files into another parser.
+// All of these need to be treated as local to the source parser.
+func mergeFlagsPrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffer) *bytes.Buffer {
+	logger.Trace().Msg("merging flags, prefixes, suffixes from included file")
+	// IMPORTANT: don't write the assemble block at all if there are no flags, prefixes, or
+	// suffixes. Enclosing the output in an assemble block can change the semantics, for example,
+	// when the included content is processed by the cmdline processor in the including file.
+	if len(source.Flags) == 0 && len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
+		return out
+	}
+
+	newOut := new(bytes.Buffer)
+	newOut.WriteString("##!> assemble\n")
+
+	if len(source.Flags) > 0 {
+		flags := make([]string, 0, len(source.Flags))
+		for flag := range source.Flags {
+			flags = append(flags, string(flag))
+		}
+		sort.Strings(flags)
+		newOut.WriteString("(?" + strings.Join(flags, "") + ")")
+		newOut.WriteString("\n##!=>\n")
+	}
+	for _, prefix := range source.Prefixes {
+		newOut.WriteString(prefix)
+		newOut.WriteString("\n##!=>\n")
+	}
+	if _, err := out.WriteTo(newOut); err != nil {
+		logger.Fatal().Err(err).Msg("failed to copy output to new buffer")
+	}
+	for _, suffix := range source.Suffixes {
+		newOut.WriteString("\n##!=>\n")
+		newOut.WriteString(suffix)
+		newOut.WriteString("\n##!=>\n")
+	}
+	newOut.WriteString("##!<\n")
+	return newOut
 }
 
 func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
