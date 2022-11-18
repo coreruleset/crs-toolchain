@@ -14,8 +14,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/theseion/crs-toolchain/v2/context"
-	"github.com/theseion/crs-toolchain/v2/regex"
+	"github.com/coreruleset/crs-toolchain/v2/context"
+	"github.com/coreruleset/crs-toolchain/v2/regex"
 )
 
 var logger = log.With().Str("component", "renumber-tests").Logger()

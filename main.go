@@ -4,9 +4,9 @@
 package main
 
 import (
-	_ "github.com/theseion/crs-toolchain/v2/logger"
+	_ "github.com/coreruleset/crs-toolchain/v2/logger"
 
-	"github.com/theseion/crs-toolchain/v2/cmd"
+	"github.com/coreruleset/crs-toolchain/v2/cmd"
 )
 
 func main() {
