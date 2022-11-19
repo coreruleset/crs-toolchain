@@ -6,8 +6,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/coreruleset/crs-toolchain/v2/context"
-	"github.com/coreruleset/crs-toolchain/v2/util"
+	"github.com/coreruleset/crs-toolchain/context"
+	"github.com/coreruleset/crs-toolchain/util"
 )
 
 // renumberTestsCommand represents the update command

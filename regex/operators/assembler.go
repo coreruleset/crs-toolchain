@@ -13,9 +13,9 @@ import (
 
 	"github.com/itchyny/rassemble-go"
 
-	"github.com/coreruleset/crs-toolchain/v2/regex"
-	"github.com/coreruleset/crs-toolchain/v2/regex/parser"
-	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/regex"
+	"github.com/coreruleset/crs-toolchain/regex/parser"
+	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
 var metaGroupReplacements = map[string]string{

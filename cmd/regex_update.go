@@ -17,9 +17,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/coreruleset/crs-toolchain/v2/regex"
-	"github.com/coreruleset/crs-toolchain/v2/regex/operators"
-	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/regex"
+	"github.com/coreruleset/crs-toolchain/regex/operators"
+	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
 // updateCmd represents the update command

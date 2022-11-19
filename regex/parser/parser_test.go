@@ -17,8 +17,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/coreruleset/crs-toolchain/v2/regex"
-	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/regex"
+	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
 type parserTestSuite struct {
