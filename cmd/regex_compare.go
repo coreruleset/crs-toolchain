@@ -141,8 +141,8 @@ func performCompare(processAll bool, ctx *processors.Context) {
 			logger.Fatal().Err(err).Msg("Failed to compare expressions")
 		}
 		if failed && rootValues.output == gitHub {
-			fmt.Println("::error::All rules need to be up to date." +
-				" Please run `crs-toolchain regex update --all")
+			fmt.Println("::error::All rules need to be up to date.",
+				"Please run `crs-toolchain regex update --all")
 		}
 	} else {
 		regex := runAssemble(path.Join(ctx.RootContext().DataDir(), ruleValues.fileName), ctx)
@@ -212,11 +212,11 @@ func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string 
 
 func compareRegex(filePath string, ruleId string, chainOffset uint8, generatedRegex string, currentRegex string) error {
 	if currentRegex == generatedRegex {
-		fmt.Println("Regex of ", ruleId, " has not changed")
+		fmt.Println("Regex of", ruleId, "has not changed")
 		return nil
 	}
 
-	fmt.Println("Regex of", ruleId, " has changed!")
+	fmt.Println("Regex of", ruleId, "has changed!")
 	diffFound := false
 	maxChunks := int(math.Ceil((math.Max(float64(len(currentRegex)), float64(len(generatedRegex))) / 50)))
 	for index := 0; index < maxChunks*50; index += 50 {
