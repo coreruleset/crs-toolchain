@@ -27,7 +27,7 @@ func (s *updateTestSuite) SetupTest() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.dataDir = path.Join(s.tempDir, "data")
+	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.NoError(err)
 
@@ -46,7 +46,7 @@ func TestRunUpdateTestSuite(t *testing.T) {
 }
 
 func (s *updateTestSuite) TestUpdate_NormalRuleId() {
-	s.writeDataFile("123456.data", "")
+	s.writeDataFile("123456.ra", "")
 	s.writeRuleFile("123456", `SecRule "@rx regex" \\`+"\nid:123456")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
@@ -102,8 +102,8 @@ func (s *updateTestSuite) TestUpdate_DashReturnsError() {
 }
 
 func (s *updateTestSuite) TestUpdate_UpdatesAllWithAllFlag() {
-	s.writeDataFile("123456.data", "homer")
-	s.writeDataFile("123457.data", "simpson")
+	s.writeDataFile("123456.ra", "homer")
+	s.writeDataFile("123457.ra", "simpson")
 	s.writeRuleFile("123456", `SecRule ARGS "@rx regex1" \
 	"id:123456"
 SecRule ARGS "@rx regex2" \
@@ -125,7 +125,7 @@ SecRule ARGS '@rx regex3" \
 }
 
 func (s *updateTestSuite) TestUpdate_UpdatesInverseRx() {
-	s.writeDataFile("123456.data", "homer")
+	s.writeDataFile("123456.ra", "homer")
 	s.writeRuleFile("123456", `SecRule ARGS "!@rx regex1" \
 	"id:123456"`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
@@ -139,7 +139,7 @@ func (s *updateTestSuite) TestUpdate_UpdatesInverseRx() {
 }
 
 func (s *updateTestSuite) TestUpdate_UpdatesChainedRule() {
-	s.writeDataFile("123456-chain1.data", "homer")
+	s.writeDataFile("123456-chain1.ra", "homer")
 	s.writeRuleFile("123456", `SecRule ARGS "@rx regex1" \
 	"id:123456, \
 	chain"

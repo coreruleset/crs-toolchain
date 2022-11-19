@@ -26,7 +26,7 @@ func (s *renumberTestsTestSuite) SetupTest() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	dataDir := path.Join(s.tempDir, "data")
+	dataDir := path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(dataDir, fs.ModePerm)
 	s.NoError(err)
 

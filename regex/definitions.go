@@ -56,9 +56,9 @@ var RuleRxRegex = regexp.MustCompile(`(.*"!?@rx ).*(" \\)`)
 // SecRuleRegex matches any SecRule line.
 var SecRuleRegex = regexp.MustCompile(`\s*SecRule`)
 
-// RuleIdFileNameRegex matches the rule ID in a data file name (<id>.data).
+// RuleIdFileNameRegex matches the rule ID in a regex-assembly file name (<id>.ra).
 // The rule ID is captured in group 1, the optional extension in group 2.
-var RuleIdFileNameRegex = regexp.MustCompile(`^(\d{6})(?:-chain(\d+))?(?:\.data)?$`)
+var RuleIdFileNameRegex = regexp.MustCompile(`^(\d{6})(?:-chain(\d+))?(?:\.ra)?$`)
 
 // TestTitleRegex matches any test_title line in test YAML files (test_title: "<title>").
 // Everything up to the value of the test title is captured in group 1.

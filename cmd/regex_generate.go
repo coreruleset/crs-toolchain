@@ -25,12 +25,12 @@ func init() {
 func createGenerateCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "generate RULE_ID | -",
-		Short: "Generate regular expression from a data file",
-		Long: `Generate regular expression from a data file.
+		Short: "Generate regular expression from a regex-assembly file",
+		Long: `Generate regular expression from a regex-assembly file.
 This command is mainly used for quick debugging.
 It prints the generated regular expression to stdout.
 
-RULE_ID is the ID of the rule, e.g., 932100, or the data file name.
+RULE_ID is the ID of the rule, e.g., 932100, or the regex-assembly file name.
 If the rule is a chained rule, RULE_ID must be specified with the
 offset of the chain from the chain starter rule. For example, to
 generate a second level chained rule, RULE_ID would be 932100-chain2.
@@ -70,7 +70,7 @@ from stdin.`,
 				logger.Trace().Msgf("Reading from %s", filePath)
 				input, err = os.ReadFile(filePath)
 				if err != nil {
-					logger.Fatal().Err(err).Msgf("Failed to read data file %s", filePath)
+					logger.Fatal().Err(err).Msgf("Failed to read regex-assembly file %s", filePath)
 				}
 			}
 			assembly, err := assembler.Run(string(input))

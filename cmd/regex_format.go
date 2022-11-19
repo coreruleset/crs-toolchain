@@ -38,16 +38,16 @@ func init() {
 func createFormatCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "format [RULE_ID | INCLUDE_NAME]",
-		Short: "Format one or more regular expression data files",
-		Long: `Format one or more reguler expression data files.
+		Short: "Format one or more regular expression regex-assembly files",
+		Long: `Format one or more reguler expression regex-assembly files.
 
-RULE_ID is the ID of the rule, e.g., 932100, or the data file name.
+RULE_ID is the ID of the rule, e.g., 932100, or the regex-assembly file name.
 If the rule is a chained rule, RULE_ID must be specified with the
 offset of the chain from the chain starter rule. For example, to
 generate a second level chained rule, RULE_ID would be 932100-chain2.
 
-INCLUDE_NAME is the name of the a file in the "include" directory.
-These files are also data files but don't follow the same naming
+INCLUDE_NAME is the name of the file in the "include" directory, without the extension.
+These files are also regex-assembly files but don't follow the same naming
 scheme, as they don't correspond to any particular rule.`,
 		Args: cobra.MatchAll(cobra.MaximumNArgs(1), func(cmd *cobra.Command, args []string) error {
 			allFlag := cmd.Flags().Lookup("all")
@@ -72,7 +72,7 @@ scheme, as they don't correspond to any particular rule.`,
 			} else {
 				filename := args[0]
 				if path.Ext(filename) == "" {
-					filename += ".data"
+					filename += ".ra"
 				}
 				filePath := path.Join(ctxt.RootContext().IncludeDir(), filename)
 				if err = parseRuleId(filename); err == nil {
@@ -115,7 +115,7 @@ func processAll(ctxt *processors.Context) error {
 			return nil
 		}
 
-		if path.Ext(d.Name()) == ".data" {
+		if path.Ext(d.Name()) == ".ra" {
 			return processFile(filePath, ctxt)
 		}
 		return nil

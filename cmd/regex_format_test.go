@@ -26,7 +26,7 @@ func (s *formatTestSuite) SetupTest() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.dataDir = path.Join(s.tempDir, "data")
+	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.NoError(err)
 
@@ -45,7 +45,7 @@ func TestRunFormatTestSuite(t *testing.T) {
 }
 
 func (s *formatTestSuite) TestFormat_NormalRuleId() {
-	s.writeDataFile("123456.data", "")
+	s.writeDataFile("123456.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -57,7 +57,7 @@ func (s *formatTestSuite) TestFormat_NormalRuleId() {
 }
 
 func (s *formatTestSuite) TestFormat_NormalIncludeName() {
-	s.writeIncludeFile("shell-data.data", "")
+	s.writeIncludeFile("shell-data.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "shell-data"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -91,7 +91,7 @@ func (s *formatTestSuite) TestFormat_Dash() {
 }
 
 func (s *formatTestSuite) TestFormat_TrimsTabs() {
-	s.writeDataFile("123456.data", `line1	
+	s.writeDataFile("123456.ra", `line1	
 	line2`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
@@ -100,12 +100,12 @@ func (s *formatTestSuite) TestFormat_TrimsTabs() {
 	expected := `line1	
 line2
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_TrimsSpaces() {
-	s.writeDataFile("123456.data", `line1    
+	s.writeDataFile("123456.ra", `line1    
     line2`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
@@ -114,12 +114,12 @@ func (s *formatTestSuite) TestFormat_TrimsSpaces() {
 	expected := `line1    
 line2
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_IndentsAssembleBlock() {
-	s.writeDataFile("123456.data", `##!> assemble
+	s.writeDataFile("123456.ra", `##!> assemble
     		line
 ##!<`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
@@ -130,12 +130,12 @@ func (s *formatTestSuite) TestFormat_IndentsAssembleBlock() {
   line
 ##!<
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
-	s.writeDataFile("123456.data", `            ##!> assemble
+	s.writeDataFile("123456.ra", `            ##!> assemble
     		line
 	   ##!> assemble
 	               ##!=> output
@@ -170,12 +170,12 @@ func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
   ##!<
 ##!<
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterNoNewLine() {
-	s.writeDataFile("123456.data", `##!> assemble
+	s.writeDataFile("123456.ra", `##!> assemble
     		line
 ##!<`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
@@ -186,12 +186,12 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterNoNewLine() {
   line
 ##!<
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterOneNewLine() {
-	s.writeDataFile("123456.data", `##!> assemble
+	s.writeDataFile("123456.ra", `##!> assemble
     		line
 ##!<
 `)
@@ -203,12 +203,12 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterOneNewLine() {
   line
 ##!<
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterTwoNewLines() {
-	s.writeDataFile("123456.data", `##!> assemble
+	s.writeDataFile("123456.ra", `##!> assemble
     		line
 ##!<
 
@@ -221,23 +221,23 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterTwoNewLines() {
   line
 ##!<
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineIfEmpty() {
-	s.writeDataFile("123456.data", "")
+	s.writeDataFile("123456.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
 	expected := "\n"
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_DoesNotRemoveEmptyLines() {
-	s.writeDataFile("123456.data", `        
+	s.writeDataFile("123456.ra", `        
 	
 ##!> assemble
       
@@ -256,12 +256,12 @@ func (s *formatTestSuite) TestFormat_DoesNotRemoveEmptyLines() {
 
 ##!<
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_DoesNotRemoveComments() {
-	s.writeDataFile("123456.data", `
+	s.writeDataFile("123456.ra", `
 ##! a comment	
 ##!> assemble
 ##! a comment	
@@ -280,12 +280,12 @@ func (s *formatTestSuite) TestFormat_DoesNotRemoveComments() {
   ##! a comment	
 ##!<
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_OnlyIndentsAssembleProcessor() {
-	s.writeDataFile("123456.data", `##!> assemble
+	s.writeDataFile("123456.ra", `##!> assemble
 ##!> include bart
 ##!> assemble
 ##!+ i
@@ -310,12 +310,12 @@ func (s *formatTestSuite) TestFormat_OnlyIndentsAssembleProcessor() {
 
 ##!<
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestFormat_FormatsProcessors() {
-	s.writeDataFile("123456.data", `##!>assemble
+	s.writeDataFile("123456.ra", `##!>assemble
 ##!> include 	   bart
 ##!>       	 cmdline  	windows
 ##!> define 	homer   	simpson 
@@ -332,7 +332,7 @@ func (s *formatTestSuite) TestFormat_FormatsProcessors() {
   ##!<
 ##!<
 `
-	output := s.readDataFile("123456.data")
+	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
 
