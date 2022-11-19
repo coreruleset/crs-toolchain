@@ -1,4 +1,4 @@
-module github.com/coreruleset/crs-toolchain/v2
+module github.com/coreruleset/crs-toolchain
 
 go 1.19
 

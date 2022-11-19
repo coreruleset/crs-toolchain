@@ -10,7 +10,7 @@ import (
 
 	"github.com/itchyny/rassemble-go"
 
-	"github.com/coreruleset/crs-toolchain/v2/regex"
+	"github.com/coreruleset/crs-toolchain/regex"
 )
 
 const (
