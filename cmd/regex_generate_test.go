@@ -25,7 +25,7 @@ func (s *generateTestSuite) SetupTest() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.dataDir = path.Join(s.tempDir, "data")
+	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.NoError(err)
 }
@@ -40,7 +40,7 @@ func TestRunGenerateTestSuite(t *testing.T) {
 }
 
 func (s *generateTestSuite) TestGenerate_NormalRuleId() {
-	s.writeDatafile("123456.data", "")
+	s.writeDatafile("123456.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 

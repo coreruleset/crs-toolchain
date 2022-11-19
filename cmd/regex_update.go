@@ -38,7 +38,7 @@ func createUpdateCommand() *cobra.Command {
 This command will generate regulare expressions from the data
 files and update the associated rule.
 
-RULE_ID is the ID of the rule, e.g., 932100, or the data file name.
+RULE_ID is the ID of the rule, e.g., 932100, or the regex-assembly file name.
 If the rule is a chained rule, RULE_ID must be specified with the
 offset of the chain from the chain starter rule. For example, to
 generate a second level chained rule, RULE_ID would be 932100-chain2.`,
@@ -78,7 +78,7 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 func buildUpdateCommand() {
 	regexCmd.AddCommand(updateCmd)
 	updateCmd.Flags().BoolP("all", "a", false, `Instead of supplying a RULE_ID, you can tell the script to
-update all rules from their data files`)
+update all rules from their regex-assembly files`)
 }
 
 func rebuildUpdateCommand() {
@@ -98,7 +98,7 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 				return err
 			}
 
-			if !dirEntry.IsDir() && path.Ext(dirEntry.Name()) == ".data" {
+			if !dirEntry.IsDir() && path.Ext(dirEntry.Name()) == ".ra" {
 				subs := regex.RuleIdFileNameRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
 				if subs == nil {
 					// continue
@@ -143,7 +143,7 @@ func runAssemble(filePath string, ctx *processors.Context) string {
 		logger.Trace().Msgf("Reading from %s", filePath)
 		input, err = os.ReadFile(filePath)
 		if err != nil {
-			logger.Fatal().Err(err).Msgf("Failed to read data file %s", filePath)
+			logger.Fatal().Err(err).Msgf("Failed to read regex-assembly file %s", filePath)
 		}
 	}
 	assembly, err := assembler.Run(string(input))

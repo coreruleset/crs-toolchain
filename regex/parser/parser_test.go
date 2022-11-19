@@ -102,12 +102,12 @@ func (s *parserIncludeTestSuite) SetupTest() {
 	s.tempDir, err = os.MkdirTemp("", "include-tests")
 	s.NoError(err)
 
-	s.includeDir = path.Join(s.tempDir, "data", "include")
+	s.includeDir = path.Join(s.tempDir, "regex-assembly", "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.NoError(err)
 
 	s.ctx = processors.NewContext(s.tempDir)
-	s.includeFile, err = os.Create(path.Join(s.includeDir, "test.data"))
+	s.includeFile, err = os.Create(path.Join(s.includeDir, "test.ra"))
 	s.NoError(err, "couldn't create %s file", s.includeFile.Name())
 }
 
@@ -230,13 +230,13 @@ func (s *parserMultiIncludeTestSuite) SetupSuite() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.includeDir = path.Join(s.tempDir, "data", "include")
+	s.includeDir = path.Join(s.tempDir, "regex-assembly", "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.NoError(err)
 
 	s.ctx = processors.NewContext(s.tempDir)
 	for i := 0; i < 4; i++ {
-		file, err := os.Create(path.Join(s.includeDir, fmt.Sprintf("multi-include-%d.data", i)))
+		file, err := os.Create(path.Join(s.includeDir, fmt.Sprintf("multi-include-%d.ra", i)))
 		s.NoError(err, "couldn't create %s file", file.Name())
 		if i == 0 {
 			// Only the initial include goes to the reader
@@ -310,13 +310,13 @@ func (s *parserIncludeWithDefinitions) SetupSuite() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.includeDir = path.Join(s.tempDir, "data", "include")
+	s.includeDir = path.Join(s.tempDir, "regex-assembly", "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.NoError(err)
 
 	s.ctx = processors.NewContext(s.tempDir)
 	for i := 0; i < 4; i++ {
-		file, err := os.Create(path.Join(s.tempDir, fmt.Sprintf("multi-definitions-%d.data", i)))
+		file, err := os.Create(path.Join(s.tempDir, fmt.Sprintf("multi-definitions-%d.ra", i)))
 		s.NoError(err, "couldn't create %s file", file.Name())
 		if i == 0 {
 			// Only the initial include goes to the reader
