@@ -16,9 +16,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/theseion/crs-toolchain/v2/regex"
-	"github.com/theseion/crs-toolchain/v2/regex/parser"
-	"github.com/theseion/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/regex"
+	"github.com/coreruleset/crs-toolchain/v2/regex/parser"
+	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
 )
 
 // formatCmd represents the generate command

@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/theseion/crs-toolchain/v2/regex/operators"
-	"github.com/theseion/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/regex/operators"
+	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
 )
 
 // generateCmd represents the generate command

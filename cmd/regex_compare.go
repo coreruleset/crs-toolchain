@@ -18,8 +18,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/theseion/crs-toolchain/v2/regex"
-	"github.com/theseion/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/regex"
+	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
 )
 
 type ComparisonError struct {
