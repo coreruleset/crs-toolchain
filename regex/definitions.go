@@ -51,7 +51,7 @@ var AssembleOutputRegex = regexp.MustCompile(`^\s*##!=>\s*(.*)$`)
 // RuleRxRegex matches a full SecRule line with @rx.
 // Everything up to the start of the regular expression is captured in group 1,
 // the end of the line after the regular expression is captured in group 2.
-var RuleRxRegex = regexp.MustCompile(`(.*"!?@rx ).*(" \\)`)
+var RuleRxRegex = regexp.MustCompile(`(.*"!?@rx )(.*)(" \\)`)
 
 // SecRuleRegex matches any SecRule line.
 var SecRuleRegex = regexp.MustCompile(`\s*SecRule`)

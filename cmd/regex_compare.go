@@ -207,7 +207,7 @@ func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string 
 	if len(found) == 0 {
 		logger.Fatal().Msgf("Failed to find rule %s in %s", ruleId, filePath)
 	}
-	return found[0][1]
+	return found[0][2]
 }
 
 func compareRegex(filePath string, ruleId string, chainOffset uint8, generatedRegex string, currentRegex string) error {

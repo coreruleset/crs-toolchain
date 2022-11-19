@@ -210,7 +210,7 @@ func updateRegex(filePath string, ruleId string, chainOffset uint8, newRegex str
 	if len(found) == 0 {
 		logger.Fatal().Msgf("Failed to find rule %s in %s", ruleId, filePath)
 	}
-	updatedLine := found[0][1] + newRegex + found[0][2]
+	updatedLine := found[0][1] + newRegex + found[0][3]
 	lines[index] = []byte(updatedLine)
 
 	err = os.WriteFile(filePath, bytes.Join(lines, []byte("\n")), fs.ModePerm)
