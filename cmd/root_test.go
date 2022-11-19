@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
-	loggerConfig "github.com/theseion/crs-toolchain/v2/logger"
+	loggerConfig "github.com/coreruleset/crs-toolchain/v2/logger"
 )
 
 type rootTestSuite struct {
@@ -30,7 +30,7 @@ func (s *rootTestSuite) SetupTest() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.dataDir = path.Join(s.tempDir, "data")
+	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.NoError(err)
 }
@@ -64,7 +64,7 @@ func (s *rootTestSuite) TestRoot_LogLevelDefault() {
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelChanged() {
-	s.writeDataFile("123456.data", "")
+	s.writeDataFile("123456.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "--log-level", "debug", "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -76,7 +76,7 @@ func (s *rootTestSuite) TestRoot_LogLevelChanged() {
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
-	s.writeDataFile("123456.data", "")
+	s.writeDataFile("123456.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "--log-level", "bizarre", "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -88,7 +88,7 @@ func (s *rootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
-	s.writeDataFile("123456.data", "")
+	s.writeDataFile("123456.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "--log-level", "debug", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -100,7 +100,7 @@ func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
 }
 
 func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
-	s.writeDataFile("123456.data", "")
+	s.writeDataFile("123456.ra", "")
 	rootCmd.SetArgs([]string{"--directory", s.tempDir, "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -116,7 +116,7 @@ func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
 	cwd, err := os.Getwd()
 	s.NoError(err)
 	parentCwd := path.Dir(cwd)
-	err = os.MkdirAll(path.Join(parentCwd, "testDir", "data"), fs.ModePerm)
+	err = os.MkdirAll(path.Join(parentCwd, "testDir", "regex-assembly"), fs.ModePerm)
 	s.NoError(err)
 	defer os.RemoveAll(path.Join(parentCwd, "testDir"))
 

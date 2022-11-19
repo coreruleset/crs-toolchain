@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package parser implements the parsing logic to obtain the sequence of inputs ready for processing.
-// The two main thing it will do is to parse a data file and recursively solve all `includes` first, then
-// substitute all definitions where neccesary.
+// The two main thing it will do is to parse a regex-assembly file and recursively solve all `includes` first, then
+// substitute all definitions where necessary.
 package parser
 
 import (
@@ -20,8 +20,8 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 
-	"github.com/theseion/crs-toolchain/v2/regex"
-	"github.com/theseion/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/regex"
+	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
 )
 
 var logger = log.With().Str("component", "parser").Logger()
@@ -201,8 +201,8 @@ func (p *Parser) parseLine(line string) ParsedLine {
 func includeFile(rootParser *Parser, includeName string) (*bytes.Buffer, int) {
 	filename := includeName
 	logger.Trace().Msgf("reading include file: %v", filename)
-	if path.Ext(filename) != ".data" {
-		filename += ".data"
+	if path.Ext(filename) != ".ra" {
+		filename += ".ra"
 	}
 
 	// check if filename has an absolute path

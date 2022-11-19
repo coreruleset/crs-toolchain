@@ -38,7 +38,7 @@ func (s *compareTestSuite) SetupTest() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.dataDir = path.Join(s.tempDir, "data")
+	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.NoError(err)
 
@@ -57,7 +57,7 @@ func TestRunCompareTestSuite(t *testing.T) {
 }
 
 func (s *compareTestSuite) TestCompare_NormalRuleId() {
-	s.writeDataFile("123456.data", "")
+	s.writeDataFile("123456.ra", "")
 	s.writeRuleFile("123456", `SecRule... "@rx regex" \\`+"\nid:123456")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
@@ -81,8 +81,8 @@ func (s *compareTestSuite) TestCompare_AllFlag() {
 id:123456
 SecRule... "@rx oldbar" \
 id:123457`)
-	s.writeDataFile("123456.data", "foo")
-	s.writeDataFile("123457.data", "bar")
+	s.writeDataFile("123456.ra", "foo")
+	s.writeDataFile("123457.ra", "bar")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
 	cmd, _ := rootCmd.ExecuteC()
 

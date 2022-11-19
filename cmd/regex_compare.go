@@ -18,8 +18,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/theseion/crs-toolchain/v2/regex"
-	"github.com/theseion/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/regex"
+	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
 )
 
 type ComparisonError struct {
@@ -46,9 +46,9 @@ This command is mainly used for debugging.
 It prints regular expressions in fixed sized chunks and detects the
 first change.
 You can use this command to quickly check whether any rules are out of
-sync with their data file.
+sync with their regex-assembly file.
 
-RULE_ID is the ID of the rule, e.g., 932100, or the data file name.
+RULE_ID is the ID of the rule, e.g., 932100, or the regex-assembly file name.
 If the rule is a chained rule, RULE_ID must be specified with the
 offset of the chain from the chain starter rule. For example, to
 generate a second level chained rule, RULE_ID would be 932100-chain2.`,
@@ -88,7 +88,7 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 func buildCompareCommand() {
 	regexCmd.AddCommand(compareCmd)
 	compareCmd.Flags().BoolP("all", "a", false, `Instead of supplying a RULE_ID, you can tell the script to
-compare all rules from their data files`)
+compare all rules from their regex-assembly files`)
 }
 
 func rebuildCompareCommand() {
@@ -110,7 +110,7 @@ func performCompare(processAll bool, ctx *processors.Context) {
 				return err
 			}
 
-			if path.Ext(dirEntry.Name()) == ".data" {
+			if path.Ext(dirEntry.Name()) == ".ra" {
 				subs := regex.RuleIdFileNameRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
 				if subs == nil {
 					// continue
@@ -164,7 +164,7 @@ func processRegexForCompare(ruleId string, chainOffset uint8, regex string, ctxt
 	}
 
 	filePath := matches[0]
-	logger.Debug().Msgf("Processing data file %s", filePath)
+	logger.Debug().Msgf("Processing regex-assembly file %s", filePath)
 
 	currentRegex := readCurrentRegex(filePath, ruleId, chainOffset)
 	return compareRegex(filePath, ruleId, chainOffset, regex, currentRegex)

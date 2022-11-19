@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/theseion/crs-toolchain/v2/context"
+	"github.com/coreruleset/crs-toolchain/v2/context"
 )
 
 type Context struct {

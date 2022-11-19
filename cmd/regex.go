@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/theseion/crs-toolchain/v2/regex"
+	"github.com/coreruleset/crs-toolchain/v2/regex"
 )
 
 // generateCmd represents the generate command
@@ -31,9 +31,9 @@ func createRegexCommand() *cobra.Command {
 		Use:   "regex",
 		Short: "Commands that process regular expressions",
 		Long: `The commands in this group all interact with regular expressions.
-For example, they generate regular expressions from data files, update regular expressions
+For example, they generate regular expressions from regex-assembly files, update regular expressions
 in rule files, or compare the regular expressions in rule files against what would be
-generated from the current data file.`,
+generated from the current regex-assembly file.`,
 	}
 
 }
@@ -72,8 +72,8 @@ func parseRuleId(idAndChainOffset string) error {
 		return errors.New("failed to match chain offset. Value must not be larger than 255")
 	}
 
-	if !strings.HasSuffix(fileName, ".data") {
-		fileName += ".data"
+	if !strings.HasSuffix(fileName, ".ra") {
+		fileName += ".ra"
 	}
 
 	ruleValues.id = id

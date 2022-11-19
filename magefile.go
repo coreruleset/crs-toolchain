@@ -43,7 +43,7 @@ func Format() error {
 	if err := sh.RunV("go", "run", fmt.Sprintf("github.com/rinchsan/gosimports/cmd/gosimports@%s", gosImportsVer),
 		"-w",
 		"-local",
-		"github.com/theseion/crs-toolchain",
+		"github.com/coreruleset/crs-toolchain",
 		"."); err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func Format() error {
 		"--section",
 		"blank",
 		"--section",
-		"prefix(github.com/theseion/crs-toolchain)",
+		"prefix(github.com/coreruleset/crs-toolchain)",
 		"--custom-order",
 		"--skip-generated",
 		".")

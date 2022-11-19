@@ -27,7 +27,7 @@ func (s *regexTestSuite) SetupTest() {
 	s.NoError(err)
 	s.tempDir = tempDir
 
-	s.dataDir = path.Join(s.tempDir, "data")
+	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.NoError(err)
 
@@ -46,49 +46,49 @@ func TestRunRegexTestSuite(t *testing.T) {
 }
 
 func (s *regexTestSuite) TestRegex_ParseRuleId() {
-	s.writeDataFile("123456.data", "")
+	s.writeDataFile("123456.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456"})
 	_, err := rootCmd.ExecuteC()
 
 	s.NoError(err, "failed to execute rootCmd")
 	s.Equal("123456", ruleValues.id)
-	s.Equal("123456.data", ruleValues.fileName)
+	s.Equal("123456.ra", ruleValues.fileName)
 	s.Equal(uint8(0), ruleValues.chainOffset)
 	s.False(ruleValues.useStdin)
 }
 
 func (s *regexTestSuite) TestRegex_ParseRuleIdAndChainOffset() {
-	s.writeDataFile("123456-chain19.data", "")
+	s.writeDataFile("123456-chain19.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456-chain19"})
 	_, err := rootCmd.ExecuteC()
 
 	s.NoError(err, "failed to execute rootCmd")
 	s.Equal("123456", ruleValues.id)
-	s.Equal("123456-chain19.data", ruleValues.fileName)
+	s.Equal("123456-chain19.ra", ruleValues.fileName)
 	s.Equal(uint8(19), ruleValues.chainOffset)
 	s.False(ruleValues.useStdin)
 }
 
 func (s *regexTestSuite) TestRegex_ParseRuleIdAndChainOffsetAndFileName() {
-	s.writeDataFile("123456-chain255.data", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456-chain255.data"})
+	s.writeDataFile("123456-chain255.ra", "")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456-chain255.ra"})
 	_, err := rootCmd.ExecuteC()
 
 	s.NoError(err, "failed to execute rootCmd")
 	s.Equal("123456", ruleValues.id)
-	s.Equal("123456-chain255.data", ruleValues.fileName)
+	s.Equal("123456-chain255.ra", ruleValues.fileName)
 	s.Equal(uint8(255), ruleValues.chainOffset)
 	s.False(ruleValues.useStdin)
 }
 
 func (s *regexTestSuite) TestRegex_ParseRuleIdAndFileName() {
-	s.writeDataFile("123456.data", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456.data"})
+	s.writeDataFile("123456.ra", "")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456.ra"})
 	_, err := rootCmd.ExecuteC()
 
 	s.NoError(err, "failed to execute rootCmd")
 	s.Equal("123456", ruleValues.id)
-	s.Equal("123456.data", ruleValues.fileName)
+	s.Equal("123456.ra", ruleValues.fileName)
 	s.Equal(uint8(0), ruleValues.chainOffset)
 	s.False(ruleValues.useStdin)
 }
