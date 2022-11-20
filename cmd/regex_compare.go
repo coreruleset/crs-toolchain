@@ -73,16 +73,19 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctxt := processors.NewContext(rootValues.workingDirectory.String())
 			processAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
-				logger.Fatal().Err(err).Msg("Failed to read value for 'all' flag")
+				logger.Error().Err(err).Msg("Failed to read value for 'all' flag")
+				return err
 			}
-			err = performCompare(processAll, ctxt)
-			if err != nil && rootValues.output == gitHub {
-				os.Exit(1)
-			}
+
+			// Start running. If an error occurs, propagate but don't print anything
+			// command related.
+			cmd.SilenceErrors = true
+			cmd.SilenceUsage = true
+			return performCompare(processAll, ctxt)
 		},
 	}
 
@@ -146,14 +149,11 @@ func performCompare(processAll bool, ctx *processors.Context) error {
 		if failed && rootValues.output == gitHub {
 			fmt.Println("::error::All rules need to be up to date.",
 				"Please run `crs-toolchain regex update --all")
-			return errors.New("comparison failed")
+			return &ComparisonError{}
 		}
 	} else {
 		regex := runAssemble(path.Join(ctx.RootContext().DataDir(), ruleValues.fileName), ctx)
-		err := processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
-		if err != nil {
-			return err
-		}
+		return processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
 	}
 	return nil
 }
@@ -222,6 +222,8 @@ func compareRegex(filePath string, ruleId string, chainOffset uint8, generatedRe
 	if currentRegex == generatedRegex {
 		fmt.Println("Regex of", ruleId, "has not changed")
 		return nil
+	} else if rootValues.output == gitHub {
+		return &ComparisonError{}
 	}
 
 	fmt.Println("Regex of", ruleId, "has changed!")
