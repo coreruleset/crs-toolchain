@@ -125,6 +125,12 @@ func (a *Assemble) append(identifier string) error {
 			return err
 		}
 	} else {
+		// Append lines that aren't yet in the output
+		err := a.append("")
+		if err != nil {
+			return err
+		}
+
 		stored, ok := a.proc.ctx.stash[identifier]
 		if !ok {
 			return fmt.Errorf("no entry in the stash for name '%s'", identifier)
@@ -132,7 +138,7 @@ func (a *Assemble) append(identifier string) error {
 		logger.Debug().Msgf("Appending stored expression at %s", identifier)
 		logger.Trace().Msgf("Expression stored at %s is %s", identifier, stored)
 
-		_, err := a.output.WriteString(stored)
+		_, err = a.output.WriteString(stored)
 		if err != nil {
 			return err
 		}

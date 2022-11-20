@@ -919,3 +919,49 @@ func (s *assemblerTestSuite) TestAssemble_DollarRemainsDollarWithSflag() {
 	s.NoError(err)
 	s.Equal("(?s)a|b$", output)
 }
+
+func (s *assemblerTestSuite) TestAssemble_ComplexAppendWithAlternation() {
+	contents := `##!> assemble
+  _prop-start_
+  ##!=< js-prop-start
+##!<
+
+##!> assemble
+  _prop-finish_
+  ##!=< js-prop-finish
+##!<
+
+
+##!> assemble
+  access
+  ##!=< process-funcs
+##!<
+
+##!> assemble
+  env
+  ##!=< process-props
+##!<
+
+##! "process" payloads
+##!> assemble
+  process
+  ##!=>
+
+  ##!> assemble
+    ##!=> js-prop-start
+    ##!> assemble
+	##!=> process-funcs
+    ##!<
+    ##!> assemble
+      ##!=> process-props
+    ##!<
+    ##!=> js-prop-finish
+  ##!<
+##!<`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.NoError(err)
+	s.Equal("process_prop-start_(?:access|env)_prop-finish_", output)
+}
