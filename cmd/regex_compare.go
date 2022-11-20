@@ -73,13 +73,19 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctxt := processors.NewContext(rootValues.workingDirectory.String())
 			processAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
-				logger.Fatal().Err(err).Msg("Failed to read value for 'all' flag")
+				logger.Error().Err(err).Msg("Failed to read value for 'all' flag")
+				return err
 			}
-			performCompare(processAll, ctxt)
+
+			// Start running. If an error occurs, propagate but don't print anything
+			// command related.
+			cmd.SilenceErrors = true
+			cmd.SilenceUsage = true
+			return performCompare(processAll, ctxt)
 		},
 	}
 
@@ -101,7 +107,7 @@ func rebuildCompareCommand() {
 }
 
 // FIXME: duplicated in update.go
-func performCompare(processAll bool, ctx *processors.Context) {
+func performCompare(processAll bool, ctx *processors.Context) error {
 	failed := false
 	if processAll {
 		err := filepath.WalkDir(ctx.RootContext().DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
@@ -143,11 +149,13 @@ func performCompare(processAll bool, ctx *processors.Context) {
 		if failed && rootValues.output == gitHub {
 			fmt.Println("::error::All rules need to be up to date.",
 				"Please run `crs-toolchain regex update --all")
+			return &ComparisonError{}
 		}
 	} else {
 		regex := runAssemble(path.Join(ctx.RootContext().DataDir(), ruleValues.fileName), ctx)
-		_ = processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
+		return processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
 	}
+	return nil
 }
 func processRegexForCompare(ruleId string, chainOffset uint8, regex string, ctxt *processors.Context) error {
 	logger.Info().Msgf("Processing %s, chain offset %d", ruleId, chainOffset)
@@ -214,6 +222,8 @@ func compareRegex(filePath string, ruleId string, chainOffset uint8, generatedRe
 	if currentRegex == generatedRegex {
 		fmt.Println("Regex of", ruleId, "has not changed")
 		return nil
+	} else if rootValues.output == gitHub {
+		return &ComparisonError{}
 	}
 
 	fmt.Println("Regex of", ruleId, "has changed!")

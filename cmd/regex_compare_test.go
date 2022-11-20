@@ -33,6 +33,18 @@ func (s *compareTestSuite) writeRuleFile(ruleId string, contents string) {
 	s.NoError(err)
 }
 
+func (s *compareTestSuite) captureStdout() *os.File {
+	read, write, err := os.Pipe()
+	s.NoError(err)
+
+	realStdout := os.Stdout
+	os.Stdout = write
+	s.T().Cleanup(func() {
+		os.Stdout = realStdout
+	})
+	return read
+}
+
 func (s *compareTestSuite) SetupTest() {
 	rebuildCompareCommand()
 	tempDir, err := os.MkdirTemp("", "compare-tests")
@@ -112,20 +124,13 @@ func (s *compareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
 }
 
 func (s *compareTestSuite) TestCompare_NoChange() {
-	read, write, err := os.Pipe()
-	s.NoError(err)
-
-	realStdout := os.Stdout
-	os.Stdout = write
-	defer func() {
-		os.Stdout = realStdout
-	}()
+	read := s.captureStdout()
 
 	s.writeRuleFile("123456", `SecRule... "@rx foo" \
 id:123456`)
 	s.writeDataFile("123456.ra", "foo")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
-	_, err = rootCmd.ExecuteC()
+	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
 	buffer := make([]byte, 1024)
@@ -138,20 +143,13 @@ id:123456`)
 }
 
 func (s *compareTestSuite) TestCompare_Change() {
-	read, write, err := os.Pipe()
-	s.NoError(err)
-
-	realStdout := os.Stdout
-	os.Stdout = write
-	defer func() {
-		os.Stdout = realStdout
-	}()
+	read := s.captureStdout()
 
 	s.writeRuleFile("123456", `SecRule... "@rx oldfoo" \
 id:123456`)
 	s.writeDataFile("123456.ra", "foo")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
-	_, err = rootCmd.ExecuteC()
+	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
 	buffer := make([]byte, 1024)
