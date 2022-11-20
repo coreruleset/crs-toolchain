@@ -1,3 +1,3 @@
 # crs-toolchain
 
-Based on experiment in Python with rassemble-go backend: https://github.com/theseion/coreruleset/tree/rassemble-backend
+The CRS developer's utility belt. The documentation lives at [coreruleset.org](https://coreruleset.org/docs/development/crs_toolchain/).
