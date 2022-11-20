@@ -21,6 +21,14 @@ import (
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
+type UnformattedFileError struct {
+	filePath string
+}
+
+func (u *UnformattedFileError) Error() string {
+	return fmt.Sprintf("File not properly formatted: %s", u.filePath)
+}
+
 // formatCmd represents the generate command
 var formatCmd = createFormatCommand()
 var blockStartRegex = regex.ProcessorBlockStartRegex
@@ -61,14 +69,21 @@ scheme, as they don't correspond to any particular rule.`,
 
 			return nil
 		}),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctxt := processors.NewContext(rootValues.workingDirectory.String())
 			formatAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
-				logger.Fatal().Err(err).Msg("failed to read all flag")
+				logger.Error().Err(err).Msg("failed to read all flag")
+				return err
 			}
+			checkOnly, err := cmd.Flags().GetBool("check")
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to read check flag")
+				return err
+			}
+
 			if formatAll {
-				err = processAll(ctxt)
+				err = processAll(ctxt, checkOnly)
 			} else {
 				filename := args[0]
 				if path.Ext(filename) == "" {
@@ -78,12 +93,16 @@ scheme, as they don't correspond to any particular rule.`,
 				if err = parseRuleId(filename); err == nil {
 					filePath = path.Join(ctxt.RootContext().DataDir(), ruleValues.fileName)
 				}
-				err = processFile(filePath, ctxt)
+				err = processFile(filePath, ctxt, checkOnly)
 			}
 
 			if err != nil {
-				logger.Fatal().Err(err).Msg("formatting failed")
+				// Errors are not command related
+				cmd.SilenceErrors = true
+				cmd.SilenceUsage = true
+				logger.Error().Err(err).Msg("formatting failed")
 			}
+			return err
 		},
 	}
 }
@@ -92,6 +111,7 @@ func buildFormatCommand() {
 	regexCmd.AddCommand(formatCmd)
 	formatCmd.PersistentFlags().BoolP("all", "a", false, `Instead of supplying a RULE_ID, you can tell the script to
 format all data files (both regular and include files)`)
+	formatCmd.Flags().BoolP("check", "c", false, `Do not write changes, simply report on files that would be formatted`)
 }
 
 func rebuildFormatCommand() {
@@ -103,7 +123,8 @@ func rebuildFormatCommand() {
 	buildFormatCommand()
 }
 
-func processAll(ctxt *processors.Context) error {
+func processAll(ctxt *processors.Context, checkOnly bool) error {
+	failed := false
 	err := filepath.WalkDir(ctxt.RootContext().DataDir(), func(filePath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// abort
@@ -116,7 +137,11 @@ func processAll(ctxt *processors.Context) error {
 		}
 
 		if path.Ext(d.Name()) == ".ra" {
-			return processFile(filePath, ctxt)
+			err := processFile(filePath, ctxt, checkOnly)
+			if err != nil {
+				failed = true
+			}
+			return nil
 		}
 		return nil
 	})
@@ -124,12 +149,17 @@ func processAll(ctxt *processors.Context) error {
 		logger.Error().Err(err).Msg("failed to walk directories")
 		return err
 	}
+	if failed && rootValues.output == gitHub {
+		fmt.Println("::error::All assembly files need to be properly formatted.",
+			"Please run `crs-toolchain regex format --all")
+
+	}
 	return nil
 }
 
-func processFile(filePath string, ctxt *processors.Context) error {
+func processFile(filePath string, ctxt *processors.Context, checkOnly bool) error {
 	filename := path.Base(filePath)
-	logger.Info().Msgf("Formatting %s", filename)
+	logger.Info().Msgf("Processing %s", filename)
 	file, err := os.Open(filePath)
 	if err != nil {
 		logger.Error().Err(err).Msgf("failed to open file %s", filePath)
@@ -158,10 +188,26 @@ func processFile(filePath string, ctxt *processors.Context) error {
 
 	lines = formatEndOfFile(lines)
 
-	err = os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), fs.ModePerm)
-	if err != nil {
-		logger.Error().Err(err).Msgf("failed to write file %s", filePath)
-		return err
+	newContents := []byte(strings.Join(lines, "\n"))
+	if checkOnly {
+		currentContents, err := os.ReadFile(filePath)
+		if err != nil {
+			logger.Error().Err(err).Msgf("failed to read file %s", filePath)
+		}
+		if !bytes.Equal(currentContents, newContents) {
+			message := "File not properly formatted"
+			if rootValues.output == gitHub {
+				message = "::warning::" + message
+			}
+			fmt.Println(message)
+			return &UnformattedFileError{filePath: filePath}
+		}
+	} else {
+		err = os.WriteFile(filePath, newContents, fs.ModePerm)
+		if err != nil {
+			logger.Error().Err(err).Msgf("failed to write file %s", filePath)
+			return err
+		}
 	}
 
 	return nil
