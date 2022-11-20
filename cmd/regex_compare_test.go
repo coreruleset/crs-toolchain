@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -108,4 +109,56 @@ func (s *compareTestSuite) TestCompare_BothRuleIdAndAllFlagReturnsError() {
 	rootCmd.SetArgs([]string{"regex", "compare", "123456", "--all"})
 	_, err := rootCmd.ExecuteC()
 	s.EqualError(err, "expected either RULE_ID or flag, found both")
+}
+
+func (s *compareTestSuite) TestCompare_NoChange() {
+	read, write, err := os.Pipe()
+	s.NoError(err)
+
+	realStdout := os.Stdout
+	os.Stdout = write
+	defer func() {
+		os.Stdout = realStdout
+	}()
+
+	s.writeRuleFile("123456", `SecRule... "@rx foo" \
+id:123456`)
+	s.writeDataFile("123456.ra", "foo")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
+	_, err = rootCmd.ExecuteC()
+	s.NoError(err)
+
+	buffer := make([]byte, 1024)
+	_, err = read.Read(buffer)
+	s.NoError(err)
+
+	output := strings.Split(string(buffer), "\n")
+	s.Len(output, 2)
+	s.Equal("Regex of 123456 has not changed", output[0])
+}
+
+func (s *compareTestSuite) TestCompare_Change() {
+	read, write, err := os.Pipe()
+	s.NoError(err)
+
+	realStdout := os.Stdout
+	os.Stdout = write
+	defer func() {
+		os.Stdout = realStdout
+	}()
+
+	s.writeRuleFile("123456", `SecRule... "@rx oldfoo" \
+id:123456`)
+	s.writeDataFile("123456.ra", "foo")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
+	_, err = rootCmd.ExecuteC()
+	s.NoError(err)
+
+	buffer := make([]byte, 1024)
+	_, err = read.Read(buffer)
+	s.NoError(err)
+
+	output := strings.Split(string(buffer), "\n")
+	s.Len(output, 10)
+	s.Equal("Regex of 123456 has changed!", output[0])
 }
