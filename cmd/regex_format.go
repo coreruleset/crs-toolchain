@@ -26,7 +26,15 @@ type UnformattedFileError struct {
 }
 
 func (u *UnformattedFileError) Error() string {
-	return fmt.Sprintf("File not properly formatted: %s", u.filePath)
+	if u.HasPathInfo() {
+		return fmt.Sprintf("File not properly formatted: %s", u.filePath)
+	}
+
+	return "One or more files are not properly formatted"
+}
+
+func (u *UnformattedFileError) HasPathInfo() bool {
+	return u.filePath != ""
 }
 
 // formatCmd represents the generate command
@@ -100,7 +108,6 @@ scheme, as they don't correspond to any particular rule.`,
 				// Errors are not command related
 				cmd.SilenceErrors = true
 				cmd.SilenceUsage = true
-				logger.Error().Err(err).Msg("formatting failed")
 			}
 			return err
 		},
@@ -152,6 +159,7 @@ func processAll(ctxt *processors.Context, checkOnly bool) error {
 	if failed && rootValues.output == gitHub {
 		fmt.Println("::error::All assembly files need to be properly formatted.",
 			"Please run `crs-toolchain regex format --all")
+		return &UnformattedFileError{}
 
 	}
 	return nil
