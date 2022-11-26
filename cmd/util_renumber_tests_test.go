@@ -62,7 +62,8 @@ func (s *renumberTestsTestSuite) TestRenumberTests() {
 	  - test_title: 123456-1
 		desc: "test 1"
 	  - test_title: 123456-2
-		desc: "test 2"`
+		desc: "test 2"
+`
 	filePath := path.Join(s.testsDir, "123456.yaml")
 	err := os.WriteFile(filePath, []byte(contents), fs.ModePerm)
 	s.NoError(err)

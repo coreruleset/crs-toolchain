@@ -45,6 +45,11 @@ func RenumberTests(ctxt *context.Context) {
 
 func processFile(filePath string) error {
 	ruleId := path.Base(filePath)[0:6]
+	if !regex.RuleIdFileNameRegex.MatchString(ruleId) {
+		// Skip other files
+		return nil
+	}
+
 	logger.Info().Msgf("Processing %s", ruleId)
 
 	contents, err := os.ReadFile(filePath)
@@ -87,7 +92,5 @@ func processYaml(ruleId string, contents []byte) ([]byte, error) {
 	}
 
 	writer.Flush()
-	outputBytes := output.Bytes()
-	// remove the superfluous newline character
-	return outputBytes[:len(outputBytes)-1], nil
+	return output.Bytes(), nil
 }
