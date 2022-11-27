@@ -75,7 +75,7 @@ func (s *formatTestSuite) TestFormat_NoArgument() {
 	s.EqualError(err, "expected RULE_ID, INCLUDE_NAME, or flag, found nothing")
 }
 
-func (s *formatTestSuite) TestFormat_ArumentAndAllFlag() {
+func (s *formatTestSuite) TestFormat_ArgumentAndAllFlag() {
 	rootCmd.SetArgs([]string{"regex", "format", "shell-data", "--all"})
 	_, err := rootCmd.ExecuteC()
 
