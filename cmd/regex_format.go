@@ -117,7 +117,7 @@ scheme, as they don't correspond to any particular rule.`,
 func buildFormatCommand() {
 	regexCmd.AddCommand(formatCmd)
 	formatCmd.PersistentFlags().BoolP("all", "a", false, `Instead of supplying a RULE_ID, you can tell the script to
-format all data files (both regular and include files)`)
+format all assembly files (both regular and include files)`)
 	formatCmd.Flags().BoolP("check", "c", false, `Do not write changes, simply report on files that would be formatted`)
 }
 
@@ -156,11 +156,12 @@ func processAll(ctxt *processors.Context, checkOnly bool) error {
 		logger.Error().Err(err).Msg("failed to walk directories")
 		return err
 	}
-	if failed && rootValues.output == gitHub {
-		fmt.Println("::error::All assembly files need to be properly formatted.",
-			"Please run `crs-toolchain regex format --all")
+	if failed {
+		if rootValues.output == gitHub {
+			fmt.Println("::error::All assembly files need to be properly formatted.",
+				"Please run `crs-toolchain regex format --all")
+		}
 		return &UnformattedFileError{}
-
 	}
 	return nil
 }

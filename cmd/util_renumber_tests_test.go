@@ -10,12 +10,37 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
+	"github.com/coreruleset/crs-toolchain/util"
 )
 
 type renumberTestsTestSuite struct {
 	suite.Suite
 	tempDir  string
 	testsDir string
+}
+
+func (s *renumberTestsTestSuite) writeTestFile(filename string, contents string) {
+	err := os.WriteFile(path.Join(s.testsDir, filename), []byte(contents), fs.ModePerm)
+	s.NoError(err)
+}
+
+func (s *renumberTestsTestSuite) readTestFile(filename string) string {
+	contents, err := os.ReadFile(path.Join(s.testsDir, filename))
+	s.NoError(err)
+	return string(contents)
+}
+
+func (s *renumberTestsTestSuite) captureStdout() *os.File {
+	read, write, err := os.Pipe()
+	s.NoError(err)
+
+	realStdout := os.Stdout
+	os.Stdout = write
+	s.T().Cleanup(func() {
+		os.Stdout = realStdout
+	})
+	return read
 }
 
 func (s *renumberTestsTestSuite) SetupTest() {
@@ -44,36 +69,87 @@ func TestRunRenumberTestsTestSuite(t *testing.T) {
 	suite.Run(t, new(renumberTestsTestSuite))
 }
 
-func (s *renumberTestsTestSuite) TestRenumberTests() {
-	contents := `---
-	meta:
-	  enabled: true
-	  name: 123456.yaml
-	tests:
-	  - test_title: bapedibupi
-		desc: "test 1"
-	  - test_title: "pine apple"
-		desc: "test 2"`
-	expected := `---
-	meta:
-	  enabled: true
-	  name: 123456.yaml
-	tests:
-	  - test_title: 123456-1
-		desc: "test 1"
-	  - test_title: 123456-2
-		desc: "test 2"`
-	filePath := path.Join(s.testsDir, "123456.yaml")
-	err := os.WriteFile(filePath, []byte(contents), fs.ModePerm)
+func (s *renumberTestsTestSuite) TestRenumberTests_WithYaml() {
+	s.writeTestFile("123456.yaml", "test_title: homer")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
+	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests"})
-	cmd, err := rootCmd.ExecuteC()
+	actual := s.readTestFile("123456.yaml")
+	s.Equal("test_title: 123456-1\n", actual)
+}
+
+func (s *renumberTestsTestSuite) TestRenumberTests_WithYml() {
+	s.writeTestFile("123456.yml", "test_title: homer")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
+	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
+
+	actual := s.readTestFile("123456.yml")
+	s.Equal("test_title: 123456-1\n", actual)
+}
+
+func (s *renumberTestsTestSuite) TestRenumberTests_NormalRuleIdWith() {
+	s.writeTestFile("123456.yaml", "")
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
+	cmd, _ := rootCmd.ExecuteC()
+
 	s.Equal("renumber-tests", cmd.Name())
 
-	actualContents, err := os.ReadFile(filePath)
+	args := cmd.Flags().Args()
+	s.Len(args, 1)
+	s.Equal("123456", args[0])
+}
+
+func (s *renumberTestsTestSuite) TestRenumberTests_NoArgument() {
+	rootCmd.SetArgs([]string{"util", "renumber-tests"})
+	_, err := rootCmd.ExecuteC()
+
+	s.EqualError(err, "expected RULE_ID, or flag, found nothing")
+}
+
+func (s *renumberTestsTestSuite) TestRenumberTests_ArgumentAndAllFlag() {
+	rootCmd.SetArgs([]string{"util", "renumber-tests", "123456", "--all"})
+	_, err := rootCmd.ExecuteC()
+
+	s.EqualError(err, "expected RULE_ID, or flag, found multiple")
+}
+
+func (s *renumberTestsTestSuite) TestRenumberTests_Dash() {
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "-"})
+	_, err := rootCmd.ExecuteC()
+
+	s.EqualError(err, "invalid argument '-'")
+}
+
+func (s *renumberTestsTestSuite) TestRenumberTests_CheckOnly() {
+	contents := "test_title: homer"
+	s.writeTestFile("123456.yaml", contents)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "-c", "123456"})
+	_, err := rootCmd.ExecuteC()
+
+	s.EqualError(err, "Tests are not properly numbered")
+
+	actual := s.readTestFile("123456.yaml")
+	s.Equal(contents, actual)
+}
+
+func (s *renumberTestsTestSuite) TestRenumberTests_GitHubOutput() {
+	read := s.captureStdout()
+
+	contents := "test_title: homer"
+	s.writeTestFile("123456.yaml", contents)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "-cao", "github"})
+	_, err := rootCmd.ExecuteC()
+
+	s.ErrorIs(err, &util.TestNumberingError{})
+
+	buffer := make([]byte, 1024)
+	_, err = read.Read(buffer)
 	s.NoError(err)
 
-	s.Equal(expected, string(actualContents))
+	output := string(buffer)
+	s.Contains(output, "::warning::Test file not properly numbered")
+	s.Contains(output, "::error::")
+	s.Contains(output, "Please run `crs-toolchain util renumber-tests --all`")
 }
