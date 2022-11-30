@@ -21,12 +21,19 @@ type renumberTestsTestSuite struct {
 }
 
 func (s *renumberTestsTestSuite) writeTestFile(filename string, contents string) {
-	err := os.WriteFile(path.Join(s.testsDir, filename), []byte(contents), fs.ModePerm)
+	prefix := filename[0:3]
+	rulesDir := path.Join(s.testsDir, "_prefix_"+prefix+"_suffix_")
+	err := os.Mkdir(rulesDir, fs.ModePerm)
+	s.NoError(err)
+
+	err = os.WriteFile(path.Join(rulesDir, filename), []byte(contents), fs.ModePerm)
 	s.NoError(err)
 }
 
 func (s *renumberTestsTestSuite) readTestFile(filename string) string {
-	contents, err := os.ReadFile(path.Join(s.testsDir, filename))
+	prefix := filename[0:3]
+	rulesDir := path.Join(s.testsDir, "_prefix_"+prefix+"_suffix_")
+	contents, err := os.ReadFile(path.Join(rulesDir, filename))
 	s.NoError(err)
 	return string(contents)
 }

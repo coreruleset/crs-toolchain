@@ -88,7 +88,7 @@ func parseFilePath(ruleOrFileName string, ctxt *context.Context) (string, error)
 	// try to find the file and get the actual name from the file system.
 	extension := path.Ext(ruleOrFileName)
 	ruleOrFileName = ruleOrFileName[:len(ruleOrFileName)-len(extension)]
-	candidates, err := filepath.Glob(path.Join(ctxt.RegressionTestsDir(), ruleOrFileName) + ".*")
+	candidates, err := filepath.Glob(path.Join(ctxt.RegressionTestsDir(), "*", ruleOrFileName) + ".*")
 	if err != nil {
 		return "", err
 	}
