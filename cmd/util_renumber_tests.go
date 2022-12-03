@@ -50,6 +50,12 @@ RULE_ID is the ID of the rule, e.g., 932100, or the test file name.`,
 			if err != nil {
 				return err
 			}
+
+			// The following errors are not command related
+			cmd.SilenceUsage = true
+			if rootValues.output == gitHub {
+				cmd.SilenceErrors = true
+			}
 			ctxt := context.New(rootValues.workingDirectory.String())
 			renumberer := util.NewTestRenumberer()
 			if processAll {
