@@ -95,7 +95,7 @@ func (t *TestRenumberer) processFile(filePath string, checkOnly bool, gitHubOutp
 	}
 
 	if gitHubOutput {
-		fmt.Printf("::warning::Test file not properly numbered")
+		fmt.Printf("::warning::Test file not properly numbered: %s\n", path.Base(filePath))
 	}
 
 	if checkOnly {
