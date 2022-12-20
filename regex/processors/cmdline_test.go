@@ -31,9 +31,9 @@ func (s *cmdLineTestSuite) TestCmdLine_NewParser() {
 		},
 		cmdType: CmdLineUnix,
 		evasionPatterns: map[EvasionPatterns]string{
-			evasionPattern:        `[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?`,
-			suffixPattern:         `(?:\s|<|>).*`,
-			suffixExpandedCommand: `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?)+(?:\s|<|>)).*`,
+			evasionPattern:        `[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?`,
+			suffixPattern:         `[\s<>,].*`,
+			suffixExpandedCommand: `(?:[<>,]|(?:[\w\d._-][\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?)+[\s<>,]).*`,
 		},
 	}
 	actual := NewCmdLine(s.ctx, CmdLineUnix)
@@ -48,7 +48,7 @@ func (s *cmdLineTestSuite) TestCmdLine_CmdLineTypeFromString() {
 
 	err = cmd.ProcessLine(`foo`)
 	s.NoError(err)
-	s.Equal(`f[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o`, cmd.proc.lines[0])
+	s.Equal(`f[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?o[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?o`, cmd.proc.lines[0])
 
 	t, err = CmdLineTypeFromString("windows")
 	s.NoError(err)
@@ -71,7 +71,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
 	err := cmd.ProcessLine(`foo`)
 
 	s.NoError(err)
-	s.Equal(`f[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?o`, cmd.proc.lines[0])
+	s.Equal(`f[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?o[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?o`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
@@ -80,7 +80,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
 	err := cmd.ProcessLine(`gcc-10.`)
 	s.NoError(err)
 
-	s.Equal(`g[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?c[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?c[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?\-[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?1[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?0[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?\.`, cmd.proc.lines[0])
+	s.Equal(`g[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?c[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?c[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?\-[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?1[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?0[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?\.`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {

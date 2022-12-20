@@ -59,9 +59,13 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 	// The Unix evasion patterns, were extended per decision in https://github.com/coreruleset/coreruleset/issues/2632.
 	switch cmdType {
 	case CmdLineUnix:
-		a.evasionPatterns[evasionPattern] = `[\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?`
-		// CmdLineUnix: "cat foo", "cat<foo", "cat>foo"
-		a.evasionPatterns[suffixPattern] = `(?:\s|<|>).*`
+		// - [\x5c'\"\[]: common evasion tokens and path expansion, e.g. `/bin/[c]''a""\t`
+		// - \|\||&&)\s*: hiding of empty variables through logial operators, e.g., `nc&&$u -p 777`
+		// - \$[a-z0-9_@?!#{*-]*: empty variable evasion, e.g. `n\$uc -p 777`
+		a.evasionPatterns[evasionPattern] = `[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?`
+		// - <>: redirection, e.g., `cat<foo`
+		// - ,: brace expansion, e.g., `""{nc,-p,777}`
+		a.evasionPatterns[suffixPattern] = `[\s<>,].*`
 		// Same as above but does not allow any white space as the next token.
 		// This is useful for words like `python3`, where `python@` would
 		// create too many false positives because it would match `python `.
@@ -72,12 +76,12 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 		//
 		// It will _not_ match:
 		// python foo
-		a.evasionPatterns[suffixExpandedCommand] = `(?:(?:<|>)|(?:[\w\d._-][\x5c'\"\[]*(?:\$[a-z0-9_@?!#{*-]*)?(?:\x5c)?)+(?:\s|<|>)).*`
+		a.evasionPatterns[suffixExpandedCommand] = `(?:[<>,]|(?:[\w\d._-][\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?)+[\s<>,]).*`
 	case CmdLineWindows:
 		a.evasionPatterns[evasionPattern] = `[\"\^]*`
-		// CmdLineWindows: "more foo", "more,foo", "more;foo", "more.com", "more/e",
+		// "more foo", "more,foo", "more;foo", "more.com", "more/e",
 		// "more<foo", "more>foo"
-		a.evasionPatterns[suffixPattern] = `(?:[\s,;]|\.|/|<|>).*`
+		a.evasionPatterns[suffixPattern] = `[\s,;./<>].*`
 		// Same as above but does not allow any white space as the next token.
 		// This is useful for words like `python3`, where `python@` would
 		// create too many false positives because it would match `python `.
@@ -88,7 +92,7 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 		//
 		// It will _not_ match:
 		// python foo
-		a.evasionPatterns[suffixExpandedCommand] = `(?:(?:[,;]|\.|/|<|>)|(?:[\w\d._-][\"\^]*)+(?:[\s,;]|\.|/|<|>)).*`
+		a.evasionPatterns[suffixExpandedCommand] = `(?:[,;./<>]|(?:[\w\d._-][\"\^]*)+[\s,;./<>]).*`
 	}
 
 	return a
