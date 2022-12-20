@@ -343,7 +343,7 @@ five
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r|one|t(?:wo|hree)`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r|one|t(?:wo|hree)`, output)
 }
 
 func (s *preprocessorsTestSuite) TestNestedPreprocessors() {
@@ -361,7 +361,7 @@ five
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r`, output)
 }
 
 func (s *preprocessorsTestSuite) TestComplexNestedPreprocessors() {
@@ -390,7 +390,7 @@ eight
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o(?:ab|cd|b[\"\^]*a[\"\^]*r)|our|ive)|s(?:ix|even)|eight`, output)
+	s.Equal(`f(?:[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o(?:ab|cd|b[\"\^]*a[\"\^]*r)|our|ive)|s(?:ix|even)|eight`, output)
 }
 
 func (s *definitionsTestSuite) TestDefinition_ReplacesDefinition() {
