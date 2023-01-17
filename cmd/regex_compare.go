@@ -110,7 +110,7 @@ func rebuildCompareCommand() {
 func performCompare(processAll bool, ctx *processors.Context) error {
 	failed := false
 	if processAll {
-		err := filepath.WalkDir(ctx.RootContext().DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
+		err := filepath.WalkDir(ctx.RootContext().AssemblyDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
 				// fail
 				return err
@@ -152,7 +152,7 @@ func performCompare(processAll bool, ctx *processors.Context) error {
 			return &ComparisonError{}
 		}
 	} else {
-		regex := runAssemble(path.Join(ctx.RootContext().DataDir(), ruleValues.fileName), ctx)
+		regex := runAssemble(path.Join(ctx.RootContext().AssemblyDir(), ruleValues.fileName), ctx)
 		return processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
 	}
 	return nil

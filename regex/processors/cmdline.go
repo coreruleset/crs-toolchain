@@ -55,17 +55,12 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 	// Now add evasion patterns
 	// We will insert these sequences between characters to prevent evasion.
 	// This emulates the relevant parts of t:cmdLine for Unix and Windows.
-	//
-	// The Unix evasion patterns, were extended per decision in https://github.com/coreruleset/coreruleset/issues/2632.
 	switch cmdType {
 	case CmdLineUnix:
-		// - [\x5c'\"\[]: common evasion tokens and path expansion, e.g. `/bin/[c]''a""\t`
-		// - \|\||&&)\s*: hiding of empty variables through logial operators, e.g., `nc&&$u -p 777`
-		// - \$[a-z0-9_@?!#{*-]*: empty variable evasion, e.g. `n\$uc -p 777`
-		a.evasionPatterns[evasionPattern] = `[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?`
-		// - <>: redirection, e.g., `cat<foo`
-		// - ,: brace expansion, e.g., `""{nc,-p,777}`
-		a.evasionPatterns[suffixPattern] = `[\s<>,].*`
+		// matches tokens after each token that are added to evade detection
+		a.evasionPatterns[evasionPattern] = ctx.rootContext.Configuration().Patterns.AntiEvasion.Unix
+		// matches end of the command, someting like space, brace expansion or redirect must follow
+		a.evasionPatterns[suffixPattern] = ctx.rootContext.Configuration().Patterns.AntiEvasionSuffix.Unix
 		// Same as above but does not allow any white space as the next token.
 		// This is useful for words like `python3`, where `python@` would
 		// create too many false positives because it would match `python `.
@@ -76,12 +71,12 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 		//
 		// It will _not_ match:
 		// python foo
-		a.evasionPatterns[suffixExpandedCommand] = `(?:[<>,]|(?:[\w\d._-][\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?)+[\s<>,]).*`
+		a.evasionPatterns[suffixExpandedCommand] = ctx.rootContext.Configuration().Patterns.AntiEvasionNoSpaceSuffix.Unix
 	case CmdLineWindows:
-		a.evasionPatterns[evasionPattern] = `[\"\^]*`
-		// "more foo", "more,foo", "more;foo", "more.com", "more/e",
-		// "more<foo", "more>foo"
-		a.evasionPatterns[suffixPattern] = `[\s,;./<>].*`
+		// matches tokens after each token that are added to evade detection
+		a.evasionPatterns[evasionPattern] = ctx.rootContext.Configuration().Patterns.AntiEvasion.Windows
+		// matches end of the command, someting like space, brace expansion or redirect must follow
+		a.evasionPatterns[suffixPattern] = ctx.rootContext.Configuration().Patterns.AntiEvasionSuffix.Windows
 		// Same as above but does not allow any white space as the next token.
 		// This is useful for words like `python3`, where `python@` would
 		// create too many false positives because it would match `python `.
@@ -92,7 +87,7 @@ func NewCmdLine(ctx *Context, cmdType CmdLineType) *CmdLine {
 		//
 		// It will _not_ match:
 		// python foo
-		a.evasionPatterns[suffixExpandedCommand] = `(?:[,;./<>]|(?:[\w\d._-][\"\^]*)+[\s,;./<>]).*`
+		a.evasionPatterns[suffixExpandedCommand] = ctx.rootContext.Configuration().Patterns.AntiEvasionNoSpaceSuffix.Windows
 	}
 
 	return a

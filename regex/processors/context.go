@@ -43,3 +43,8 @@ func (ctx *Context) Dump(w io.Writer) {
 func (ctx *Context) RootContext() *context.Context {
 	return ctx.rootContext
 }
+
+func (ctx *Context) WithRootContext(context *context.Context) *Context {
+	ctx.rootContext = context
+	return ctx
+}

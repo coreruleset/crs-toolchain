@@ -66,7 +66,7 @@ from stdin.`,
 					logger.Fatal().Err(err).Msg("Failed to read from stdin")
 				}
 			} else {
-				filePath := path.Join(ctxt.RootContext().DataDir(), ruleValues.fileName)
+				filePath := path.Join(ctxt.RootContext().AssemblyDir(), ruleValues.fileName)
 				logger.Trace().Msgf("Reading from %s", filePath)
 				input, err = os.ReadFile(filePath)
 				if err != nil {

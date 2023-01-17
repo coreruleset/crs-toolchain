@@ -52,7 +52,7 @@ func (s *assembleTestSuite) TestNewAssemble() {
 
 	s.NotNil(assemble)
 	s.Equal(assemble.proc.ctx.RootContext().RootDir(), s.tempDir)
-	s.Equal(assemble.proc.ctx.RootContext().DataDir(), s.tempDir+"/regex-assembly")
+	s.Equal(assemble.proc.ctx.RootContext().AssemblyDir(), s.tempDir+"/regex-assembly")
 }
 
 func (s *assembleTestSuite) TestAssemble_MultipleLines() {

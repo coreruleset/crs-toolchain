@@ -92,7 +92,7 @@ func rebuildUpdateCommand() {
 
 func performUpdate(processAll bool, ctx *processors.Context) {
 	if processAll {
-		err := filepath.WalkDir(ctx.RootContext().DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
+		err := filepath.WalkDir(ctx.RootContext().AssemblyDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
 				// fail
 				return err
@@ -122,7 +122,7 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 			logger.Fatal().Err(err).Msg("Failed to perform rule update(s)")
 		}
 	} else {
-		filePath := path.Join(ctx.RootContext().DataDir(), ruleValues.fileName)
+		filePath := path.Join(ctx.RootContext().AssemblyDir(), ruleValues.fileName)
 		processRule(ruleValues.id, ruleValues.chainOffset, filePath, ctx)
 	}
 }

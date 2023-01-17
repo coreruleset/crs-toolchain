@@ -3,21 +3,32 @@
 
 package context
 
+import (
+	"github.com/coreruleset/crs-toolchain/configuration"
+)
+
 type Context struct {
 	rootDirectory                string
 	rulesDirectory               string
-	dataFilesDirectory           string
+	assemblyFilesDirectory       string
 	includeFilesDirectory        string
 	regressionTestFilesDirectory string
+	configuration                *configuration.Configuration
 }
 
 func New(rootDir string) *Context {
+	assemblyFilesDirectory := rootDir + "/regex-assembly"
+	return NewWithConfiguration(rootDir, configuration.New(assemblyFilesDirectory))
+}
+
+func NewWithConfiguration(rootDir string, configuration *configuration.Configuration) *Context {
 	return &Context{
 		rootDirectory:                rootDir,
 		rulesDirectory:               rootDir + "/rules",
-		dataFilesDirectory:           rootDir + "/regex-assembly",
+		assemblyFilesDirectory:       rootDir + "/regex-assembly",
 		includeFilesDirectory:        rootDir + "/regex-assembly/include",
 		regressionTestFilesDirectory: rootDir + "/tests/regression/tests",
+		configuration:                configuration,
 	}
 }
 
@@ -26,13 +37,13 @@ func (ctx *Context) RootDir() string {
 	return ctx.rootDirectory
 }
 
-// DataDir returns the 'data' directory.
-func (ctx *Context) DataDir() string {
-	return ctx.dataFilesDirectory
+// DataDir returns the 'regex-assembly' directory.
+func (ctx *Context) AssemblyDir() string {
+	return ctx.assemblyFilesDirectory
 }
 
 // IncludeDir returns the 'include' directory. Used to include files that don't have an absolute path.
-func (ctx *Context) IncludeDir() string {
+func (ctx *Context) IncludesDir() string {
 	return ctx.includeFilesDirectory
 }
 
@@ -44,4 +55,8 @@ func (ctx *Context) RulesDir() string {
 // RegressionTestsDir returns the 'tests' directory of regression tests.
 func (ctx *Context) RegressionTestsDir() string {
 	return ctx.regressionTestFilesDirectory
+}
+
+func (ctx *Context) Configuration() *configuration.Configuration {
+	return ctx.configuration
 }
