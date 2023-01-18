@@ -6,7 +6,6 @@ package processors
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/coreruleset/crs-toolchain/context"
 )
@@ -19,15 +18,9 @@ type Context struct {
 }
 
 // NewContext creates a new processor context using the `rootDir` as the root directory.
-func NewContext(rootDir string) *Context {
-	// check if directory exists first
-	_, err := os.Stat(rootDir)
-	if err != nil {
-		logger.Fatal().Err(err).Msgf("creating context: problem using %s as base directory.", rootDir)
-	}
-
+func NewContext(rootContext *context.Context) *Context {
 	return &Context{
-		rootContext:       context.New(rootDir),
+		rootContext:       rootContext,
 		singleRuleID:      0,
 		singleChainOffset: false,
 		stash:             map[string]string{},
@@ -42,9 +35,4 @@ func (ctx *Context) Dump(w io.Writer) {
 // RootContext returns the root context of the toolchain
 func (ctx *Context) RootContext() *context.Context {
 	return ctx.rootContext
-}
-
-func (ctx *Context) WithRootContext(context *context.Context) *Context {
-	ctx.rootContext = context
-	return ctx
 }

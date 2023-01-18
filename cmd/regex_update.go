@@ -17,6 +17,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex"
 	"github.com/coreruleset/crs-toolchain/regex/operators"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
@@ -64,7 +65,8 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			ctxt := processors.NewContext(rootValues.workingDirectory.String())
+			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+			ctxt := processors.NewContext(rootContext)
 			processAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
 				logger.Fatal().Err(err).Msg("Failed to read value for 'all' flag")
@@ -129,7 +131,8 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 
 func runAssemble(filePath string, ctx *processors.Context) string {
 	// FIXME: duplicated in generate.go
-	ctxt := processors.NewContext(rootValues.workingDirectory.String())
+	rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+	ctxt := processors.NewContext(rootContext)
 	assembler := operators.NewAssembler(ctxt)
 	var input []byte
 	var err error

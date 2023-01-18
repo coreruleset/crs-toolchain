@@ -16,9 +16,9 @@ type Context struct {
 	configuration                *configuration.Configuration
 }
 
-func New(rootDir string) *Context {
-	assemblyFilesDirectory := rootDir + "/regex-assembly"
-	return NewWithConfiguration(rootDir, configuration.New(assemblyFilesDirectory))
+func New(rootDir string, configurationFileName string) *Context {
+	configurationDirectory := rootDir + "/regex-assembly"
+	return NewWithConfiguration(rootDir, configuration.New(configurationDirectory, configurationFileName))
 }
 
 func NewWithConfiguration(rootDir string, configuration *configuration.Configuration) *Context {

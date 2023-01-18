@@ -19,9 +19,8 @@ type cmdLineTestSuite struct {
 }
 
 func (s *cmdLineTestSuite) SetupTest() {
-	s.ctx = NewContext(os.TempDir())
-	rootContext := context.NewWithConfiguration(s.ctx.rootContext.RootDir(), s.newTestConfiguration())
-	s.ctx.rootContext = rootContext
+	rootContext := context.NewWithConfiguration(os.TempDir(), s.newTestConfiguration())
+	s.ctx = NewContext(rootContext)
 }
 
 func (s *cmdLineTestSuite) newTestConfiguration() *configuration.Configuration {

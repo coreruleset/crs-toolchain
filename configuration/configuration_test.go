@@ -52,7 +52,7 @@ func TestRunconfigurationTestSuite(t *testing.T) {
 func (s *configurationTestSuite) TestReadingConfiguration() {
 	s.writeConfig(newTestConfiguration())
 
-	readConfiguration := New(s.assemblyDir)
+	readConfiguration := New(s.assemblyDir, "toolchain.yaml")
 	s.NotNil(readConfiguration)
 	s.Equal(readConfiguration, newTestConfiguration())
 }

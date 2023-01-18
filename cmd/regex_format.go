@@ -16,6 +16,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex"
 	"github.com/coreruleset/crs-toolchain/regex/parser"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
@@ -78,7 +79,8 @@ scheme, as they don't correspond to any particular rule.`,
 			return nil
 		}),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctxt := processors.NewContext(rootValues.workingDirectory.String())
+			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+			ctxt := processors.NewContext(rootContext)
 			formatAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to read all flag")

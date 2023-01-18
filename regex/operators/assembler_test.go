@@ -39,7 +39,8 @@ func (s *assemblerTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "assemble-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *assemblerTestSuite) TearDownSuite() {
@@ -51,7 +52,8 @@ func (s *fileFormatTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "file-format-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *fileFormatTestSuite) TearDownSuite() {
@@ -63,7 +65,8 @@ func (s *specialCommentsTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "special-comments-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *specialCommentsTestSuite) TearDownSuite() {
@@ -75,7 +78,8 @@ func (s *specialCasesTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "special-cases-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *specialCasesTestSuite) TearDownSuite() {
@@ -87,7 +91,8 @@ func (s *definitionsTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "definitions-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *definitionsTestSuite) TearDownSuite() {
@@ -101,7 +106,7 @@ func (s *preprocessorsTestSuite) SetupSuite() {
 	s.NoError(err)
 
 	rootContext := context.NewWithConfiguration(s.tempDir, s.newTestConfiguration())
-	s.ctx = processors.NewContext(s.tempDir).WithRootContext(rootContext)
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *preprocessorsTestSuite) TearDownSuite() {

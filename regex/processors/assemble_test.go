@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
+	"github.com/coreruleset/crs-toolchain/context"
 )
 
 type assembleTestSuite struct {
@@ -22,7 +24,8 @@ func (suite *assembleTestSuite) SetupSuite() {
 	var err error
 	suite.tempDir, err = os.MkdirTemp("", "assemble-test")
 	suite.NoError(err)
-	suite.ctx = NewContext(suite.tempDir)
+	rootContext := context.New(suite.tempDir, "toolchain.yaml")
+	suite.ctx = NewContext(rootContext)
 }
 
 func (suite *assembleTestSuite) TearDownSuite() {
@@ -34,7 +37,8 @@ func (suite *fileFormatTestSuite) SetupSuite() {
 	var err error
 	suite.tempDir, err = os.MkdirTemp("", "file-format-test")
 	suite.NoError(err)
-	suite.ctx = NewContext(suite.tempDir)
+	rootContext := context.New(suite.tempDir, "toolchain.yaml")
+	suite.ctx = NewContext(rootContext)
 }
 
 func (suite *fileFormatTestSuite) TearDownSuite() {

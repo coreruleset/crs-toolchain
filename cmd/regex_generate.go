@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex/operators"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
@@ -55,7 +56,8 @@ from stdin.`,
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			ctxt := processors.NewContext(rootValues.workingDirectory.String())
+			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+			ctxt := processors.NewContext(rootContext)
 			assembler := operators.NewAssembler(ctxt)
 			var input []byte
 			var err error

@@ -25,8 +25,8 @@ type Pattern struct {
 	Windows string
 }
 
-func New(directory string) *Configuration {
-	configFilePath := filepath.Join(directory, "toolchain.yaml")
+func New(directory string, filename string) *Configuration {
+	configFilePath := filepath.Join(directory, filename)
 	newConfiguration := &Configuration{}
 
 	file, err := os.Open(configFilePath)

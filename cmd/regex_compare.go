@@ -18,6 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
@@ -74,7 +75,8 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctxt := processors.NewContext(rootValues.workingDirectory.String())
+			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+			ctxt := processors.NewContext(rootContext)
 			processAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
 				logger.Error().Err(err).Msg("Failed to read value for 'all' flag")
