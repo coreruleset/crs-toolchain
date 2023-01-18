@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/coreruleset/crs-toolchain/configuration"
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
@@ -37,7 +39,8 @@ func (s *assemblerTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "assemble-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *assemblerTestSuite) TearDownSuite() {
@@ -49,7 +52,8 @@ func (s *fileFormatTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "file-format-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *fileFormatTestSuite) TearDownSuite() {
@@ -61,7 +65,8 @@ func (s *specialCommentsTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "special-comments-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *specialCommentsTestSuite) TearDownSuite() {
@@ -73,7 +78,8 @@ func (s *specialCasesTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "special-cases-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *specialCasesTestSuite) TearDownSuite() {
@@ -85,12 +91,46 @@ func (s *definitionsTestSuite) SetupSuite() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "definitions-test")
 	s.NoError(err)
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *definitionsTestSuite) TearDownSuite() {
 	err := os.RemoveAll(s.tempDir)
 	s.NoError(err)
+}
+
+func (s *preprocessorsTestSuite) SetupSuite() {
+	var err error
+	s.tempDir, err = os.MkdirTemp("", "preprocessor-test")
+	s.NoError(err)
+
+	rootContext := context.NewWithConfiguration(s.tempDir, s.newTestConfiguration())
+	s.ctx = processors.NewContext(rootContext)
+}
+
+func (s *preprocessorsTestSuite) TearDownSuite() {
+	err := os.RemoveAll(s.tempDir)
+	s.NoError(err)
+}
+
+func (s *preprocessorsTestSuite) newTestConfiguration() *configuration.Configuration {
+	return &configuration.Configuration{
+		Patterns: configuration.Patterns{
+			AntiEvasion: configuration.Pattern{
+				Unix:    "_av-u_",
+				Windows: "_av-w_",
+			},
+			AntiEvasionSuffix: configuration.Pattern{
+				Unix:    "_av-u-suffix_",
+				Windows: "_av-w-suffix_",
+			},
+			AntiEvasionNoSpaceSuffix: configuration.Pattern{
+				Unix:    "_av-ns-u-suffix_",
+				Windows: "_av-ns-w-suffix_",
+			},
+		},
+	}
 }
 
 func (s *fileFormatTestSuite) TestPreprocessIgnoresSimpleComments() {
@@ -343,7 +383,7 @@ five
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r|one|t(?:wo|hree)`, output)
+	s.Equal(`f(?:_av-u_o_av-u_o|our|ive)|b_av-w_a_av-w_r|one|t(?:wo|hree)`, output)
 }
 
 func (s *preprocessorsTestSuite) TestNestedPreprocessors() {
@@ -361,7 +401,7 @@ five
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o|our|ive)|b[\"\^]*a[\"\^]*r`, output)
+	s.Equal(`f(?:_av-u_o_av-u_o|our|ive)|b_av-w_a_av-w_r`, output)
 }
 
 func (s *preprocessorsTestSuite) TestComplexNestedPreprocessors() {
@@ -390,7 +430,7 @@ eight
 
 	output, err := assembler.Run(contents)
 	s.NoError(err)
-	s.Equal(`f(?:[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o[\"'\[-\x5c]*(?:(?:(?:\|\||&&)[\s\v]*)?\$[!#\*\-0-9\?-@_a-\{]*)?\x5c?o(?:ab|cd|b[\"\^]*a[\"\^]*r)|our|ive)|s(?:ix|even)|eight`, output)
+	s.Equal(`f(?:_av-u_o_av-u_o(?:ab|cd|b_av-w_a_av-w_r)|our|ive)|s(?:ix|even)|eight`, output)
 }
 
 func (s *definitionsTestSuite) TestDefinition_ReplacesDefinition() {

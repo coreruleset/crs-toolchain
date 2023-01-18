@@ -17,6 +17,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
@@ -35,8 +36,9 @@ func TestRunParserTestSuite(t *testing.T) {
 }
 
 func (s *parserTestSuite) TestParser_NewParser() {
+	rootContext := context.New(os.TempDir(), "toolchain.yaml")
 	expected := &Parser{
-		ctx:       processors.NewContext(os.TempDir()),
+		ctx:       processors.NewContext(rootContext),
 		src:       s.reader,
 		dest:      &bytes.Buffer{},
 		Flags:     make(map[rune]bool),
@@ -52,14 +54,15 @@ func (s *parserTestSuite) TestParser_NewParser() {
 			suffixPatternName:     regex.SuffixRegex,
 		},
 	}
-	actual := NewParser(processors.NewContext(os.TempDir()), s.reader)
+	actual := NewParser(processors.NewContext(rootContext), s.reader)
 
 	s.Equal(expected, actual)
 }
 
 func (s *parserTestSuite) TestParser_ParseTwoComments() {
 	reader := strings.NewReader("##! This is a comment.\n##! This is another line.\n")
-	parser := NewParser(processors.NewContext(os.TempDir()), reader)
+	rootContext := context.New(os.TempDir(), "toolchain.yaml")
+	parser := NewParser(processors.NewContext(rootContext), reader)
 
 	actual, n := parser.Parse(false)
 	expected := bytes.NewBufferString("")
@@ -71,7 +74,8 @@ func (s *parserTestSuite) TestParser_ParseTwoComments() {
 func (s *parserTestSuite) TestIgnoresEmptyLines() {
 	contents := "some line\n\nanother line"
 	reader := strings.NewReader(contents)
-	parser := NewParser(processors.NewContext(os.TempDir()), reader)
+	rootContext := context.New(os.TempDir(), "toolchain.yaml")
+	parser := NewParser(processors.NewContext(rootContext), reader)
 	actual, n := parser.Parse(false)
 
 	expected := "some line\nanother line\n"
@@ -82,7 +86,8 @@ func (s *parserTestSuite) TestIgnoresEmptyLines() {
 func (s *parserTestSuite) TestPanicsOnUnrecognizedFlag() {
 	contents := "##!+ flag"
 	reader := strings.NewReader(contents)
-	parser := NewParser(processors.NewContext(os.TempDir()), reader)
+	rootContext := context.New(os.TempDir(), "toolchain.yaml")
+	parser := NewParser(processors.NewContext(rootContext), reader)
 
 	s.PanicsWithValue("flag 'f' is not supported", func() { parser.Parse(false) }, "should panic because flags are not supported")
 
@@ -106,7 +111,8 @@ func (s *parserIncludeTestSuite) SetupTest() {
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.NoError(err)
 
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 	s.includeFile, err = os.Create(path.Join(s.includeDir, "test.ra"))
 	s.NoError(err, "couldn't create %s file", s.includeFile.Name())
 }
@@ -234,7 +240,8 @@ func (s *parserMultiIncludeTestSuite) SetupSuite() {
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.NoError(err)
 
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 	for i := 0; i < 4; i++ {
 		file, err := os.Create(path.Join(s.includeDir, fmt.Sprintf("multi-include-%d.ra", i)))
 		s.NoError(err, "couldn't create %s file", file.Name())
@@ -277,7 +284,8 @@ type parserDefinitionTestSuite struct {
 }
 
 func (s *parserDefinitionTestSuite) SetupSuite() {
-	s.ctx = processors.NewContext(os.TempDir())
+	rootContext := context.New(os.TempDir(), "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 	s.reader = strings.NewReader("##!> define this-is-a-text [a-zA-J]+8\n" +
 		"##!> define this-is-another-text [0-9](pine|apple)\n" +
 		"{{this-is-a-text}} to see if definitions work.\n" +
@@ -314,7 +322,8 @@ func (s *parserIncludeWithDefinitions) SetupSuite() {
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.NoError(err)
 
-	s.ctx = processors.NewContext(s.tempDir)
+	rootContext := context.New(os.TempDir(), "toolchain.yaml")
+	s.ctx = processors.NewContext(rootContext)
 	for i := 0; i < 4; i++ {
 		file, err := os.Create(path.Join(s.tempDir, fmt.Sprintf("multi-definitions-%d.ra", i)))
 		s.NoError(err, "couldn't create %s file", file.Name())
@@ -366,7 +375,8 @@ func (s *parserIncludeWithDefinitions) TestParser_DanglingDefinitions() {
 	logger = log.With().Str("component", "parser-test").Logger()
 
 	reader := strings.NewReader("##!> define hello world\n{{hello}}\n{{hallo}}\n")
-	parser := NewParser(processors.NewContext(os.TempDir()), reader)
+	rootContext := context.New(os.TempDir(), "toolchain.yaml")
+	parser := NewParser(processors.NewContext(rootContext), reader)
 
 	actual, _ := parser.Parse(false)
 	expected := bytes.NewBufferString("world\n{{hallo}}\n")

@@ -16,6 +16,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex"
 	"github.com/coreruleset/crs-toolchain/regex/parser"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
@@ -78,7 +79,8 @@ scheme, as they don't correspond to any particular rule.`,
 			return nil
 		}),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctxt := processors.NewContext(rootValues.workingDirectory.String())
+			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+			ctxt := processors.NewContext(rootContext)
 			formatAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to read all flag")
@@ -97,9 +99,9 @@ scheme, as they don't correspond to any particular rule.`,
 				if path.Ext(filename) == "" {
 					filename += ".ra"
 				}
-				filePath := path.Join(ctxt.RootContext().IncludeDir(), filename)
+				filePath := path.Join(ctxt.RootContext().IncludesDir(), filename)
 				if err = parseRuleId(filename); err == nil {
-					filePath = path.Join(ctxt.RootContext().DataDir(), ruleValues.fileName)
+					filePath = path.Join(ctxt.RootContext().AssemblyDir(), ruleValues.fileName)
 				}
 				err = processFile(filePath, ctxt, checkOnly)
 			}
@@ -132,7 +134,7 @@ func rebuildFormatCommand() {
 
 func processAll(ctxt *processors.Context, checkOnly bool) error {
 	failed := false
-	err := filepath.WalkDir(ctxt.RootContext().DataDir(), func(filePath string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(ctxt.RootContext().AssemblyDir(), func(filePath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// abort
 			logger.Error().Err(err).Msg("failed to walk directories")

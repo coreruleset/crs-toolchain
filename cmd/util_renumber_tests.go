@@ -56,7 +56,7 @@ RULE_ID is the ID of the rule, e.g., 932100, or the test file name.`,
 			if rootValues.output == gitHub {
 				cmd.SilenceErrors = true
 			}
-			ctxt := context.New(rootValues.workingDirectory.String())
+			ctxt := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
 			renumberer := util.NewTestRenumberer()
 			if processAll {
 				return renumberer.RenumberTests(checkOnly, rootValues.output == gitHub, ctxt)

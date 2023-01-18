@@ -17,6 +17,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex"
 	"github.com/coreruleset/crs-toolchain/regex/operators"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
@@ -64,7 +65,8 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			ctxt := processors.NewContext(rootValues.workingDirectory.String())
+			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+			ctxt := processors.NewContext(rootContext)
 			processAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
 				logger.Fatal().Err(err).Msg("Failed to read value for 'all' flag")
@@ -92,7 +94,7 @@ func rebuildUpdateCommand() {
 
 func performUpdate(processAll bool, ctx *processors.Context) {
 	if processAll {
-		err := filepath.WalkDir(ctx.RootContext().DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
+		err := filepath.WalkDir(ctx.RootContext().AssemblyDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
 				// fail
 				return err
@@ -122,14 +124,15 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 			logger.Fatal().Err(err).Msg("Failed to perform rule update(s)")
 		}
 	} else {
-		filePath := path.Join(ctx.RootContext().DataDir(), ruleValues.fileName)
+		filePath := path.Join(ctx.RootContext().AssemblyDir(), ruleValues.fileName)
 		processRule(ruleValues.id, ruleValues.chainOffset, filePath, ctx)
 	}
 }
 
 func runAssemble(filePath string, ctx *processors.Context) string {
 	// FIXME: duplicated in generate.go
-	ctxt := processors.NewContext(rootValues.workingDirectory.String())
+	rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+	ctxt := processors.NewContext(rootContext)
 	assembler := operators.NewAssembler(ctxt)
 	var input []byte
 	var err error

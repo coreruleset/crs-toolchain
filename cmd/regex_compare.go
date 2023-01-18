@@ -18,6 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
@@ -74,7 +75,8 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctxt := processors.NewContext(rootValues.workingDirectory.String())
+			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+			ctxt := processors.NewContext(rootContext)
 			processAll, err := cmd.Flags().GetBool("all")
 			if err != nil {
 				logger.Error().Err(err).Msg("Failed to read value for 'all' flag")
@@ -110,7 +112,7 @@ func rebuildCompareCommand() {
 func performCompare(processAll bool, ctx *processors.Context) error {
 	failed := false
 	if processAll {
-		err := filepath.WalkDir(ctx.RootContext().DataDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
+		err := filepath.WalkDir(ctx.RootContext().AssemblyDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
 				// fail
 				return err
@@ -152,7 +154,7 @@ func performCompare(processAll bool, ctx *processors.Context) error {
 			return &ComparisonError{}
 		}
 	} else {
-		regex := runAssemble(path.Join(ctx.RootContext().DataDir(), ruleValues.fileName), ctx)
+		regex := runAssemble(path.Join(ctx.RootContext().AssemblyDir(), ruleValues.fileName), ctx)
 		return processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
 	}
 	return nil

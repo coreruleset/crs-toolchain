@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
+	"github.com/coreruleset/crs-toolchain/context"
 )
 
 type processorTestSuite struct {
@@ -16,7 +18,8 @@ type processorTestSuite struct {
 }
 
 func (s *processorTestSuite) SetupTest() {
-	s.ctx = NewContext(os.TempDir())
+	rootContext := context.New(os.TempDir(), "toolchain.yaml")
+	s.ctx = NewContext(rootContext)
 }
 
 func TestRunProcessorTestSuite(t *testing.T) {

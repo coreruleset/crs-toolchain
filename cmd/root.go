@@ -17,9 +17,10 @@ const defaultLogLevel = zerolog.InfoLevel
 var rootCmd = createRootCommand()
 var logger = log.With().Str("component", "cmd").Logger()
 var rootValues = struct {
-	output           outputType
-	logLevel         logLevel
-	workingDirectory workingDirectory
+	output                outputType
+	logLevel              logLevel
+	workingDirectory      workingDirectory
+	configurationFileName configurationFileName
 }{}
 
 func Execute() {
@@ -35,13 +36,15 @@ func init() {
 		logger.Fatal().Err(err).Msg("Failed to resolve working directory")
 	}
 	rootValues = struct {
-		output           outputType
-		logLevel         logLevel
-		workingDirectory workingDirectory
+		output                outputType
+		logLevel              logLevel
+		workingDirectory      workingDirectory
+		configurationFileName configurationFileName
 	}{
-		output:           text,
-		logLevel:         logLevel(defaultLogLevel.String()),
-		workingDirectory: workingDirectory(cwd),
+		output:                text,
+		logLevel:              logLevel(defaultLogLevel.String()),
+		workingDirectory:      workingDirectory(cwd),
+		configurationFileName: configurationFileName("toolchain.yaml"),
 	}
 
 	buildRootCommand()
@@ -56,11 +59,14 @@ func createRootCommand() *cobra.Command {
 
 func buildRootCommand() {
 	rootCmd.PersistentFlags().VarP(&rootValues.logLevel, "log-level", "l",
-		`Set the application log level. Default: 'info'.
-Options: 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic', 'disabled`)
-	rootCmd.PersistentFlags().VarP(&rootValues.output, "output", "o", "Output format. One of 'text', 'github'. Default: 'text'")
+		`Set the application log level
+Options: 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic', 'disabled'`)
+	rootCmd.PersistentFlags().VarP(&rootValues.output, "output", "o", "Output format. One of 'text', 'github'.")
 	rootCmd.PersistentFlags().VarP(&rootValues.workingDirectory, "directory", "d",
-		"Absolute or relative path to the CRS directory. If not specified, the command is assumed to run inside the CRS directory.")
+		`Absolute or relative path to the CRS directory.
+If not specified, the command is assumed to run inside the CRS directory`)
+	rootCmd.PersistentFlags().VarP(&rootValues.configurationFileName, "configuration", "f",
+		"Name of the configuration file")
 }
 
 func rebuildRootCommand() {

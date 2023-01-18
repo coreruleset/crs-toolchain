@@ -24,6 +24,7 @@ import (
 type outputType string
 type logLevel string
 type workingDirectory string
+type configurationFileName string
 
 // TODO: Use proper types that encapsulate printing logic
 const (
@@ -97,6 +98,19 @@ func (w *workingDirectory) Set(value string) error {
 
 func (w *workingDirectory) Type() string {
 	return "working directory"
+}
+
+func (c *configurationFileName) String() string {
+	return string(*c)
+}
+
+func (c *configurationFileName) Set(value string) error {
+	*c = configurationFileName(value)
+	return nil
+}
+
+func (c *configurationFileName) Type() string {
+	return "configuration filename"
 }
 
 func findRootDirectory(startPath string) (string, error) {

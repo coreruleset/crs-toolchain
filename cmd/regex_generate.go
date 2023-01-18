@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/coreruleset/crs-toolchain/context"
 	"github.com/coreruleset/crs-toolchain/regex/operators"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
@@ -55,7 +56,8 @@ from stdin.`,
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			ctxt := processors.NewContext(rootValues.workingDirectory.String())
+			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+			ctxt := processors.NewContext(rootContext)
 			assembler := operators.NewAssembler(ctxt)
 			var input []byte
 			var err error
@@ -66,7 +68,7 @@ from stdin.`,
 					logger.Fatal().Err(err).Msg("Failed to read from stdin")
 				}
 			} else {
-				filePath := path.Join(ctxt.RootContext().DataDir(), ruleValues.fileName)
+				filePath := path.Join(ctxt.RootContext().AssemblyDir(), ruleValues.fileName)
 				logger.Trace().Msgf("Reading from %s", filePath)
 				input, err = os.ReadFile(filePath)
 				if err != nil {

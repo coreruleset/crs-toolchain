@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
+	"github.com/coreruleset/crs-toolchain/configuration"
+	"github.com/coreruleset/crs-toolchain/context"
 )
 
 type cmdLineTestSuite struct {
@@ -16,7 +19,27 @@ type cmdLineTestSuite struct {
 }
 
 func (s *cmdLineTestSuite) SetupTest() {
-	s.ctx = NewContext(os.TempDir())
+	rootContext := context.NewWithConfiguration(os.TempDir(), s.newTestConfiguration())
+	s.ctx = NewContext(rootContext)
+}
+
+func (s *cmdLineTestSuite) newTestConfiguration() *configuration.Configuration {
+	return &configuration.Configuration{
+		Patterns: configuration.Patterns{
+			AntiEvasion: configuration.Pattern{
+				Unix:    "_av-u_",
+				Windows: "_av-w_",
+			},
+			AntiEvasionSuffix: configuration.Pattern{
+				Unix:    "_av-u-suffix_",
+				Windows: "_av-w-suffix_",
+			},
+			AntiEvasionNoSpaceSuffix: configuration.Pattern{
+				Unix:    "_av-ns-u-suffix_",
+				Windows: "_av-ns-w-suffix_",
+			},
+		},
+	}
 }
 
 func TestRunCmdLineTestSuite(t *testing.T) {
@@ -24,6 +47,7 @@ func TestRunCmdLineTestSuite(t *testing.T) {
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_NewParser() {
+	patterns := s.ctx.rootContext.Configuration().Patterns
 	expected := &CmdLine{
 		proc: &Processor{
 			ctx:   s.ctx,
@@ -31,9 +55,9 @@ func (s *cmdLineTestSuite) TestCmdLine_NewParser() {
 		},
 		cmdType: CmdLineUnix,
 		evasionPatterns: map[EvasionPatterns]string{
-			evasionPattern:        `[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?`,
-			suffixPattern:         `[\s<>,].*`,
-			suffixExpandedCommand: `(?:[<>,]|(?:[\w\d._-][\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?)+[\s<>,]).*`,
+			evasionPattern:        patterns.AntiEvasion.Unix,
+			suffixPattern:         patterns.AntiEvasionSuffix.Unix,
+			suffixExpandedCommand: patterns.AntiEvasionNoSpaceSuffix.Unix,
 		},
 	}
 	actual := NewCmdLine(s.ctx, CmdLineUnix)
@@ -48,7 +72,7 @@ func (s *cmdLineTestSuite) TestCmdLine_CmdLineTypeFromString() {
 
 	err = cmd.ProcessLine(`foo`)
 	s.NoError(err)
-	s.Equal(`f[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?o[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?o`, cmd.proc.lines[0])
+	s.Equal(`f_av-u_o_av-u_o`, cmd.proc.lines[0])
 
 	t, err = CmdLineTypeFromString("windows")
 	s.NoError(err)
@@ -56,7 +80,7 @@ func (s *cmdLineTestSuite) TestCmdLine_CmdLineTypeFromString() {
 
 	err = cmd.ProcessLine(`foo`)
 	s.NoError(err)
-	s.Equal(`f[\"\^]*o[\"\^]*o`, cmd.proc.lines[0])
+	s.Equal(`f_av-w_o_av-w_o`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_BadCmdLineTypeFromString() {
@@ -71,7 +95,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
 	err := cmd.ProcessLine(`foo`)
 
 	s.NoError(err)
-	s.Equal(`f[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?o[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?o`, cmd.proc.lines[0])
+	s.Equal(`f_av-u_o_av-u_o`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
@@ -80,7 +104,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
 	err := cmd.ProcessLine(`gcc-10.`)
 	s.NoError(err)
 
-	s.Equal(`g[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?c[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?c[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?\-[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?1[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?0[\x5c'\"\[]*(?:(?:(?:\|\||&&)\s*)?\$[a-z0-9_@?!#{*-]*)?\x5c?\.`, cmd.proc.lines[0])
+	s.Equal(`g_av-u_c_av-u_c_av-u_\-_av-u_1_av-u_0_av-u_\.`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
@@ -89,5 +113,5 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
 	err := cmd.ProcessLine(`foo`)
 	s.NoError(err)
 
-	s.Equal(`f[\"\^]*o[\"\^]*o`, cmd.proc.lines[0])
+	s.Equal(`f_av-w_o_av-w_o`, cmd.proc.lines[0])
 }
