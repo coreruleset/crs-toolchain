@@ -46,12 +46,13 @@ func (s *parserTestSuite) TestParser_NewParser() {
 		Suffixes:  []string{},
 		variables: make(map[string]string),
 		patterns: map[string]*regexp.Regexp{
-			includePatternName:    regex.IncludeRegex,
-			definitionPatternName: regex.DefinitionRegex,
-			commentPatternName:    regex.CommentRegex,
-			flagsPatternName:      regex.FlagsRegex,
-			prefixPatternName:     regex.PrefixRegex,
-			suffixPatternName:     regex.SuffixRegex,
+			includePatternName:       regex.IncludeRegex,
+			includeExceptPatternName: regex.IncludeExceptRegex,
+			definitionPatternName:    regex.DefinitionRegex,
+			commentPatternName:       regex.CommentRegex,
+			flagsPatternName:         regex.FlagsRegex,
+			prefixPatternName:        regex.PrefixRegex,
+			suffixPatternName:        regex.SuffixRegex,
 		},
 	}
 	actual := NewParser(processors.NewContext(rootContext), s.reader)
