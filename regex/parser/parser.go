@@ -335,9 +335,7 @@ func (h holderSlice) Len() int {
 }
 
 func (h holderSlice) Swap(i, j int) {
-	tmp := h[i]
-	h[i] = h[j]
-	h[j] = tmp
+	h[i], h[j] = h[j], h[i]
 }
 
 func buildIncludeExceptString(parser *Parser, parsedLine ParsedLine) string {
