@@ -7,11 +7,11 @@ import "regexp"
 
 // IncludeRegex matches an include processor line (##! include <value>).
 // The value is captured in group 1.
-var IncludeRegex = regexp.MustCompile(`^##!>\s*include\s*(.*)$`)
+var IncludeRegex = regexp.MustCompile(`^##!>\s*include\s+(\S+)\s*$`)
 
 // IncludeExceptRegex matches an include-except processor line (##! include-except <value1> <value2>).
 // The first value is captured in group 1, the second in group 2.
-var IncludeExceptRegex = regexp.MustCompile(`^##!>\s*include-except\*s(\S+)\s+(\S+)\s*$`)
+var IncludeExceptRegex = regexp.MustCompile(`^##!>\s*include-except\s+(\S+)\s+(\S+)\s*$`)
 
 // DefinitionRegex matches a definition processor line (##! define <name> <value>)
 // The name is captured in group 1, the value in group 2.

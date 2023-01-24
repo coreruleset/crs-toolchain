@@ -188,7 +188,7 @@ func (p *Parser) parseLine(line string) ParsedLine {
 				pl.result = []string{found[1]}
 			case includeExceptPatternName:
 				pl.parsedType = includeExcept
-				pl.result = found[1:2]
+				pl.result = found[1:3]
 			case definitionPatternName:
 				pl.parsedType = definition
 				pl.resultMap = map[string]string{found[1]: found[2]}
@@ -315,81 +315,4 @@ func flagIsAllowed(flag rune) bool {
 		allowed = true
 	}
 	return allowed
-}
-
-type holder struct {
-	line  string
-	order int
-}
-
-type holderSlice []holder
-
-type holderMap map[string]holder
-
-func (h holderSlice) Less(i, j int) bool {
-	return h[i].order < h[j].order
-}
-
-func (h holderSlice) Len() int {
-	return len(h)
-}
-
-func (h holderSlice) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
-}
-
-func buildIncludeExceptString(parser *Parser, parsedLine ParsedLine) string {
-	includeFileName := parsedLine.result[0]
-	excludeFileName := parsedLine.result[1]
-
-	// 1. build a map with lines as keys for fast access;
-	//    store the line itself and its position in the value (a holder) for later
-	// 2. remove exclusions from the map
-	// 3. put the holders back into an array, still out of order
-	// 4. build the resulting string by sorting the array and joining the lines
-	includeMap := buildHolderMap(parser, includeFileName)
-	removeExclusions(parser, excludeFileName, includeMap)
-
-	holders := make(holderSlice, len(includeMap))
-	for _, value := range includeMap {
-		holders = append(holders, value)
-	}
-
-	return inclusionStringFromHolders(holders)
-}
-
-func removeExclusions(parser *Parser, excludeFileName string, includeMap map[string]holder) {
-	excludeContent, _ := parseFile(parser, excludeFileName)
-	scanner := bufio.NewScanner(excludeContent)
-	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
-		exclusion := scanner.Text()
-		delete(includeMap, exclusion)
-	}
-}
-
-func buildHolderMap(parser *Parser, includeFileName string) holderMap {
-	includeContent, _ := parseFile(parser, includeFileName)
-	includeScanner := bufio.NewScanner(includeContent)
-	includeScanner.Split(bufio.ScanLines)
-	includeMap := make(holderMap, 100)
-	index := 0
-	for includeScanner.Scan() {
-		entry := includeScanner.Text()
-		includeMap[entry] = holder{entry, index}
-		index++
-	}
-	return includeMap
-}
-
-func inclusionStringFromHolders(holders holderSlice) string {
-	sort.Sort(holders)
-	var stringBuilder strings.Builder
-	stringBuilder.Grow(len(holders) * 20)
-	stringBuilder.WriteString(holders[0].line)
-	for _, h := range holders[1:] {
-		stringBuilder.WriteString("\n")
-		stringBuilder.WriteString(h.line)
-	}
-	return stringBuilder.String()
 }

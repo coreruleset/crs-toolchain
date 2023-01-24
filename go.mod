@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/google/uuid v1.3.0
 	github.com/itchyny/rassemble-go v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
