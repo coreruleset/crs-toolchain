@@ -1,3 +1,6 @@
+// Copyright 2023 OWASP Core Rule Set Project
+// SPDX-License-Identifier: Apache-2.0
+
 package parser
 
 import (
@@ -7,10 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreruleset/crs-toolchain/context"
-	"github.com/coreruleset/crs-toolchain/regex/processors"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/coreruleset/crs-toolchain/context"
+	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
 type parserIncludeWithDefinitions struct {
