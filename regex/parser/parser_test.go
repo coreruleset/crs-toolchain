@@ -174,11 +174,8 @@ included regex`, "data regex")
 	actual, _ := parser.Parse(false)
 	expected := bytes.NewBufferString(`##!> assemble
 included regex
-
 ##!=>
 suffix1
-##!=>
-
 ##!=>
 suffix2
 ##!=>
@@ -206,11 +203,8 @@ prefix1
 prefix2
 ##!=>
 included regex
-
 ##!=>
 suffix1
-##!=>
-
 ##!=>
 suffix2
 ##!=>
