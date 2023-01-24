@@ -218,10 +218,15 @@ func parseFile(rootParser *Parser, includeName string) (*bytes.Buffer, int) {
 
 	// check if filename has an absolute path
 	// if it is relative, use the context to get the parent directory where we should search for the file.
-	if !filepath.IsAbs(filename) {
-		filename = filepath.Join(rootParser.ctx.RootContext().IncludesDir(), filename)
+	rootContext := rootParser.ctx.RootContext()
+	var err error
+	var readFile *os.File
+	for _, directory := range []string{rootContext.IncludesDir(), rootContext.ExcludesDir()} {
+		if !filepath.IsAbs(filename) {
+			filename = filepath.Join(directory, filename)
+		}
+		readFile, err = os.Open(filename)
 	}
-	readFile, err := os.Open(filename)
 	if err != nil {
 		logger.Fatal().Msgf("cannot open file for parsing: %v", err.Error())
 	}
