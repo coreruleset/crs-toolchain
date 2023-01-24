@@ -251,8 +251,21 @@ func mergeFlagsPrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffe
 	if _, err := out.WriteTo(newOut); err != nil {
 		logger.Fatal().Err(err).Msg("failed to copy output to new buffer")
 	}
+
+	sawNewLine := false
+	if err := out.UnreadByte(); err == nil {
+		lastByte, err := out.ReadByte()
+		if err == nil {
+			sawNewLine = lastByte == 13
+		}
+	}
+	if sawNewLine {
+		newOut.WriteString("\n")
+	}
+	if len(source.Suffixes) > 0 {
+		newOut.WriteString("##!=>\n")
+	}
 	for _, suffix := range source.Suffixes {
-		newOut.WriteString("\n##!=>\n")
 		newOut.WriteString(suffix)
 		newOut.WriteString("\n##!=>\n")
 	}
