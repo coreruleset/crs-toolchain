@@ -130,3 +130,54 @@ a*b|include3`, s.excludeDir)
 
 	s.Equal(`\s*include1`, actual.String())
 }
+
+func (s *parserIncludeExceptTestSuite) TestIncludeExcept_WithDefinitions() {
+	includePath := s.writeFile(`##!> define homer _doughnut_
+{{homer}}include1
+include{{homer}}2
+leave me alone
+include3{{homer}}`, s.includeDir)
+	excludePath := s.writeFile(`{{homer}}include1
+include{{homer}}2
+include3{{homer}}`, s.excludeDir)
+	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
+
+	assemblyFile, err := os.Open(assemblyPath)
+	s.NoError(err)
+	defer assemblyFile.Close()
+
+	parser := NewParser(s.ctx, assemblyFile)
+	actual, _ := parser.Parse(false)
+
+	s.Equal(`leave me alone`, actual.String())
+}
+
+func (s *parserIncludeExceptTestSuite) TestIncludeExcept_DontPanicWhenInclusionsEmpty() {
+	includePath := s.writeFile("include1", s.includeDir)
+	excludePath := s.writeFile("include1", s.excludeDir)
+	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
+
+	assemblyFile, err := os.Open(assemblyPath)
+	s.NoError(err)
+	defer assemblyFile.Close()
+
+	parser := NewParser(s.ctx, assemblyFile)
+	actual, _ := parser.Parse(false)
+
+	s.Empty(actual)
+}
+
+func (s *parserIncludeExceptTestSuite) TestIncludeExcept_DontPanicWhenExclusionsEmpty() {
+	includePath := s.writeFile("include1", s.includeDir)
+	excludePath := s.writeFile("", s.excludeDir)
+	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
+
+	assemblyFile, err := os.Open(assemblyPath)
+	s.NoError(err)
+	defer assemblyFile.Close()
+
+	parser := NewParser(s.ctx, assemblyFile)
+	actual, _ := parser.Parse(false)
+
+	s.Equal("include1", actual.String())
+}

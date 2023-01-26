@@ -123,7 +123,7 @@ func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
 		case include:
 			if !formatOnly {
 				// go read the included file and paste text here
-				content, _ := parseFile(p, parsedLine.result[0])
+				content, _ := parseFile(p, parsedLine.result[0], nil)
 				text = content.String()
 			}
 		case includeExcept:
@@ -209,7 +209,7 @@ func (p *Parser) parseLine(line string) ParsedLine {
 }
 
 // parseFile does just a new call to the Parser on the named file. It will use the context to find files that have relative filenames.
-func parseFile(rootParser *Parser, includeName string) (*bytes.Buffer, int) {
+func parseFile(rootParser *Parser, includeName string, definitions map[string]string) (*bytes.Buffer, map[string]string) {
 	filename := includeName
 	logger.Trace().Msgf("reading include file: %v", filename)
 	if path.Ext(filename) != ".ra" {
@@ -231,10 +231,13 @@ func parseFile(rootParser *Parser, includeName string) (*bytes.Buffer, int) {
 		logger.Fatal().Msgf("cannot open file for parsing: %v", err.Error())
 	}
 	newP := NewParser(rootParser.ctx, bufio.NewReader(readFile))
+	if definitions != nil {
+		newP.variables = definitions
+	}
 	out, _ := newP.Parse(false)
 	newOut := mergeFlagsPrefixesSuffixes(rootParser, newP, out)
 	logger.Trace().Msg(newOut.String())
-	return newOut, newOut.Len()
+	return newOut, newP.variables
 }
 
 // Merge flags, prefixes, and suffixes from include files into another parser.

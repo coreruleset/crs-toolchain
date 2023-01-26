@@ -39,8 +39,8 @@ func buildIncludeExceptString(parser *Parser, parsedLine ParsedLine) string {
 	// 2. remove exclusions from the map
 	// 3. put the inclusionLines back into an array, still out of order
 	// 4. build the resulting string by sorting the array and joining the lines
-	includeMap := buildinclusionLineMap(parser, includeFileName)
-	removeExclusions(parser, excludeFileName, includeMap)
+	includeMap, definitions := buildinclusionLineMap(parser, includeFileName)
+	removeExclusions(parser, excludeFileName, includeMap, definitions)
 
 	inclusionLines := make(inclusionLineSlice, 0, len(includeMap))
 	for _, value := range includeMap {
@@ -50,8 +50,8 @@ func buildIncludeExceptString(parser *Parser, parsedLine ParsedLine) string {
 	return stringFromInclusionLines(inclusionLines)
 }
 
-func removeExclusions(parser *Parser, excludeFileName string, includeMap map[string]inclusionLine) {
-	excludeContent, _ := parseFile(parser, excludeFileName)
+func removeExclusions(parser *Parser, excludeFileName string, includeMap map[string]inclusionLine, definitions map[string]string) {
+	excludeContent, _ := parseFile(parser, excludeFileName, definitions)
 	scanner := bufio.NewScanner(excludeContent)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
@@ -60,8 +60,8 @@ func removeExclusions(parser *Parser, excludeFileName string, includeMap map[str
 	}
 }
 
-func buildinclusionLineMap(parser *Parser, includeFileName string) inclusionLineMap {
-	includeContent, _ := parseFile(parser, includeFileName)
+func buildinclusionLineMap(parser *Parser, includeFileName string) (inclusionLineMap, map[string]string) {
+	includeContent, definitions := parseFile(parser, includeFileName, nil)
 	includeScanner := bufio.NewScanner(includeContent)
 	includeScanner.Split(bufio.ScanLines)
 	includeMap := make(inclusionLineMap, 100)
@@ -71,10 +71,17 @@ func buildinclusionLineMap(parser *Parser, includeFileName string) inclusionLine
 		includeMap[entry] = inclusionLine{entry, index}
 		index++
 	}
-	return includeMap
+	return includeMap, definitions
 }
 
 func stringFromInclusionLines(inclusionLines inclusionLineSlice) string {
+	length := len(inclusionLines)
+	if length == 0 {
+		return ""
+	} else if length == 1 {
+		return inclusionLines[0].line
+	}
+
 	sort.Sort(inclusionLines)
 	var stringBuilder strings.Builder
 	stringBuilder.Grow(len(inclusionLines) * 20)
