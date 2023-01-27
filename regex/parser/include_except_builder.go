@@ -57,6 +57,7 @@ func removeExclusions(parser *Parser, excludeFileName string, includeMap map[str
 	for scanner.Scan() {
 		exclusion := scanner.Text()
 		delete(includeMap, exclusion)
+		logger.Debug().Msgf("Excluded entry from include file: %s", exclusion)
 	}
 }
 

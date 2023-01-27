@@ -209,9 +209,8 @@ func (p *Parser) parseLine(line string) ParsedLine {
 }
 
 // parseFile does just a new call to the Parser on the named file. It will use the context to find files that have relative filenames.
-func parseFile(rootParser *Parser, includeName string, definitions map[string]string) (*bytes.Buffer, map[string]string) {
-	filename := includeName
-	logger.Trace().Msgf("reading include file: %v", filename)
+func parseFile(rootParser *Parser, filename string, definitions map[string]string) (*bytes.Buffer, map[string]string) {
+	logger.Debug().Msgf("reading file: %v", filename)
 	if path.Ext(filename) != ".ra" {
 		filename += ".ra"
 	}
