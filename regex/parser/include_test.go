@@ -69,22 +69,6 @@ func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
 	s.Equal(expected.Len(), n)
 }
 
-func (s *parserIncludeTestSuite) TestParserInclude_Flags() {
-	s.writeDataFile(`##!+si
-included regex`, "data regex")
-	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
-	expected := bytes.NewBufferString(`##!> assemble
-(?is)
-##!=>
-included regex
-##!<
-data regex
-`)
-
-	s.Equal(expected.String(), actual.String())
-}
-
 func (s *parserIncludeTestSuite) TestParserInclude_Prefixes() {
 	s.writeDataFile(`##!^ prefix1
 ##!^ prefix2
@@ -128,13 +112,10 @@ func (s *parserIncludeTestSuite) TestParserInclude_FlagsPrefixesSuffixes() {
 ##!$ suffix2
 ##!^ prefix1
 ##!^ prefix2
-##!+ si
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
 	actual, _ := parser.Parse(false)
 	expected := bytes.NewBufferString(`##!> assemble
-(?is)
-##!=>
 prefix1
 ##!=>
 prefix2

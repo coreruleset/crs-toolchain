@@ -14,7 +14,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/imdario/mergo"
@@ -239,29 +238,21 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 	return newOut, newP.variables
 }
 
-// Merge flags, prefixes, and suffixes from include files into another parser.
+// Merge prefixes, and suffixes from include files into another parser.
 // All of these need to be treated as local to the source parser.
+// We removed flag merging because of https://github.com/coreruleset/crs-toolchain/issues/72
 func mergeFlagsPrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffer) *bytes.Buffer {
-	logger.Trace().Msg("merging flags, prefixes, suffixes from included file")
+	logger.Trace().Msg("merging prefixes, suffixes from included file")
 	// IMPORTANT: don't write the assemble block at all if there are no flags, prefixes, or
 	// suffixes. Enclosing the output in an assemble block can change the semantics, for example,
 	// when the included content is processed by the cmdline processor in the including file.
-	if len(source.Flags) == 0 && len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
+	if len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
 		return out
 	}
 
 	newOut := new(bytes.Buffer)
 	newOut.WriteString("##!> assemble\n")
 
-	if len(source.Flags) > 0 {
-		flags := make([]string, 0, len(source.Flags))
-		for flag := range source.Flags {
-			flags = append(flags, string(flag))
-		}
-		sort.Strings(flags)
-		newOut.WriteString("(?" + strings.Join(flags, "") + ")")
-		newOut.WriteString("\n##!=>\n")
-	}
 	for _, prefix := range source.Prefixes {
 		newOut.WriteString(prefix)
 		newOut.WriteString("\n##!=>\n")
