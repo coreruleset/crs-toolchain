@@ -12,6 +12,7 @@ type Context struct {
 	rulesDirectory               string
 	assemblyFilesDirectory       string
 	includeFilesDirectory        string
+	excludeFilesDirectory        string
 	regressionTestFilesDirectory string
 	configuration                *configuration.Configuration
 }
@@ -27,6 +28,7 @@ func NewWithConfiguration(rootDir string, configuration *configuration.Configura
 		rulesDirectory:               rootDir + "/rules",
 		assemblyFilesDirectory:       rootDir + "/regex-assembly",
 		includeFilesDirectory:        rootDir + "/regex-assembly/include",
+		excludeFilesDirectory:        rootDir + "/regex-assembly/exclude",
 		regressionTestFilesDirectory: rootDir + "/tests/regression/tests",
 		configuration:                configuration,
 	}
@@ -45,6 +47,11 @@ func (ctx *Context) AssemblyDir() string {
 // IncludeDir returns the 'include' directory. Used to include files that don't have an absolute path.
 func (ctx *Context) IncludesDir() string {
 	return ctx.includeFilesDirectory
+}
+
+// ExcludesDir returns the 'exclude' directory. Used for exclude files that don't have an absolute path.
+func (ctx *Context) ExcludesDir() string {
+	return ctx.excludeFilesDirectory
 }
 
 // RulesDir returns the 'rules' directory.
