@@ -9,6 +9,7 @@ package parser
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path"
@@ -233,7 +234,10 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 		newP.variables = definitions
 	}
 	out, _ := newP.Parse(false)
-	newOut := mergeFlagsPrefixesSuffixes(rootParser, newP, out)
+	newOut, err := mergePrefixesSuffixes(rootParser, newP, out)
+	if err != nil {
+		logger.Fatal().Msgf("error parsing file: %v", err.Error())
+	}
 	logger.Trace().Msg(newOut.String())
 	return newOut, newP.variables
 }
@@ -241,16 +245,20 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 // Merge prefixes, and suffixes from include files into another parser.
 // All of these need to be treated as local to the source parser.
 // We removed flag merging because of https://github.com/coreruleset/crs-toolchain/issues/72
-func mergeFlagsPrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffer) *bytes.Buffer {
+func mergePrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffer) (*bytes.Buffer, error) {
 	logger.Trace().Msg("merging prefixes, suffixes from included file")
 	// IMPORTANT: don't write the assemble block at all if there are no flags, prefixes, or
 	// suffixes. Enclosing the output in an assemble block can change the semantics, for example,
 	// when the included content is processed by the cmdline processor in the including file.
-	if len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
-		return out
+	if len(source.Flags) == 0 && len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
+		return out, nil
 	}
 
 	newOut := new(bytes.Buffer)
+	// If the included file has flags, this is an error
+	if len(source.Flags) > 0 {
+		return newOut, errors.New("included file cannot contain flags. See https://github.com/coreruleset/crs-toolchain/issues/71")
+	}
 	newOut.WriteString("##!> assemble\n")
 
 	for _, prefix := range source.Prefixes {
@@ -279,7 +287,7 @@ func mergeFlagsPrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffe
 		newOut.WriteString("\n##!=>\n")
 	}
 	newOut.WriteString("##!<\n")
-	return newOut
+	return newOut, nil
 }
 
 func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
