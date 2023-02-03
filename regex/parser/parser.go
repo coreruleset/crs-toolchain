@@ -257,7 +257,7 @@ func mergePrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffer) (*
 	newOut := new(bytes.Buffer)
 	// If the included file has flags, this is an error
 	if len(source.Flags) > 0 {
-		return newOut, errors.New("included file cannot contain flags. See https://github.com/coreruleset/crs-toolchain/issues/71")
+		return newOut, errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/issues/71")
 	}
 	newOut.WriteString("##!> assemble\n")
 
