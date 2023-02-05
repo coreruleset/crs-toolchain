@@ -220,11 +220,15 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 	rootContext := rootParser.ctx.RootContext()
 	var err error
 	var readFile *os.File
+	filePath := filename
 	for _, directory := range []string{rootContext.IncludesDir(), rootContext.ExcludesDir()} {
 		if !filepath.IsAbs(filename) {
-			filename = filepath.Join(directory, filename)
+			filePath = filepath.Join(directory, filename)
 		}
-		readFile, err = os.Open(filename)
+		readFile, err = os.Open(filePath)
+		if err == nil {
+			break
+		}
 	}
 	if err != nil {
 		logger.Fatal().Msgf("cannot open file for parsing: %v", err.Error())
@@ -247,18 +251,18 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 // We removed flag merging because of https://github.com/coreruleset/crs-toolchain/issues/72
 func mergePrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffer) (*bytes.Buffer, error) {
 	logger.Trace().Msg("merging prefixes, suffixes from included file")
+	// If the included file has flags, this is an error
+	if len(source.Flags) > 0 {
+		return out, errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/issues/71")
+	}
 	// IMPORTANT: don't write the assemble block at all if there are no flags, prefixes, or
 	// suffixes. Enclosing the output in an assemble block can change the semantics, for example,
 	// when the included content is processed by the cmdline processor in the including file.
-	if len(source.Flags) == 0 && len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
+	if len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
 		return out, nil
 	}
 
 	newOut := new(bytes.Buffer)
-	// If the included file has flags, this is an error
-	if len(source.Flags) > 0 {
-		return newOut, errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/issues/71")
-	}
 	newOut.WriteString("##!> assemble\n")
 
 	for _, prefix := range source.Prefixes {
