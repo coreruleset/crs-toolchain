@@ -76,11 +76,13 @@ func buildinclusionLineMap(parser *Parser, includeFileName string) (inclusionLin
 }
 
 func stringFromInclusionLines(inclusionLines inclusionLineSlice) string {
+	// Ensure that the last line is always empty.
+	// Corresponds to "regular" lines in the parser, to which `\n` is appended
 	length := len(inclusionLines)
 	if length == 0 {
 		return ""
 	} else if length == 1 {
-		return inclusionLines[0].line
+		return inclusionLines[0].line + "\n"
 	}
 
 	sort.Sort(inclusionLines)
@@ -91,5 +93,7 @@ func stringFromInclusionLines(inclusionLines inclusionLineSlice) string {
 		stringBuilder.WriteString("\n")
 		stringBuilder.WriteString(h.line)
 	}
+	stringBuilder.WriteString("\n")
+
 	return stringBuilder.String()
 }

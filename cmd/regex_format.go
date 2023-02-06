@@ -43,6 +43,7 @@ var formatCmd = createFormatCommand()
 var blockStartRegex = regex.ProcessorBlockStartRegex
 var blockEndRegex = regex.ProcessorEndRegex
 var includeRegex = regex.IncludeRegex
+var includeExceptRegex = regex.IncludeExceptRegex
 var definitionRegex = regex.DefinitionRegex
 var prefixRegex = regex.PrefixRegex
 var suffixRegex = regex.SuffixRegex
@@ -259,6 +260,8 @@ func processLine(line []byte, indent int) ([]byte, int, error) {
 		trimmedLine = []byte(fmt.Sprintf("##!> define %s %s", matches[1], matches[2]))
 	} else if matches := includeRegex.FindSubmatch(line); matches != nil {
 		trimmedLine = []byte(fmt.Sprintf("##!> include %s", matches[1]))
+	} else if matches := includeExceptRegex.FindSubmatch(line); matches != nil {
+		trimmedLine = []byte(fmt.Sprintf("##!> include-except %s %s", matches[1], matches[2]))
 	}
 
 	adjustment := bytes.Repeat([]byte(" "), blockIndent*2)

@@ -15,22 +15,22 @@ var IncludeExceptRegex = regexp.MustCompile(`^##!>\s*include-except\s+(\S+)\s+(\
 
 // DefinitionRegex matches a definition processor line (##! define <name> <value>)
 // The name is captured in group 1, the value in group 2.
-var DefinitionRegex = regexp.MustCompile(`^##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(.*)$`)
+var DefinitionRegex = regexp.MustCompile(`^##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(\S+)\s*$`)
 
 // CommentRegex matches a comment line (##!, no other directives)
 var CommentRegex = regexp.MustCompile(`^##!(?:[^^$+><=]|$)`)
 
 // FlagsRegex matches a flags line (##!+ <value>).
 // The value is captured in group 1.
-var FlagsRegex = regexp.MustCompile(`^##!\+\s*(.*)\s*$`)
+var FlagsRegex = regexp.MustCompile(`^##!\+\s*(.*\S)\s*$`)
 
 // PrefixRegex matches a prefix line (##!^ <value>)
 // The value is captured in group 1.
-var PrefixRegex = regexp.MustCompile(`^##!\^\s*(.*)$`)
+var PrefixRegex = regexp.MustCompile(`^##!\^\s*(.*\S)\s*$`)
 
 // SuffixRegex matches a suffix line (##!$ <value>)
 // The value is captured in group 1.
-var SuffixRegex = regexp.MustCompile(`^##!\$\s*(.*)$`)
+var SuffixRegex = regexp.MustCompile(`^##!\$\s*(.*\S)\s*$`)
 
 // ProcessorStartRegex matches any processor start line (##! assemble, ##! define <name> <value>).
 // The name is captured in group 1, the optional value in group 2.

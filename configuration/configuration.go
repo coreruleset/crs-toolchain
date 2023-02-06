@@ -6,6 +6,7 @@ package configuration
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -39,6 +40,14 @@ func New(directory string, filename string) *Configuration {
 		// don't use the initialized struct, it might have been partially filled
 		return &Configuration{}
 	}
+
+	// FIXME: Is there a better way to process the parsed strings? TextUnmarshaler is an option but then I'd have to add another type etd...
+	newConfiguration.Patterns.AntiEvasion.Unix = strings.TrimSpace(newConfiguration.Patterns.AntiEvasion.Unix)
+	newConfiguration.Patterns.AntiEvasion.Windows = strings.TrimSpace(newConfiguration.Patterns.AntiEvasion.Windows)
+	newConfiguration.Patterns.AntiEvasionSuffix.Unix = strings.TrimSpace(newConfiguration.Patterns.AntiEvasionSuffix.Unix)
+	newConfiguration.Patterns.AntiEvasionSuffix.Windows = strings.TrimSpace(newConfiguration.Patterns.AntiEvasionSuffix.Windows)
+	newConfiguration.Patterns.AntiEvasionNoSpaceSuffix.Unix = strings.TrimSpace(newConfiguration.Patterns.AntiEvasionNoSpaceSuffix.Unix)
+	newConfiguration.Patterns.AntiEvasionNoSpaceSuffix.Windows = strings.TrimSpace(newConfiguration.Patterns.AntiEvasionNoSpaceSuffix.Windows)
 
 	return newConfiguration
 }

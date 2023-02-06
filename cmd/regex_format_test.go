@@ -305,7 +305,7 @@ func (s *formatTestSuite) TestFormat_OnlyIndentsAssembleProcessor() {
 ##!+ i
 ##!^ prefix
 ##!$ suffix
-    ##!> define homer simpson 
+    ##!> define homer simpson
   ##!<
 
 ##!<
@@ -328,9 +328,111 @@ func (s *formatTestSuite) TestFormat_FormatsProcessors() {
 	expected := `##!> assemble
   ##!> include bart
   ##!> cmdline windows
-    ##!> define homer simpson 
+    ##!> define homer simpson
   ##!<
 ##!<
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_FormatsFlags() {
+	s.writeDataFile("123456.ra", `##!+i
+  ##!+ i
+##!+ i 	
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!+ i
+##!+ i
+##!+ i
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_FormatsPrefix() {
+	s.writeDataFile("123456.ra", `##!^prefix without separating white space
+  ##!^ prefix with leading white space
+##!^ prefix with trailing white space 	
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!^ prefix without separating white space
+##!^ prefix with leading white space
+##!^ prefix with trailing white space
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_FormatsSuffix() {
+	s.writeDataFile("123456.ra", `##!$suffix without separating white space
+  ##!$ suffix with leading white space
+##!$ suffix with trailing white space 	
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!$ suffix without separating white space
+##!$ suffix with leading white space
+##!$ suffix with trailing white space
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_FormatsDefinitions() {
+	s.writeDataFile("123456.ra", `##!>define without-separating-white-space homer
+  ##!> define with-leading-white-space homer
+##!> define with-trailing-white-space homer 	
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!> define without-separating-white-space homer
+##!> define with-leading-white-space homer
+##!> define with-trailing-white-space homer
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_FormatsIncludes() {
+	s.writeDataFile("123456.ra", `##!>include without-separating-white-space
+  ##!> include with-leading-white-space
+##!> include with-trailing-white-space 	
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!> include without-separating-white-space
+##!> include with-leading-white-space
+##!> include with-trailing-white-space
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_FormatsExcept() {
+	s.writeDataFile("123456.ra", `##!>include-except without-separating-white-space homer
+  ##!> include-except with-leading-white-space homer
+##!> include-except with-trailing-white-space homer	 
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := `##!> include-except without-separating-white-space homer
+##!> include-except with-leading-white-space homer
+##!> include-except with-trailing-white-space homer
 `
 	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)

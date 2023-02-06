@@ -83,7 +83,7 @@ a*b|include3`, s.excludeDir)
 	parser := NewParser(s.ctx, assemblyFile)
 	actual, _ := parser.Parse(false)
 
-	s.Equal(`leave me alone`, actual.String())
+	s.Equal("leave me alone\n", actual.String())
 }
 
 func (s *parserIncludeExceptTestSuite) TestIncludeExcept_EmptyLinesRemoved() {
@@ -106,7 +106,8 @@ leave me alone
 	actual, _ := parser.Parse(false)
 
 	s.Equal(`\s*include1
-leave me alone`, actual.String())
+leave me alone
+`, actual.String())
 }
 
 func (s *parserIncludeExceptTestSuite) TestIncludeExcept_OutOfOrder() {
@@ -128,7 +129,7 @@ a*b|include3`, s.excludeDir)
 	parser := NewParser(s.ctx, assemblyFile)
 	actual, _ := parser.Parse(false)
 
-	s.Equal(`\s*include1`, actual.String())
+	s.Equal(`\s*include1`+"\n", actual.String())
 }
 
 func (s *parserIncludeExceptTestSuite) TestIncludeExcept_WithDefinitions() {
@@ -149,7 +150,7 @@ include3{{homer}}`, s.excludeDir)
 	parser := NewParser(s.ctx, assemblyFile)
 	actual, _ := parser.Parse(false)
 
-	s.Equal(`leave me alone`, actual.String())
+	s.Equal("leave me alone\n", actual.String())
 }
 
 func (s *parserIncludeExceptTestSuite) TestIncludeExcept_DontPanicWhenInclusionsEmpty() {
@@ -179,5 +180,5 @@ func (s *parserIncludeExceptTestSuite) TestIncludeExcept_DontPanicWhenExclusions
 	parser := NewParser(s.ctx, assemblyFile)
 	actual, _ := parser.Parse(false)
 
-	s.Equal("include1", actual.String())
+	s.Equal("include1\n", actual.String())
 }
