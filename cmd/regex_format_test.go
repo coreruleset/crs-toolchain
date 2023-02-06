@@ -305,7 +305,7 @@ func (s *formatTestSuite) TestFormat_OnlyIndentsAssembleProcessor() {
 ##!+ i
 ##!^ prefix
 ##!$ suffix
-    ##!> define homer simpson 
+    ##!> define homer simpson
   ##!<
 
 ##!<
@@ -328,7 +328,7 @@ func (s *formatTestSuite) TestFormat_FormatsProcessors() {
 	expected := `##!> assemble
   ##!> include bart
   ##!> cmdline windows
-    ##!> define homer simpson 
+    ##!> define homer simpson
   ##!<
 ##!<
 `
