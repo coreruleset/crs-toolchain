@@ -253,7 +253,7 @@ func mergePrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffer) (*
 	logger.Trace().Msg("merging prefixes, suffixes from included file")
 	// If the included file has flags, this is an error
 	if len(source.Flags) > 0 {
-		return out, errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/issues/71")
+		return new(bytes.Buffer), errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/issues/71")
 	}
 	// IMPORTANT: don't write the assemble block at all if there are no flags, prefixes, or
 	// suffixes. Enclosing the output in an assemble block can change the semantics, for example,
