@@ -116,7 +116,7 @@ func (t *TestRenumberer) processYaml(ruleId string, contents []byte) ([]byte, er
 		matches := regex.TestTitleRegex.FindStringSubmatch(line)
 		if matches != nil {
 			index++
-			line = fmt.Sprint(matches[1], ruleId, "-", index)
+			line = fmt.Sprint(matches[1], " ", ruleId, "-", index)
 		}
 
 		if _, err := writer.WriteString(line); err != nil {
