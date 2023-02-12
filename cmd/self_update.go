@@ -18,10 +18,10 @@ func init() {
 
 func createSelfUpdateCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "self-updater",
-		Short: "Performs self-udpate",
+		Use:   "self-update",
+		Short: "Performs self-update",
 		Long: "Checks GitHub releases for the latest version of this command. If a new version is available, " +
-			"it will get it and replace this one.",
+			"it will get it and replace this binary.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Start running. If an error occurs, propagate but don't print anything
 			// command related.
