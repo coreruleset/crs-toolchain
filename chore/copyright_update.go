@@ -86,6 +86,10 @@ func updateRules(version string, year string, contents []byte) ([]byte, error) {
 
 	writer.Flush()
 	outputBytes := output.Bytes()
+	// if the file was empty, we don't want to remove the newline character
+	if len(outputBytes) == 0 {
+		return outputBytes, nil
+	}
 	// remove the superfluous newline character
 	return outputBytes[:len(outputBytes)-1], nil
 }
