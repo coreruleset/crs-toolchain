@@ -4,8 +4,9 @@
 package chore
 
 import (
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type copyrightUpdateTestsTestSuite struct {
@@ -52,7 +53,7 @@ SecComponentSignature "OWASP_CRS/4.0.0-rc1"`
 # Ref: https://github.com/SpiderLabs/ModSecurity/wiki/Reference-Manual#wiki-SecComponentSignature
 #
 SecComponentSignature "OWASP_CRS/4.0.0-rc1"`
-	out, err := updateRules("9.1.22", 2042, []byte(contents))
+	out, err := updateRules("9.1.22", "2042", []byte(contents))
 	s.NoError(err)
 
 	s.Equal(expected, string(out))

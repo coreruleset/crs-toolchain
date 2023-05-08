@@ -4,17 +4,20 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/theseion/crs-toolchain/v2/chore"
-	"github.com/theseion/crs-toolchain/v2/context"
+	"strconv"
 	"time"
+
+	"github.com/spf13/cobra"
+
+	"github.com/coreruleset/crs-toolchain/chore"
+	"github.com/coreruleset/crs-toolchain/context"
 )
 
 // choreCmd represents the chore command
 var choreCopyrightUpdateCmd = createChoreCopyrightUpdateCommand()
 var copyrightVariables struct {
 	Version string
-	Year    int
+	Year    string
 }
 
 func init() {
@@ -25,16 +28,17 @@ func createChoreCopyrightUpdateCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "copyright-update",
 		Short: "Updates the copyright on every rule file",
-		Args:  cobra.MaximumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			ctxt := context.New(rootValues.workingDirectory.String())
-			chore.CopyrightUpdate(ctxt, "the version", time.Now().Year())
+			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
+			chore.CopyrightUpdate(rootContext, copyrightVariables.Version, copyrightVariables.Year)
 		},
 	}
 }
 
 func buildChoreCopyrightUpdateCommand() {
 	choreCmd.AddCommand(choreCopyrightUpdateCmd)
+	choreCopyrightUpdateCmd.Flags().StringVarP(&copyrightVariables.Year, "year", "y", strconv.Itoa(time.Now().Year()), "Year, example: 2023. Default: current year.")
+	choreCopyrightUpdateCmd.Flags().StringVarP(&copyrightVariables.Version, "version", "v", "CRS v10.0.1", "Add this text as the version to the file.")
 }
 
 func rebuildChoreCopyrightUpdateCommand() {
@@ -42,6 +46,6 @@ func rebuildChoreCopyrightUpdateCommand() {
 		choreCopyrightUpdateCmd.Parent().RemoveCommand(choreCopyrightUpdateCmd)
 	}
 
-	utilCmd = createChoreCopyrightUpdateCommand()
+	choreCopyrightUpdateCmd = createChoreCopyrightUpdateCommand()
 	buildChoreCopyrightUpdateCommand()
 }

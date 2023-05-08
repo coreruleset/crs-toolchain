@@ -4,31 +4,21 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"github.com/theseion/crs-toolchain/v2/context"
-	"github.com/theseion/crs-toolchain/v2/regex"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rs/zerolog/log"
+
+	"github.com/coreruleset/crs-toolchain/context"
+	"github.com/coreruleset/crs-toolchain/regex"
 )
 
 var logger = log.With().Str("component", "copyright-update").Logger()
 
-var copyrightNoticeTemplate = `
-# ------------------------------------------------------------------------
-# OWASP ModSecurity Core Rule Set ver.{{ .Version }}
-# Copyright (c) 2006-2020 Trustwave and contributors. All rights reserved.
-# Copyright (c) 2021-{{ .Year }} Core Rule Set project. All rights reserved.
-#
-# The OWASP ModSecurity Core Rule Set is distributed under
-# Apache Software License (ASL) version 2
-# Please see the enclosed LICENSE file for full details.
-# ------------------------------------------------------------------------
-`
-
 // CopyrightUpdate updates the copyright portion on the rules files to the provided year and version.
-func CopyrightUpdate(ctxt *context.Context, version string, year int) {
+func CopyrightUpdate(ctxt *context.Context, version string, year string) {
 	err := filepath.WalkDir(ctxt.RulesDir(), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// abort
@@ -52,7 +42,7 @@ func CopyrightUpdate(ctxt *context.Context, version string, year int) {
 	}
 }
 
-func processFile(filePath string, version string, year int) error {
+func processFile(filePath string, version string, year string) error {
 	logger.Info().Msgf("Processing %s", filePath)
 
 	contents, err := os.ReadFile(filePath)
@@ -74,7 +64,7 @@ func processFile(filePath string, version string, year int) error {
 
 // Ideally we have support in the future for a proper parser file so we can use that to change it
 // in a more elegant way. Right now we just match strings.
-func updateRules(version string, year int, contents []byte) ([]byte, error) {
+func updateRules(version string, year string, contents []byte) ([]byte, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(contents))
 	scanner.Split(bufio.ScanLines)
 	output := new(bytes.Buffer)
@@ -83,7 +73,7 @@ func updateRules(version string, year int, contents []byte) ([]byte, error) {
 		line := scanner.Text()
 		replaceVersion := fmt.Sprintf("${1}%s", version)
 		line = regex.CRSVersionRegex.ReplaceAllString(line, replaceVersion)
-		replaceYear := fmt.Sprintf("${1}%d${3}", year)
+		replaceYear := fmt.Sprintf("${1}%s${3}", year)
 		line = regex.CRSCopyrightYear.ReplaceAllString(line, replaceYear)
 
 		if _, err := writer.WriteString(line); err != nil {
