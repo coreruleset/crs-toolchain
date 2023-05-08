@@ -21,6 +21,7 @@ type choreTestSuite struct {
 
 func (s *choreTestSuite) SetupTest() {
 	rebuildChoreCommand()
+	rebuildChoreCopyrightUpdateCommand()
 
 	tempDir, err := os.MkdirTemp("", "chore-tests")
 	s.NoError(err)

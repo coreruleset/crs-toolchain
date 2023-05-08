@@ -20,6 +20,7 @@ type choreCopyrightUpdateTestSuite struct {
 }
 
 func (s *choreCopyrightUpdateTestSuite) SetupTest() {
+	rebuildChoreCommand()
 	rebuildChoreCopyrightUpdateCommand()
 
 	tempDir, err := os.MkdirTemp("", "copyright-update-tests")
@@ -71,7 +72,7 @@ func (s *choreCopyrightUpdateTestSuite) TestCopyrightUpdate_Version512() {
 }
 
 func (s *choreCopyrightUpdateTestSuite) TestCopyrightUpdate_Year2100() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "copyright-update", "-v", "2100"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "copyright-update", "-y", "2100"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("copyright-update", cmd.Name())

@@ -13,7 +13,6 @@ import (
 	"github.com/coreruleset/crs-toolchain/context"
 )
 
-// choreCmd represents the chore command
 var choreCopyrightUpdateCmd = createChoreCopyrightUpdateCommand()
 var copyrightVariables struct {
 	Version string

@@ -31,6 +31,6 @@ func rebuildChoreCommand() {
 		choreCmd.Parent().RemoveCommand(choreCmd)
 	}
 
-	utilCmd = createChoreCommand()
+	choreCmd = createChoreCommand()
 	buildChoreCommand()
 }
