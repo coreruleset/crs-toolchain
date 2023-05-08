@@ -19,7 +19,7 @@ var logger = log.With().Str("component", "copyright-update").Logger()
 
 // CopyrightUpdate updates the copyright portion on the rules files to the provided year and version.
 func CopyrightUpdate(ctxt *context.Context, version string, year string) {
-	err := filepath.WalkDir(ctxt.RulesDir(), func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(ctxt.RootDir(), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// abort
 			return err
@@ -28,7 +28,7 @@ func CopyrightUpdate(ctxt *context.Context, version string, year string) {
 			// continue
 			return nil
 		}
-		if strings.HasSuffix(d.Name(), ".conf") {
+		if strings.HasSuffix(d.Name(), ".conf") || strings.HasSuffix(d.Name(), ".example") {
 			if err := processFile(path, version, year); err != nil {
 				// abort
 				return err
