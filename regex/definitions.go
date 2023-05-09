@@ -81,6 +81,7 @@ var DefinitionReferenceRegex = regexp.MustCompile(`{{([a-zA-Z0-9-_]+)}}`)
 // The version declared on the file is captured in group 1.
 var CRSVersionRegex = regexp.MustCompile(`^(# OWASP ModSecurity Core Rule Set ver\.)(.+)$`)
 
-// CRSCopyrightYear matches the year of the copyright text on every rules file.
-// The "to" year is captured in group 1.
-var CRSCopyrightYear = regexp.MustCompile(`^(# Copyright \(c\) 2021-)(\d{4})( Core Rule Set project. All rights reserved.)$`)
+// CRSCopyrightYearRegex matches the version and year range of the copyright text in setup,
+// setup example, and rule files.
+// The matched end year of the copyright year range will be captured in group 1.
+var CRSCopyrightYearRegex = regexp.MustCompile(`^(# Copyright \(c\) 2021-)(\d{4})( Core Rule Set project. All rights reserved.)$`)

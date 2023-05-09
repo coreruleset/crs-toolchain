@@ -26,7 +26,7 @@ func init() {
 func createChoreCopyrightUpdateCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "copyright-update",
-		Short: "Updates the copyright on every rule file",
+		Short: "Updates the copyright in setup, example setup, and rule files",
 		Run: func(cmd *cobra.Command, args []string) {
 			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
 			chore.CopyrightUpdate(rootContext, copyrightVariables.Version, copyrightVariables.Year)
@@ -36,8 +36,9 @@ func createChoreCopyrightUpdateCommand() *cobra.Command {
 
 func buildChoreCopyrightUpdateCommand() {
 	choreCmd.AddCommand(choreCopyrightUpdateCmd)
-	choreCopyrightUpdateCmd.Flags().StringVarP(&copyrightVariables.Year, "year", "y", strconv.Itoa(time.Now().Year()), "Year, example: 2023. Default: current year.")
+	choreCopyrightUpdateCmd.Flags().StringVarP(&copyrightVariables.Year, "year", "y", strconv.Itoa(time.Now().Year()), "Four digit year")
 	choreCopyrightUpdateCmd.Flags().StringVarP(&copyrightVariables.Version, "version", "v", "CRS v10.0.1", "Add this text as the version to the file.")
+		choreCopyrightUpdateCmd.Flags().Lookup("version").DefValue = "None"
 }
 
 func rebuildChoreCopyrightUpdateCommand() {
