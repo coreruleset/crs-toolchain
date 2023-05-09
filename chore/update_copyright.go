@@ -56,10 +56,8 @@ func processFile(filePath string, version string, year string) error {
 	}
 
 	err = os.WriteFile(filePath, output, fs.ModePerm)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return err
 }
 
 // Ideally we have support in the future for a proper parser file, so we can use that to change it
