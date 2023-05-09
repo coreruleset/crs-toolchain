@@ -15,10 +15,10 @@ import (
 	"github.com/coreruleset/crs-toolchain/regex"
 )
 
-var logger = log.With().Str("component", "copyright-update").Logger()
+var logger = log.With().Str("component", "update-copyright").Logger()
 
-// CopyrightUpdate updates the copyright portion of the rules files to the provided year and version.
-func CopyrightUpdate(ctxt *context.Context, version string, year string) {
+// UpdateCopyright updates the copyright portion of the rules files to the provided year and version.
+func UpdateCopyright(ctxt *context.Context, version string, year string) {
 	err := filepath.WalkDir(ctxt.RootDir(), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// abort
@@ -62,19 +62,19 @@ func processFile(filePath string, version string, year string) error {
 	return nil
 }
 
-// Ideally we have support in the future for a proper parser file so we can use that to change it
+// Ideally we have support in the future for a proper parser file, so we can use that to change it
 // in a more elegant way. Right now we just match strings.
 func updateRules(version string, year string, contents []byte) ([]byte, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(contents))
 	scanner.Split(bufio.ScanLines)
 	output := new(bytes.Buffer)
 	writer := bufio.NewWriter(output)
+	replaceVersion := fmt.Sprintf("${1}%s", version)
+	replaceYear := fmt.Sprintf("${1}%s${3}", year)
 	for scanner.Scan() {
 		line := scanner.Text()
-		replaceVersion := fmt.Sprintf("${1}%s", version)
 		line = regex.CRSVersionRegex.ReplaceAllString(line, replaceVersion)
-		replaceYear := fmt.Sprintf("${1}%s${3}", year)
-		line = regex.CRSCopyrightYear.ReplaceAllString(line, replaceYear)
+		line = regex.CRSCopyrightYearRegex.ReplaceAllString(line, replaceYear)
 
 		if _, err := writer.WriteString(line); err != nil {
 			return nil, err
@@ -84,7 +84,9 @@ func updateRules(version string, year string, contents []byte) ([]byte, error) {
 		}
 	}
 
-	writer.Flush()
+	if err := writer.Flush(); err != nil {
+		return nil, err
+	}
 	outputBytes := output.Bytes()
 	// if the file was empty, we didn't change anything and we're done
 	if len(outputBytes) == 0 {

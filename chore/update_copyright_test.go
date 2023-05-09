@@ -16,11 +16,11 @@ type copyrightUpdateTestsTestSuite struct {
 func (s *copyrightUpdateTestsTestSuite) SetupTest() {
 }
 
-func TestRunCopyrightUpdateTestsTestSuite(t *testing.T) {
+func TestRunUpdateCopyrightTestsTestSuite(t *testing.T) {
 	suite.Run(t, new(copyrightUpdateTestsTestSuite))
 }
 
-func (s *copyrightUpdateTestsTestSuite) TestCopyrightUpdateTests_SetVersion() {
+func (s *copyrightUpdateTestsTestSuite) TestUpdateCopyrightTests_SetVersion() {
 	contents := `# ------------------------------------------------------------------------
 # OWASP ModSecurity Core Rule Set ver.4.0.0-rc1
 # Copyright (c) 2006-2020 Trustwave and contributors. All rights reserved.
