@@ -91,7 +91,7 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Version512() {
 }
 
 func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Year2100() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-y", "2100"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-y", "2100", "-v", "experimental"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("update-copyright", cmd.Name())
@@ -105,6 +105,15 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Year2100() {
 	contents, err = os.ReadFile(path.Join(s.tempDir, "crs-setup.conf.example"))
 	s.NoError(err)
 	s.Contains(string(contents), "2021-2100")
+}
+
+func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_ErrIfNoVersion() {
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-y", "2222"})
+	cmd, err := rootCmd.ExecuteC()
+
+	s.Equal("update-copyright", cmd.Name())
+
+	s.Error(err, ErrUpdateCopyrightWithoutVersion)
 }
 
 func (s *choreUpdateCopyrightTestSuite) writeFile(filename string, contents string) {

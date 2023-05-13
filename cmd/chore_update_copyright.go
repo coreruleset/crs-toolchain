@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"errors"
 	"strconv"
 	"time"
 
@@ -30,7 +29,7 @@ func createChoreUpdateCopyrightCommand() *cobra.Command {
 		Short: "Updates the copyright in setup, example setup, and rule files",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if copyrightVariables.Version == "" {
-				return errors.New("version is needed to update the copyright. You can use 'git describe --tags' if using git")
+				return ErrUpdateCopyrightWithoutVersion
 			}
 			return nil
 		},
