@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
@@ -27,6 +28,12 @@ func createChoreUpdateCopyrightCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "update-copyright",
 		Short: "Updates the copyright in setup, example setup, and rule files",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if copyrightVariables.Version == "" {
+				return errors.New("version is needed to update the copyright. You can use 'git describe --tags' if using git")
+			}
+			return nil
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
 			chore.UpdateCopyright(rootContext, copyrightVariables.Version, copyrightVariables.Year)
@@ -37,8 +44,7 @@ func createChoreUpdateCopyrightCommand() *cobra.Command {
 func buildChoreUpdateCopyrightCommand() {
 	choreCmd.AddCommand(choreUpdateCopyrightCmd)
 	choreUpdateCopyrightCmd.Flags().StringVarP(&copyrightVariables.Year, "year", "y", strconv.Itoa(time.Now().Year()), "Four digit year")
-	choreUpdateCopyrightCmd.Flags().StringVarP(&copyrightVariables.Version, "version", "v", "CRS v10.0.1", "Add this text as the version to the file.")
-	choreUpdateCopyrightCmd.Flags().Lookup("version").DefValue = "None"
+	choreUpdateCopyrightCmd.Flags().StringVarP(&copyrightVariables.Version, "version", "v", "", "Add this text as the version to the file.")
 }
 
 func rebuildChoreUpdateCopyrightCommand() {
