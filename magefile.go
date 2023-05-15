@@ -1,4 +1,4 @@
-// Copyright 2022 WASP Core Rule Set Project
+// Copyright 2023 OWASP Core Rule Set Project
 // SPDX-License-Identifier: Apache-2.0
 
 //go:build mage
@@ -17,10 +17,10 @@ import (
 	"github.com/magefile/mage/sh"
 )
 
-var addLicenseVersion = "v1.0.0" // https://github.com/google/addlicense
-var golangCILintVer = "v1.48.0"  // https://github.com/golangci/golangci-lint/releases
-var gosImportsVer = "v0.1.5"     // https://github.com/rinchsan/gosimports/releases/tag/v0.1.5
-var goGciVer = "v0.8.2"          // https://github.com/daixiang0/gci/releases/tag/v0.8.2
+var addLicenseVersion = "v1.1.1" // https://github.com/google/addlicense
+var golangCILintVer = "v1.52.2"  // https://github.com/golangci/golangci-lint/releases
+var gosImportsVer = "v0.3.8"     // https://github.com/rinchsan/gosimports/releases/tag/v0.1.5
+var goGciVer = "v0.10.1"         // https://github.com/daixiang0/gci/releases/tag/v0.8.2
 
 var errCommitFormatting = errors.New("files not formatted, please commit formatting changes")
 var errNoGitDir = errors.New("no .git directory found")
@@ -33,7 +33,7 @@ func Format() error {
 	// addlicense strangely logs skipped files to stderr despite not being erroneous, so use the long sh.Exec form to
 	// discard stderr too.
 	if _, err := sh.Exec(map[string]string{}, io.Discard, io.Discard, "go", "run", fmt.Sprintf("github.com/google/addlicense@%s", addLicenseVersion),
-		"-c", "OWASP Core Rule Set Project",
+		"-c", "OWASP ModSecurity Core Rule Set Project",
 		"-s=only",
 		"-ignore", "**/*.yml",
 		"-ignore", "**/*.yaml",
