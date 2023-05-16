@@ -97,7 +97,7 @@ func (s *formatTestSuite) TestFormat_TrimsTabs() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `line1	
+	expected := regexAssemblyStandardHeader + `line1	
 line2
 `
 	output := s.readDataFile("123456.ra")
@@ -111,7 +111,7 @@ func (s *formatTestSuite) TestFormat_TrimsSpaces() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `line1    
+	expected := regexAssemblyStandardHeader + `line1    
 line2
 `
 	output := s.readDataFile("123456.ra")
@@ -126,7 +126,7 @@ func (s *formatTestSuite) TestFormat_IndentsAssembleBlock() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> assemble
+	expected := regexAssemblyStandardHeader + `##!> assemble
   line
 ##!<
 `
@@ -135,7 +135,7 @@ func (s *formatTestSuite) TestFormat_IndentsAssembleBlock() {
 }
 
 func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
-	s.writeDataFile("123456.ra", `            ##!> assemble
+	s.writeDataFile("123456.ra", `##!> assemble
     		line
 	   ##!> assemble
 	               ##!=> output
@@ -154,7 +154,7 @@ func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> assemble
+	expected := regexAssemblyStandardHeader + `##!> assemble
   line
   ##!> assemble
     ##!=> output
@@ -182,7 +182,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterNoNewLine() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> assemble
+	expected := regexAssemblyStandardHeader + `##!> assemble
   line
 ##!<
 `
@@ -199,7 +199,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterOneNewLine() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> assemble
+	expected := regexAssemblyStandardHeader + `##!> assemble
   line
 ##!<
 `
@@ -217,7 +217,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterTwoNewLines() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> assemble
+	expected := regexAssemblyStandardHeader + `##!> assemble
   line
 ##!<
 `
@@ -231,7 +231,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineIfEmpty() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := "\n"
+	expected := regexAssemblyStandardHeader
 	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
 }
@@ -248,7 +248,7 @@ func (s *formatTestSuite) TestFormat_DoesNotRemoveEmptyLines() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `
+	expected := regexAssemblyStandardHeader + `
 
 ##!> assemble
 
@@ -272,7 +272,7 @@ func (s *formatTestSuite) TestFormat_DoesNotRemoveComments() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `
+	expected := regexAssemblyStandardHeader + `
 ##! a comment	
 ##!> assemble
   ##! a comment	
@@ -299,7 +299,7 @@ func (s *formatTestSuite) TestFormat_OnlyIndentsAssembleProcessor() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> assemble
+	expected := regexAssemblyStandardHeader + `##!> assemble
   ##!> include bart
   ##!> assemble
 ##!+ i
@@ -325,7 +325,7 @@ func (s *formatTestSuite) TestFormat_FormatsProcessors() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> assemble
+	expected := regexAssemblyStandardHeader + `##!> assemble
   ##!> include bart
   ##!> cmdline windows
     ##!> define homer simpson
@@ -345,7 +345,7 @@ func (s *formatTestSuite) TestFormat_FormatsFlags() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!+ i
+	expected := regexAssemblyStandardHeader + `##!+ i
 ##!+ i
 ##!+ i
 `
@@ -362,7 +362,7 @@ func (s *formatTestSuite) TestFormat_FormatsPrefix() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!^ prefix without separating white space
+	expected := regexAssemblyStandardHeader + `##!^ prefix without separating white space
 ##!^ prefix with leading white space
 ##!^ prefix with trailing white space
 `
@@ -379,7 +379,7 @@ func (s *formatTestSuite) TestFormat_FormatsSuffix() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!$ suffix without separating white space
+	expected := regexAssemblyStandardHeader + `##!$ suffix without separating white space
 ##!$ suffix with leading white space
 ##!$ suffix with trailing white space
 `
@@ -396,7 +396,7 @@ func (s *formatTestSuite) TestFormat_FormatsDefinitions() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> define without-separating-white-space homer
+	expected := regexAssemblyStandardHeader + `##!> define without-separating-white-space homer
 ##!> define with-leading-white-space homer
 ##!> define with-trailing-white-space homer
 `
@@ -413,7 +413,7 @@ func (s *formatTestSuite) TestFormat_FormatsIncludes() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> include without-separating-white-space
+	expected := regexAssemblyStandardHeader + `##!> include without-separating-white-space
 ##!> include with-leading-white-space
 ##!> include with-trailing-white-space
 `
@@ -430,7 +430,7 @@ func (s *formatTestSuite) TestFormat_FormatsExcept() {
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
 
-	expected := `##!> include-except without-separating-white-space homer
+	expected := regexAssemblyStandardHeader + `##!> include-except without-separating-white-space homer
 ##!> include-except with-leading-white-space homer
 ##!> include-except with-trailing-white-space homer
 `
@@ -439,7 +439,9 @@ func (s *formatTestSuite) TestFormat_FormatsExcept() {
 }
 
 func (s *formatTestSuite) writeDataFile(filename string, contents string) {
-	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
+	contentsWithHeader := "##! Please refer to the documentation at\n" +
+		"##! https://coreruleset.org/docs/development/regexp_assemble/.\n" + contents
+	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contentsWithHeader), fs.ModePerm)
 	s.NoError(err)
 }
 
