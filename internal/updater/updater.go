@@ -19,7 +19,7 @@ var logger = log.With().Str("component", "updater").Logger()
 // Updater checks the latest version in GitHub and self-updates if there is a newer release.
 func Updater(version string) error {
 	if version == "dev" {
-		logger.Info().Msgf("You are using a development version. Canceling update.")
+		logger.Info().Msgf("You are using a development version. Cancelling update.")
 		return nil
 	}
 	source, err := selfupdate.NewGitHubSource(selfupdate.GitHubConfig{})
@@ -38,7 +38,7 @@ func Updater(version string) error {
 		return fmt.Errorf("error occurred while detecting version: %w", err)
 	}
 	if !found {
-		return fmt.Errorf("latest version for %s/%s could not be found from github repository", runtime.GOOS, runtime.GOARCH)
+		return fmt.Errorf("latest version for %s/%s could not be found in github repository", runtime.GOOS, runtime.GOARCH)
 	}
 
 	logger.Info().Msgf("Version is (%s).", version)

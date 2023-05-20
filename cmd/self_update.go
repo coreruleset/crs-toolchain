@@ -23,10 +23,6 @@ func createSelfUpdateCommand() *cobra.Command {
 		Long: "Checks GitHub releases for the latest version of this command. If a new version is available, " +
 			"it will get it and replace this binary.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Start running. If an error occurs, propagate but don't print anything
-			// command related.
-			//cmd.SilenceErrors = true
-			//cmd.SilenceUsage = true
 			return selfUpdateMe()
 		},
 	}
