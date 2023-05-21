@@ -22,7 +22,7 @@ import (
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
-const regexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/regexp_assemble/.\n"
+const regexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/crs_toolchain/.\n"
 
 // formatCmd represents the generate command
 var formatCmd = createFormatCommand()
@@ -186,7 +186,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 	}
 
 	if checkStandardHeader(lines) {
-		logger.Error().Msgf("file %s does not have standard header", filePath)
+		logger.Info().Msgf("file %s does not have standard header", filePath)
 		// prepend the standard header
 		lines = append([]string{regexAssemblyStandardHeader}, lines...)
 	}
@@ -286,8 +286,7 @@ func formatEndOfFile(lines []string) []string {
 
 func checkStandardHeader(lines []string) bool {
 	if len(lines) > 2 &&
-		lines[0] != `##! Please refer to the documentation at` &&
-		lines[1] != `##! https://coreruleset.org/docs/development/regexp_assemble/.` {
+		lines[0]+lines[1] == regexAssemblyStandardHeader {
 		return true
 	}
 	return false

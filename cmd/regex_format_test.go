@@ -135,7 +135,7 @@ func (s *formatTestSuite) TestFormat_IndentsAssembleBlock() {
 }
 
 func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
-	s.writeDataFile("123456.ra", `##!> assemble
+	s.writeDataFile("123456.ra", `            ##!> assemble
     		line
 	   ##!> assemble
 	               ##!=> output
@@ -439,8 +439,7 @@ func (s *formatTestSuite) TestFormat_FormatsExcept() {
 }
 
 func (s *formatTestSuite) writeDataFile(filename string, contents string) {
-	contentsWithHeader := "##! Please refer to the documentation at\n" +
-		"##! https://coreruleset.org/docs/development/regexp_assemble/.\n" + contents
+	contentsWithHeader := regexAssemblyStandardHeader + contents
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contentsWithHeader), fs.ModePerm)
 	s.NoError(err)
 }
