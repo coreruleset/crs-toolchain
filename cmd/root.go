@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/rs/zerolog"
@@ -23,8 +24,13 @@ var rootValues = struct {
 	configurationFileName configurationFileName
 }{}
 
-func Execute(version string) {
+func Execute(version, commit, date, builtBy string) {
 	rootCmd.Version = version
+	versionTemplate := fmt.Sprintf("{{with .Name}}"+
+		"{{printf \"%%s \" .}}{{end}}"+
+		"{{printf \"version %%s\\ncommit %s\\ndate %s\\nbuiltBy %s\\n\" .Version}}",
+		commit, date, builtBy)
+	rootCmd.SetVersionTemplate(versionTemplate)
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
