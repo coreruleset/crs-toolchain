@@ -42,9 +42,8 @@ func TestRunSelfUpdateTestSuite(t *testing.T) {
 }
 
 func (s *selfUpdateTestSuite) TestSelfUpdateDev() {
-	newVersion, err := selfUpdateMe("dev", s.executablePath)
+	_, err := selfUpdateMe("v0.0.0-dev", s.executablePath)
 	s.NoError(err)
-	s.Empty(newVersion)
 }
 
 func (s *selfUpdateTestSuite) TestSelfUpdateBigVersion() {
@@ -72,7 +71,7 @@ func (s *selfUpdateTestSuite) TestSelfUpdateWithExecutablePath() {
 	err = cmd.Run()
 	if err == nil {
 		versionString := fmt.Sprintf("crs-toolchain version %s", newVersion)
-		s.Equal(versionString, out.String())
+		s.Contains(versionString, out.String())
 	} else {
 		s.Equal("exit status 1", err.Error())
 		oldBinaryWithUnsupportedVersionFlagError := "Error: unknown command \"version\" for \"crs-toolchain\"\nRun 'crs-toolchain --help' for usage.\n"

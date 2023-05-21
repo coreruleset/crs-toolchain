@@ -7,6 +7,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/coreruleset/crs-toolchain/internal/updater"
 )
 
 func init() {
@@ -19,5 +21,12 @@ var versionCmd = &cobra.Command{
 	Long:  `All software has versions. This is crs-toolchain's`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("crs-toolchain", rootCmd.Version)
+		latest, err := updater.LatestVersion()
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to check for updates")
+		} else if latest != "" {
+			fmt.Println("Latest version is:", latest)
+			fmt.Println("Run 'crs-toolchain self-update' to update")
+		}
 	},
 }

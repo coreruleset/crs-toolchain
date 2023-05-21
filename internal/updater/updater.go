@@ -16,14 +16,8 @@ import (
 
 var logger = log.With().Str("component", "updater").Logger()
 
-// Updater checks the latest version in GitHub and self-updates if there is a newer release.
-// returns the version string of the updated release, or an error if something went wrong.
-func Updater(version string, executablePath string) (string, error) {
-	emptyVersion := ""
-	if version == "dev" {
-		logger.Info().Msgf("You are using a development version. Cancelling update.")
-		return emptyVersion, nil
-	}
+// getLatestVersionFromGitHub checks the latest version in GitHub and returns it.
+func getLatestVersionFromGitHub() (*selfupdate.Release, error) {
 	source, err := selfupdate.NewGitHubSource(selfupdate.GitHubConfig{})
 	if err != nil {
 		logger.Fatal().Err(err)
@@ -33,22 +27,41 @@ func Updater(version string, executablePath string) (string, error) {
 		Validator: &selfupdate.ChecksumValidator{UniqueFilename: "crs-toolchain-checksums.txt"}, // checksum from goreleaser
 	})
 	if err != nil {
-		return emptyVersion, err
+		return nil, err
 	}
 	latest, found, err := updater.DetectLatest(context.Background(), selfupdate.ParseSlug("coreruleset/crs-toolchain"))
 	if err != nil {
-		return emptyVersion, fmt.Errorf("error occurred while detecting version: %w", err)
+		return latest, fmt.Errorf("error occurred while detecting version: %w", err)
 	}
 	if !found {
-		return emptyVersion, fmt.Errorf("latest version for %s/%s could not be found in github repository", runtime.GOOS, runtime.GOARCH)
+		return latest, fmt.Errorf("latest version for %s/%s could not be found in github repository", runtime.GOOS, runtime.GOARCH)
+	}
+	return latest, nil
+}
+
+// LatestVersion checks the latest version in GitHub and returns it.
+func LatestVersion() (string, error) {
+	latest, err := getLatestVersionFromGitHub()
+	if err != nil {
+		return "", err
+	}
+	return latest.Version(), nil
+}
+
+// Updater checks the latest version in GitHub and self-updates if there is a newer release.
+// returns the version string of the updated release, or an error if something went wrong.
+func Updater(version string, executablePath string) (string, error) {
+	emptyVersion := ""
+	latest, err := getLatestVersionFromGitHub()
+	if err != nil {
+		return emptyVersion, err
 	}
 
-	logger.Info().Msgf("Your version is %s.", version)
 	if latest.LessOrEqual(version) {
 		logger.Info().Msgf("You have the latest version installed, %s", version)
 		return version, nil
 	}
-
+	logger.Info().Msgf("Your version is %s.", version)
 	// passing executablePath allows to test the updater without actually updating the binary
 	if executablePath == "" {
 		exe, err := os.Executable()
