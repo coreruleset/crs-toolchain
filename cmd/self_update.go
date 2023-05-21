@@ -27,7 +27,7 @@ func createSelfUpdateCommand() *cobra.Command {
 			if rootCmd.Version != "" {
 				version = rootCmd.Version
 			}
-			newVersion, err := selfUpdateMe(version, "")
+			newVersion, err := updater.Updater(version, "")
 			if err != nil {
 				return err
 			}
@@ -52,8 +52,4 @@ func rebuildSelfUpdateCommand() {
 
 	selfUpdateCmd = createSelfUpdateCommand()
 	buildSelfUpdateCommand()
-}
-
-func selfUpdateMe(version string, exe string) (string, error) {
-	return updater.Updater(version, exe)
 }
