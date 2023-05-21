@@ -5,7 +5,6 @@ package updater
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -34,7 +33,7 @@ func getLatestVersionFromGitHub() (*selfupdate.Release, error) {
 		return latest, fmt.Errorf("error occurred while detecting version: %w", err)
 	}
 	if !found {
-		return latest, fmt.Errorf("latest version for %s/%s could not be found in github repository", runtime.GOOS, runtime.GOARCH)
+		return latest, fmt.Errorf("latest version for %s/%s could not be found in GitHub repository", runtime.GOOS, runtime.GOARCH)
 	}
 	return latest, nil
 }
@@ -49,7 +48,7 @@ func LatestVersion() (string, error) {
 }
 
 // Updater checks the latest version in GitHub and self-updates if there is a newer release.
-// returns the version string of the updated release, or an error if something went wrong.
+// Returns the version string of the updated release, or an error if something went wrong.
 func Updater(version string, executablePath string) (string, error) {
 	emptyVersion := ""
 	latest, err := getLatestVersionFromGitHub()
@@ -66,7 +65,7 @@ func Updater(version string, executablePath string) (string, error) {
 	if executablePath == "" {
 		exe, err := os.Executable()
 		if err != nil {
-			return emptyVersion, errors.New("could not locate executable path")
+			return emptyVersion, fmt.Errorf("could not locate executable path: %w", err)
 		}
 		executablePath = exe
 		logger.Info().Msgf("Updating file \"%s\"", executablePath)
