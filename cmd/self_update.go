@@ -9,7 +9,7 @@ import (
 	"github.com/coreruleset/crs-toolchain/internal/updater"
 )
 
-// selfUpdateCmd represents the self-updater command
+// selfUpdateCmd represents the self-update command
 var selfUpdateCmd = createSelfUpdateCommand()
 
 func init() {
