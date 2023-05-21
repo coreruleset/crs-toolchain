@@ -15,7 +15,7 @@ import (
 
 var logger = log.With().Str("component", "updater").Logger()
 
-// getLatestVersionFromGitHub checks the latest version in GitHub and returns it.
+// getLatestVersionFromGitHub checks the latest version on GitHub and returns it.
 func getLatestVersionFromGitHub() (*selfupdate.Release, error) {
 	source, err := selfupdate.NewGitHubSource(selfupdate.GitHubConfig{})
 	if err != nil {
@@ -33,12 +33,12 @@ func getLatestVersionFromGitHub() (*selfupdate.Release, error) {
 		return latest, fmt.Errorf("error occurred while detecting version: %w", err)
 	}
 	if !found {
-		return latest, fmt.Errorf("latest version for %s/%s could not be found in GitHub repository", runtime.GOOS, runtime.GOARCH)
+		return latest, fmt.Errorf("latest version for %s/%s could not be found on GitHub repository", runtime.GOOS, runtime.GOARCH)
 	}
 	return latest, nil
 }
 
-// LatestVersion checks the latest version in GitHub and returns it.
+// LatestVersion checks the latest version on GitHub and returns it.
 func LatestVersion() (string, error) {
 	latest, err := getLatestVersionFromGitHub()
 	if err != nil {
@@ -47,7 +47,7 @@ func LatestVersion() (string, error) {
 	return latest.Version(), nil
 }
 
-// Updater checks the latest version in GitHub and self-updates if there is a newer release.
+// Updater checks the latest version on GitHub and self-updates if there is a newer release.
 // Returns the version string of the updated release, or an error if something went wrong.
 func Updater(version string, executablePath string) (string, error) {
 	emptyVersion := ""
