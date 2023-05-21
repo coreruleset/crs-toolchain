@@ -45,7 +45,7 @@ func Updater(version string, executablePath string) (string, error) {
 
 	logger.Info().Msgf("Your version is %s.", version)
 	if latest.LessOrEqual(version) {
-		logger.Info().Msgf("You have the latest version installed.", version)
+		logger.Info().Msgf("You have the latest version installed, %s", version)
 		return version, nil
 	}
 
