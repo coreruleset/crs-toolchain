@@ -22,21 +22,7 @@ import (
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
-type UnformattedFileError struct {
-	filePath string
-}
-
-func (u *UnformattedFileError) Error() string {
-	if u.HasPathInfo() {
-		return fmt.Sprintf("File not properly formatted: %s", u.filePath)
-	}
-
-	return "One or more files are not properly formatted"
-}
-
-func (u *UnformattedFileError) HasPathInfo() bool {
-	return u.filePath != ""
-}
+const regexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/crs_toolchain/.\n"
 
 // formatCmd represents the generate command
 var formatCmd = createFormatCommand()
@@ -177,6 +163,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 		logger.Error().Err(err).Msgf("failed to open file %s", filePath)
 		return err
 	}
+
 	parser := parser.NewParser(ctxt, file)
 	parsedBytes, _ := parser.Parse(true)
 	if err = file.Close(); err != nil {
@@ -198,6 +185,11 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 		lines = append(lines, string(line))
 	}
 
+	if checkStandardHeader(lines) {
+		logger.Info().Msgf("file %s does not have standard header", filePath)
+		// prepend the standard header
+		lines = append([]string{regexAssemblyStandardHeader}, lines...)
+	}
 	lines = formatEndOfFile(lines)
 
 	newContents := []byte(strings.Join(lines, "\n"))
@@ -290,4 +282,12 @@ func formatEndOfFile(lines []string) []string {
 	// Append a single empty line, which will be joined
 	// to the others by newline
 	return append(lines[:eof+1], "")
+}
+
+func checkStandardHeader(lines []string) bool {
+	if len(lines) > 2 &&
+		lines[0]+lines[1] == regexAssemblyStandardHeader {
+		return true
+	}
+	return false
 }
