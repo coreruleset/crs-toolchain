@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
+	"github.com/coreruleset/crs-toolchain/internal/updater"
 )
 
 type selfUpdateTestSuite struct {
@@ -42,18 +44,18 @@ func TestRunSelfUpdateTestSuite(t *testing.T) {
 }
 
 func (s *selfUpdateTestSuite) TestSelfUpdateDev() {
-	_, err := selfUpdateMe("v0.0.0-dev", s.executablePath)
+	_, err := updater.Updater("v0.0.0-dev", s.executablePath)
 	s.NoError(err)
 }
 
 func (s *selfUpdateTestSuite) TestSelfUpdateBigVersion() {
-	newVersion, err := selfUpdateMe("v10000.1.1", s.executablePath)
+	newVersion, err := updater.Updater("v10000.1.1", s.executablePath)
 	s.NoError(err)
 	s.Equal("v10000.1.1", newVersion)
 }
 
 func (s *selfUpdateTestSuite) TestSelfUpdateWithExecutablePath() {
-	newVersion, err := selfUpdateMe("v1.3.7", s.executablePath)
+	newVersion, err := updater.Updater("v1.3.7", s.executablePath)
 	s.NoError(err)
 	s.NotEmpty(newVersion)
 
