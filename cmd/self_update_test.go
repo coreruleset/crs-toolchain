@@ -50,7 +50,7 @@ func (s *selfUpdateTestSuite) TestSelfUpdateDev() {
 func (s *selfUpdateTestSuite) TestSelfUpdateBigVersion() {
 	newVersion, err := selfUpdateMe("v10000.1.1", s.executablePath)
 	s.NoError(err)
-	s.Empty(newVersion)
+	s.Equal("v10000.1.1", newVersion)
 }
 
 func (s *selfUpdateTestSuite) TestSelfUpdateWithExecutablePath() {
