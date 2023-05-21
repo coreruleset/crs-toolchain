@@ -23,7 +23,20 @@ func createSelfUpdateCommand() *cobra.Command {
 		Long: "Checks GitHub releases for the latest version of this command. If a new version is available, " +
 			"it will get it and replace this binary.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return selfUpdateMe()
+			version := "dev"
+			if rootCmd.Version != "" {
+				version = rootCmd.Version
+			}
+			newVersion, err := selfUpdateMe(version, "")
+			if err != nil {
+				return err
+			}
+			if newVersion != "" {
+				logger.Info().Msgf("Updated to version %s", newVersion)
+			} else {
+				logger.Info().Msg("No updates available")
+			}
+			return nil
 		},
 	}
 }
@@ -41,6 +54,6 @@ func rebuildSelfUpdateCommand() {
 	buildSelfUpdateCommand()
 }
 
-func selfUpdateMe() error {
-	return updater.Updater(rootCmd.Version)
+func selfUpdateMe(version string, exe string) (string, error) {
+	return updater.Updater(version, exe)
 }

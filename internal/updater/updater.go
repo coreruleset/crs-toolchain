@@ -17,10 +17,12 @@ import (
 var logger = log.With().Str("component", "updater").Logger()
 
 // Updater checks the latest version in GitHub and self-updates if there is a newer release.
-func Updater(version string) error {
+// returns the version string of the updated release, or an error if something went wrong.
+func Updater(version string, executablePath string) (string, error) {
+	emptyVersion := ""
 	if version == "dev" {
 		logger.Info().Msgf("You are using a development version. Cancelling update.")
-		return nil
+		return emptyVersion, nil
 	}
 	source, err := selfupdate.NewGitHubSource(selfupdate.GitHubConfig{})
 	if err != nil {
@@ -31,29 +33,35 @@ func Updater(version string) error {
 		Validator: &selfupdate.ChecksumValidator{UniqueFilename: "crs-toolchain-checksums.txt"}, // checksum from goreleaser
 	})
 	if err != nil {
-		return err
+		return emptyVersion, err
 	}
 	latest, found, err := updater.DetectLatest(context.Background(), selfupdate.ParseSlug("coreruleset/crs-toolchain"))
 	if err != nil {
-		return fmt.Errorf("error occurred while detecting version: %w", err)
+		return emptyVersion, fmt.Errorf("error occurred while detecting version: %w", err)
 	}
 	if !found {
-		return fmt.Errorf("latest version for %s/%s could not be found in github repository", runtime.GOOS, runtime.GOARCH)
+		return emptyVersion, fmt.Errorf("latest version for %s/%s could not be found in github repository", runtime.GOOS, runtime.GOARCH)
 	}
 
-	logger.Info().Msgf("Version is (%s).", version)
+	logger.Info().Msgf("Your version is %s.", version)
 	if latest.LessOrEqual(version) {
-		logger.Info().Msgf("Current version (%s) is the latest", version)
-		return nil
+		logger.Info().Msgf("You have the latest version installed.", version)
+		return version, nil
 	}
 
-	exe, err := os.Executable()
-	if err != nil {
-		return errors.New("could not locate executable path")
+	// passing executablePath allows to test the updater without actually updating the binary
+	if executablePath == "" {
+		exe, err := os.Executable()
+		if err != nil {
+			return emptyVersion, errors.New("could not locate executable path")
+		}
+		executablePath = exe
+		logger.Info().Msgf("Updating file \"%s\"", executablePath)
 	}
-	if err := selfupdate.UpdateTo(context.Background(), latest.AssetURL, latest.AssetName, exe); err != nil {
-		return fmt.Errorf("error occurred while updating binary: %w", err)
+
+	if err := selfupdate.UpdateTo(context.Background(), latest.AssetURL, latest.AssetName, executablePath); err != nil {
+		return emptyVersion, fmt.Errorf("error occurred while updating binary: %w", err)
 	}
 	logger.Info().Msgf("Successfully updated to version %s", latest.Version())
-	return nil
+	return latest.Version(), nil
 }
