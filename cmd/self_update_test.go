@@ -72,8 +72,8 @@ func (s *selfUpdateTestSuite) TestSelfUpdateWithExecutablePath() {
 
 	err = cmd.Run()
 	if err == nil {
-		versionString := fmt.Sprintf("crs-toolchain version %s", newVersion)
-		s.Contains(versionString, out.String())
+		versionString := fmt.Sprintf("crs-toolchain %s", newVersion)
+		s.Contains(out.String(), versionString)
 	} else {
 		s.Equal("exit status 1", err.Error())
 		oldBinaryWithUnsupportedVersionFlagError := "Error: unknown command \"version\" for \"crs-toolchain\"\nRun 'crs-toolchain --help' for usage.\n"
