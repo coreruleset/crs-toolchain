@@ -185,7 +185,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 		lines = append(lines, string(line))
 	}
 
-	if checkStandardHeader(lines) {
+	if !checkStandardHeader(lines) {
 		logger.Info().Msgf("file %s does not have standard header", filePath)
 		// prepend the standard header
 		lines = append([]string{regexAssemblyStandardHeader}, lines...)
