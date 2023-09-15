@@ -150,7 +150,7 @@ func performCompare(processAll bool, ctx *processors.Context) error {
 		}
 		if failed && rootValues.output == gitHub {
 			fmt.Println("::error::All rules need to be up to date.",
-				"Please run `crs-toolchain regex update --all")
+				"Please run `crs-toolchain regex update --all`")
 			return &ComparisonError{}
 		}
 	} else {
