@@ -22,7 +22,7 @@ import (
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
-const regexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/crs_toolchain/.\n"
+const regexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/regex_assembly/.\n"
 
 // formatCmd represents the generate command
 var formatCmd = createFormatCommand()
@@ -285,8 +285,8 @@ func formatEndOfFile(lines []string) []string {
 }
 
 func checkStandardHeader(lines []string) bool {
-	if len(lines) > 2 &&
-		lines[0]+lines[1] == regexAssemblyStandardHeader {
+	if len(lines) >= 3 &&
+		fmt.Sprintf("%s\n%s\n%s", lines[0], lines[1], lines[2]) == regexAssemblyStandardHeader {
 		return true
 	}
 	return false
