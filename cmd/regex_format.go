@@ -148,7 +148,7 @@ func processAll(ctxt *processors.Context, checkOnly bool) error {
 	if failed {
 		if rootValues.output == gitHub {
 			fmt.Println("::error::All assembly files need to be properly formatted.",
-				"Please run `crs-toolchain regex format --all")
+				"Please run `crs-toolchain regex format --all`")
 		}
 		return &UnformattedFileError{}
 	}
