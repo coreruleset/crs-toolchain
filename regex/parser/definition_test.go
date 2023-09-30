@@ -51,18 +51,18 @@ func (s *parserDefinitionTestSuite) TestParserDefinition_BasicTest() {
 
 func (s *parserIncludeWithDefinitions) SetupSuite() {
 	tempDir, err := os.MkdirTemp("", "include-multi-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.includeDir = path.Join(s.tempDir, "regex-assembly", "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	rootContext := context.New(os.TempDir(), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
 	for i := 0; i < 4; i++ {
 		file, err := os.Create(path.Join(s.tempDir, fmt.Sprintf("multi-definitions-%d.ra", i)))
-		s.NoError(err, "couldn't create %s file", file.Name())
+		s.Require().NoError(err, "couldn't create %s file", file.Name())
 		if i == 0 {
 			// Only the initial include goes to the reader
 			s.reader = strings.NewReader(fmt.Sprintf(
@@ -80,7 +80,7 @@ func (s *parserIncludeWithDefinitions) SetupSuite() {
 					"##!> include %s\n"+
 						"This is comment %d.\n"+
 						"{{this-is-a-text}} to see if definitions work when included\n", file.Name(), i))
-			s.NoError(err, "writing temp include file failed")
+			s.Require().NoError(err, "writing temp include file failed")
 		}
 	}
 }

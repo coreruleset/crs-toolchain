@@ -24,16 +24,16 @@ func (s *choreUpdateCopyrightTestSuite) SetupTest() {
 	rebuildChoreUpdateCopyrightCommand()
 
 	tempDir, err := os.MkdirTemp("", "update-copyright-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.rulesDir = path.Join(s.tempDir, "rules")
 	err = os.Mkdir(s.rulesDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.writeFile(path.Join(s.rulesDir, "TEST-900.conf"), `# ------------------------------------------------------------------------
 # OWASP ModSecurity Core Rule Set ver.4.0.0-rc1
@@ -66,7 +66,7 @@ func (s *choreUpdateCopyrightTestSuite) SetupTest() {
 
 func (s *choreUpdateCopyrightTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunUpdateCopyrightTestSuite(t *testing.T) {
@@ -81,12 +81,12 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Version512() {
 
 	// get year from file contents
 	contents, err := os.ReadFile(path.Join(s.rulesDir, "TEST-900.conf"))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Contains(string(contents), "OWASP ModSecurity Core Rule Set ver.5.1.2")
 
 	// check that crs-setup.conf.example was also modified
 	contents, err = os.ReadFile(path.Join(s.tempDir, "crs-setup.conf.example"))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Contains(string(contents), "OWASP ModSecurity Core Rule Set ver.5.1.2")
 }
 
@@ -98,12 +98,12 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Year2100() {
 
 	// get year from file contents
 	contents, err := os.ReadFile(path.Join(s.rulesDir, "TEST-900.conf"))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Contains(string(contents), "2021-2100")
 
 	// check that crs-setup.conf.example was also modified
 	contents, err = os.ReadFile(path.Join(s.tempDir, "crs-setup.conf.example"))
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Contains(string(contents), "2021-2100")
 }
 
@@ -118,5 +118,5 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_ErrIfNoVersion() {
 
 func (s *choreUpdateCopyrightTestSuite) writeFile(filename string, contents string) {
 	err := os.WriteFile(filename, []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }

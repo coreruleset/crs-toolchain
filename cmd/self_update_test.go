@@ -27,16 +27,16 @@ func (s *selfUpdateTestSuite) SetupTest() {
 	var err error
 	rebuildSelfUpdateCommand()
 	s.tempDir, err = os.MkdirTemp("", "self-update-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.executablePath = path.Join(s.tempDir, "crs-toolchain")
 	err = os.WriteFile(s.executablePath, []byte("Fake Binary"), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *selfUpdateTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunSelfUpdateTestSuite(t *testing.T) {
@@ -45,23 +45,23 @@ func TestRunSelfUpdateTestSuite(t *testing.T) {
 
 func (s *selfUpdateTestSuite) TestSelfUpdateDev() {
 	_, err := updater.Updater("v0.0.0-dev", s.executablePath)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *selfUpdateTestSuite) TestSelfUpdateBigVersion() {
 	newVersion, err := updater.Updater("v10000.1.1", s.executablePath)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal("v10000.1.1", newVersion)
 }
 
 func (s *selfUpdateTestSuite) TestSelfUpdateWithExecutablePath() {
 	newVersion, err := updater.Updater("v1.3.7", s.executablePath)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotEmpty(newVersion)
 
 	s.FileExists(s.executablePath, "The executable should exist")
 	contents, err := os.ReadFile(s.executablePath)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotContains(string(contents), "Fake Binary", "The executable should be replaced")
 
 	var out, stderr bytes.Buffer

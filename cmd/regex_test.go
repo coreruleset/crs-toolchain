@@ -24,21 +24,21 @@ func (s *regexTestSuite) SetupTest() {
 	rebuildCompareCommand()
 
 	tempDir, err := os.MkdirTemp("", "regex-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.rulesDir = path.Join(s.tempDir, "rules")
 	err = os.Mkdir(s.rulesDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *regexTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunRegexTestSuite(t *testing.T) {
@@ -50,7 +50,7 @@ func (s *regexTestSuite) TestRegex_ParseRuleId() {
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456"})
 	_, err := rootCmd.ExecuteC()
 
-	s.NoError(err, "failed to execute rootCmd")
+	s.Require().NoError(err, "failed to execute rootCmd")
 	s.Equal("123456", ruleValues.id)
 	s.Equal("123456.ra", ruleValues.fileName)
 	s.Equal(uint8(0), ruleValues.chainOffset)
@@ -62,7 +62,7 @@ func (s *regexTestSuite) TestRegex_ParseRuleIdAndChainOffset() {
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456-chain19"})
 	_, err := rootCmd.ExecuteC()
 
-	s.NoError(err, "failed to execute rootCmd")
+	s.Require().NoError(err, "failed to execute rootCmd")
 	s.Equal("123456", ruleValues.id)
 	s.Equal("123456-chain19.ra", ruleValues.fileName)
 	s.Equal(uint8(19), ruleValues.chainOffset)
@@ -74,7 +74,7 @@ func (s *regexTestSuite) TestRegex_ParseRuleIdAndChainOffsetAndFileName() {
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456-chain255.ra"})
 	_, err := rootCmd.ExecuteC()
 
-	s.NoError(err, "failed to execute rootCmd")
+	s.Require().NoError(err, "failed to execute rootCmd")
 	s.Equal("123456", ruleValues.id)
 	s.Equal("123456-chain255.ra", ruleValues.fileName)
 	s.Equal(uint8(255), ruleValues.chainOffset)
@@ -86,7 +86,7 @@ func (s *regexTestSuite) TestRegex_ParseRuleIdAndFileName() {
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456.ra"})
 	_, err := rootCmd.ExecuteC()
 
-	s.NoError(err, "failed to execute rootCmd")
+	s.Require().NoError(err, "failed to execute rootCmd")
 	s.Equal("123456", ruleValues.id)
 	s.Equal("123456.ra", ruleValues.fileName)
 	s.Equal(uint8(0), ruleValues.chainOffset)
@@ -95,5 +95,5 @@ func (s *regexTestSuite) TestRegex_ParseRuleIdAndFileName() {
 
 func (s *regexTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }

@@ -24,21 +24,21 @@ func (s *choreTestSuite) SetupTest() {
 	rebuildChoreUpdateCopyrightCommand()
 
 	tempDir, err := os.MkdirTemp("", "chore-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.rulesDir = path.Join(s.tempDir, "rules")
 	err = os.Mkdir(s.rulesDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *choreTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunChoreTestSuite(t *testing.T) {
@@ -61,10 +61,10 @@ func (s *choreTestSuite) TestChore_RulesFile() {
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-v", "NEW_VERSION", "-y", "1234"})
 	_, err := rootCmd.ExecuteC()
 
-	s.NoError(err, "failed to execute rootCmd")
+	s.Require().NoError(err, "failed to execute rootCmd")
 }
 
 func (s *choreTestSuite) writeRulesFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.rulesDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }

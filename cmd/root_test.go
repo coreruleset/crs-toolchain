@@ -27,17 +27,17 @@ func (s *rootTestSuite) SetupTest() {
 	zerolog.SetGlobalLevel(defaultLogLevel)
 
 	tempDir, err := os.MkdirTemp("", "root-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *rootTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunRootTestSuite(t *testing.T) {
@@ -49,7 +49,7 @@ func (s *rootTestSuite) TestRoot_NoArguments() {
 	cmd, err := rootCmd.ExecuteC()
 
 	s.Equal("crs-toolchain", cmd.Name())
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelDefault() {
@@ -114,14 +114,14 @@ func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
 func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
 	rootCmd.SetArgs([]string{"-d", "../testDir", "regex", "generate", "-"})
 	cwd, err := os.Getwd()
-	s.NoError(err)
+	s.Require().NoError(err)
 	parentCwd := path.Dir(cwd)
 	err = os.MkdirAll(path.Join(parentCwd, "testDir", "regex-assembly"), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 	defer os.RemoveAll(path.Join(parentCwd, "testDir"))
 
 	cmd, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	workingDirectoryFlag := cmd.Flags().Lookup("directory")
 	s.NotNil(workingDirectoryFlag)
@@ -133,43 +133,38 @@ func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
 
 func (s *rootTestSuite) TestFindRootDirectoryInRoot() {
 	root, err := findRootDirectory(s.tempDir)
-	if s.NoError(err) {
-		s.Equal(s.tempDir, root)
-	}
+	s.Require().NoError(err)
+	s.Equal(s.tempDir, root)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInUtil() {
 	root, err := findRootDirectory(path.Join(s.tempDir, "util"))
-	if s.NoError(err) {
-		s.Equal(s.tempDir, root)
-	}
+	s.Require().NoError(err)
+	s.Equal(s.tempDir, root)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInData() {
 	root, err := findRootDirectory(s.dataDir)
-	if s.NoError(err) {
-		s.Equal(s.tempDir, root)
-	}
+	s.Require().NoError(err)
+	s.Equal(s.tempDir, root)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInInclude() {
 	includeDir := path.Join(s.dataDir, "include")
 	err := os.Mkdir(includeDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 	root, err := findRootDirectory(includeDir)
-	if s.NoError(err) {
-		s.Equal(s.tempDir, root)
-	}
+	s.Require().NoError(err)
+	s.Equal(s.tempDir, root)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInRules() {
 	err := os.Mkdir(path.Join(s.tempDir, "rules"), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	root, err := findRootDirectory(path.Join(s.tempDir, "rules"))
-	if s.NoError(err) {
-		s.Equal(s.tempDir, root)
-	}
+	s.Require().NoError(err)
+	s.Equal(s.tempDir, root)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryFails() {
@@ -179,5 +174,5 @@ func (s *rootTestSuite) TestFindRootDirectoryFails() {
 
 func (s *rootTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }

@@ -23,21 +23,21 @@ func (s *formatTestSuite) SetupTest() {
 	rebuildFormatCommand()
 
 	tempDir, err := os.MkdirTemp("", "format-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.includeDir = path.Join(s.dataDir, "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *formatTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunFormatTestSuite(t *testing.T) {
@@ -95,7 +95,7 @@ func (s *formatTestSuite) TestFormat_TrimsTabs() {
 	line2`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 line1	
@@ -110,7 +110,7 @@ func (s *formatTestSuite) TestFormat_TrimsSpaces() {
     line2`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 line1    
@@ -126,7 +126,7 @@ func (s *formatTestSuite) TestFormat_IndentsAssembleBlock() {
 ##!<`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> assemble
@@ -155,7 +155,7 @@ func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
 ##!<`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> assemble
@@ -184,7 +184,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterNoNewLine() {
 ##!<`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> assemble
@@ -202,7 +202,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterOneNewLine() {
 `)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> assemble
@@ -221,7 +221,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterTwoNewLines() {
 `)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> assemble
@@ -236,7 +236,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineIfEmpty() {
 	s.writeDataFile("123456.ra", "")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + "\n"
 	output := s.readDataFile("123456.ra")
@@ -253,7 +253,7 @@ func (s *formatTestSuite) TestFormat_DoesNotRemoveEmptyLines() {
 ##!<`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 
@@ -277,7 +277,7 @@ func (s *formatTestSuite) TestFormat_DoesNotRemoveComments() {
 ##!<`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##! a comment	
@@ -304,7 +304,7 @@ func (s *formatTestSuite) TestFormat_OnlyIndentsAssembleProcessor() {
 ##!<`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> assemble
@@ -331,7 +331,7 @@ func (s *formatTestSuite) TestFormat_FormatsProcessors() {
 ##!<`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> assemble
@@ -352,7 +352,7 @@ func (s *formatTestSuite) TestFormat_FormatsFlags() {
 `)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!+ i
@@ -370,7 +370,7 @@ func (s *formatTestSuite) TestFormat_FormatsPrefix() {
 `)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!^ prefix without separating white space
@@ -388,7 +388,7 @@ func (s *formatTestSuite) TestFormat_FormatsSuffix() {
 `)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!$ suffix without separating white space
@@ -406,7 +406,7 @@ func (s *formatTestSuite) TestFormat_FormatsDefinitions() {
 `)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> define without-separating-white-space homer
@@ -424,7 +424,7 @@ func (s *formatTestSuite) TestFormat_FormatsIncludes() {
 `)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> include without-separating-white-space
@@ -442,7 +442,7 @@ func (s *formatTestSuite) TestFormat_FormatsExcept() {
 `)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := regexAssemblyStandardHeader + `
 ##!> include-except without-separating-white-space homer
@@ -455,16 +455,16 @@ func (s *formatTestSuite) TestFormat_FormatsExcept() {
 
 func (s *formatTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *formatTestSuite) readDataFile(filename string) string {
 	output, err := os.ReadFile(path.Join(s.dataDir, filename))
-	s.NoError(err)
+	s.Require().NoError(err)
 	return string(output)
 }
 
 func (s *formatTestSuite) writeIncludeFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.includeDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }

@@ -67,19 +67,19 @@ func (s *cmdLineTestSuite) TestCmdLine_NewParser() {
 
 func (s *cmdLineTestSuite) TestCmdLine_CmdLineTypeFromString() {
 	t, err := CmdLineTypeFromString("unix")
-	s.NoError(err)
+	s.Require().NoError(err)
 	cmd := NewCmdLine(s.ctx, t)
 
 	err = cmd.ProcessLine(`foo`)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(`f_av-u_o_av-u_o`, cmd.proc.lines[0])
 
 	t, err = CmdLineTypeFromString("windows")
-	s.NoError(err)
+	s.Require().NoError(err)
 	cmd = NewCmdLine(s.ctx, t)
 
 	err = cmd.ProcessLine(`foo`)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(`f_av-w_o_av-w_o`, cmd.proc.lines[0])
 }
 
@@ -94,7 +94,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
 
 	err := cmd.ProcessLine(`foo`)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(`f_av-u_o_av-u_o`, cmd.proc.lines[0])
 }
 
@@ -102,7 +102,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
 	cmd := NewCmdLine(s.ctx, CmdLineUnix)
 
 	err := cmd.ProcessLine(`gcc-10.`)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.Equal(`g_av-u_c_av-u_c_av-u_\-_av-u_1_av-u_0_av-u_\.`, cmd.proc.lines[0])
 }
@@ -111,7 +111,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
 	cmd := NewCmdLine(s.ctx, CmdLineWindows)
 
 	err := cmd.ProcessLine(`foo`)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.Equal(`f_av-w_o_av-w_o`, cmd.proc.lines[0])
 }

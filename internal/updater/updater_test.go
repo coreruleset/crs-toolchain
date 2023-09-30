@@ -25,6 +25,6 @@ func TestRunUpdaterTestSuite(t *testing.T) {
 
 func (s *updaterTestSuite) TestLatestVersion() {
 	latestVersion, err := LatestVersion()
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotEmpty(latestVersion)
 }

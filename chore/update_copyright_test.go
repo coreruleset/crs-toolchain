@@ -54,7 +54,7 @@ SecComponentSignature "OWASP_CRS/4.0.0-rc1"`
 #
 SecComponentSignature "OWASP_CRS/4.0.0-rc1"`
 	out, err := updateRules("9.1.22", "2042", []byte(contents))
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
 }

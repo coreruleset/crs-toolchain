@@ -42,7 +42,7 @@ tests:
     desc: "test 2"
 `
 	out, err := NewTestRenumberer().processYaml("123456", []byte(contents))
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
 }
@@ -71,7 +71,7 @@ tests:
     desc: "test 2"
 `
 	out, err := NewTestRenumberer().processYaml("123456", []byte(contents))
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
 }
@@ -97,7 +97,7 @@ tests:
     desc: "test 2"
 `
 	out, err := NewTestRenumberer().processYaml("123456", []byte(contents))
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
 }
@@ -126,7 +126,7 @@ tests:
     desc: "test 2"
 `
 	out, err := NewTestRenumberer().processYaml("123456", []byte(contents))
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
 }

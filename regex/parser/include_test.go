@@ -30,7 +30,7 @@ type parserIncludeTestSuite struct {
 
 func (s *parserIncludeTestSuite) writeDataFile(includeContents string, dataContents string) {
 	_, err := s.includeFile.WriteString(includeContents)
-	s.NoError(err, "writing temp include file failed")
+	s.Require().NoError(err, "writing temp include file failed")
 
 	s.reader = strings.NewReader(fmt.Sprintf("##!> include %s\n%s", s.includeFile.Name(), dataContents))
 }
@@ -42,21 +42,21 @@ func TestRunParserIncludeTestSuite(t *testing.T) {
 func (s *parserIncludeTestSuite) SetupTest() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "include-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.includeDir = path.Join(s.tempDir, "regex-assembly", "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	rootContext := context.New(s.tempDir, "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
 	s.includeFile, err = os.Create(path.Join(s.includeDir, "test.ra"))
-	s.NoError(err, "couldn't create %s file", s.includeFile.Name())
+	s.Require().NoError(err, "couldn't create %s file", s.includeFile.Name())
 }
 
 func (s *parserIncludeTestSuite) TearDownTest() {
-	s.NoError(s.includeFile.Close())
-	s.NoError(os.RemoveAll(s.tempDir))
+	s.Require().NoError(s.includeFile.Close())
+	s.Require().NoError(os.RemoveAll(s.tempDir))
 }
 
 func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
