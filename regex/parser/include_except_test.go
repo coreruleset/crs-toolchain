@@ -182,3 +182,59 @@ func (s *parserIncludeExceptTestSuite) TestIncludeExcept_DontPanicWhenExclusions
 
 	s.Equal("include1\n", actual.String())
 }
+
+func (s *parserIncludeExceptTestSuite) TestIncludeExcept_SuffixReplacements() {
+	includePath := s.writeFile(`no suffix1
+suffix with@
+suffix with~
+no suffix 2`,
+		s.includeDir)
+	excludePath := s.writeFile("no suffix1", s.excludeDir)
+	assemblyPath := s.writeFile(
+		fmt.Sprintf(
+			"##!> include-except %s %s -- %s %s %s %s", includePath, excludePath,
+			"@", `[\s><]`,
+			"~", `[^\s]`),
+		s.assemblyDir)
+
+	assemblyFile, err := os.Open(assemblyPath)
+	s.Require().NoError(err)
+	defer assemblyFile.Close()
+
+	parser := NewParser(s.ctx, assemblyFile)
+	actual, _ := parser.Parse(false)
+	expected := `suffix with[\s><]
+suffix with[^\s]
+no suffix 2
+`
+
+	s.Equal(expected, actual.String())
+}
+
+func (s *parserIncludeExceptTestSuite) TestIncludeExcept_SuffixReplacements_WithMultipleExclusions() {
+	includePath := s.writeFile(`no suffix1
+suffix with@
+suffix with~
+no suffix 2`,
+		s.includeDir)
+	excludePath1 := s.writeFile("no suffix1", s.excludeDir)
+	excludePath2 := s.writeFile("no suffix 2", s.excludeDir)
+	assemblyPath := s.writeFile(
+		fmt.Sprintf(
+			"##!> include-except %s %s %s -- %s %s %s %s", includePath, excludePath1, excludePath2,
+			"@", `[\s><]`,
+			"~", `[^\s]`),
+		s.assemblyDir)
+
+	assemblyFile, err := os.Open(assemblyPath)
+	s.Require().NoError(err)
+	defer assemblyFile.Close()
+
+	parser := NewParser(s.ctx, assemblyFile)
+	actual, _ := parser.Parse(false)
+	expected := `suffix with[\s><]
+suffix with[^\s]
+`
+
+	s.Equal(expected, actual.String())
+}

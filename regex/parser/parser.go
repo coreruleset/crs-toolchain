@@ -123,13 +123,20 @@ func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
 		case include:
 			if !formatOnly {
 				// go read the included file and paste text here
-				content, _ := parseFile(p, parsedLine.result[0], nil)
-				text = content.String()
+				var err error
+				text, err = buildIncludeString(p, parsedLine)
+				if err != nil {
+					logger.Panic().Err(err).Msg("Failed to parse `include` directive")
+				}
 			}
 		case includeExcept:
 			if !formatOnly {
-				// go read the included file but exclude exclusions
-				text = buildIncludeExceptString(p, parsedLine)
+				// go read the included files but exclude exclusions
+				var err error
+				text, err = buildIncludeExceptString(p, parsedLine)
+				if err != nil {
+					logger.Panic().Err(err).Msg("Failed to parse `include-except` directive")
+				}
 			}
 		case flags:
 			for _, flag := range parsedLine.result[0] {
@@ -185,10 +192,10 @@ func (p *Parser) parseLine(line string) ParsedLine {
 				pl.result = []string{"comment"}
 			case includePatternName:
 				pl.parsedType = include
-				pl.result = []string{found[1]}
+				pl.result = found[1:3]
 			case includeExceptPatternName:
 				pl.parsedType = includeExcept
-				pl.result = found[1:3]
+				pl.result = found[1:4]
 			case definitionPatternName:
 				pl.parsedType = definition
 				pl.resultMap = map[string]string{found[1]: found[2]}
