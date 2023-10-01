@@ -211,6 +211,25 @@ no suffix 2
 	s.Equal(expected, actual.String())
 }
 
+func (s *parserIncludeExceptTestSuite) TestIncludeExcept_MultipleExcludes() {
+	includePath := s.writeFile(`\s*include1
+leave me alone`, s.includeDir)
+	excludePath1 := s.writeFile(`\s*include1
+include2`, s.excludeDir)
+	excludePath2 := s.writeFile(`[a-c]include4+
+a*b|include3`, s.excludeDir)
+	assemblyPath := s.writeFile(fmt.Sprintf("##!> include-except %s %s %s", includePath, excludePath1, excludePath2), s.assemblyDir)
+
+	assemblyFile, err := os.Open(assemblyPath)
+	s.Require().NoError(err)
+	defer assemblyFile.Close()
+
+	parser := NewParser(s.ctx, assemblyFile)
+	actual, _ := parser.Parse(false)
+
+	s.Equal("leave me alone\n", actual.String())
+}
+
 func (s *parserIncludeExceptTestSuite) TestIncludeExcept_SuffixReplacements_WithMultipleExclusions() {
 	includePath := s.writeFile(`no suffix1
 suffix with@

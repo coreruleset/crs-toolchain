@@ -6,7 +6,6 @@ package parser
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -34,25 +33,18 @@ func (h inclusionLineSlice) Swap(i, j int) {
 }
 
 func buildIncludeString(parser *Parser, parsedLine ParsedLine) (string, error) {
-	includeFileName := parsedLine.result[0]
-	content, _ := parseFile(parser, includeFileName, nil)
-
-	return replaceSuffixes(content, parsedLine.result[1])
+	content, _ := parseFile(parser, parsedLine.includeFileName, nil)
+	return replaceSuffixes(content, parsedLine.suffixReplacements)
 }
 
 func buildIncludeExceptString(parser *Parser, parsedLine ParsedLine) (string, error) {
-	includeFileName := parsedLine.result[0]
-	replacer := regexp.MustCompile(`\s+`)
-	excludeFileNamesString := replacer.ReplaceAllString(parsedLine.result[1], " ")
-	excludeFileNames := strings.Split(excludeFileNamesString, " ")
-
 	// 1. build a map with lines as keys for fast access;
 	//    store the line itself and its position in the value (an inclusionLine) for later
 	// 2. remove exclusions from the map
 	// 3. put the inclusionLines back into an array, still out of order
 	// 4. build the resulting string by sorting the array and joining the lines
-	includeMap, definitions := buildinclusionLineMap(parser, includeFileName)
-	removeExclusions(parser, excludeFileNames, includeMap, definitions)
+	includeMap, definitions := buildinclusionLineMap(parser, parsedLine.includeFileName)
+	removeExclusions(parser, parsedLine.excludeFileNames, includeMap, definitions)
 
 	inclusionLines := make(inclusionLineSlice, 0, len(includeMap))
 	for _, value := range includeMap {
@@ -60,35 +52,12 @@ func buildIncludeExceptString(parser *Parser, parsedLine ParsedLine) (string, er
 	}
 
 	contentWithoutExclusions := stringFromInclusionLines(inclusionLines)
-	return replaceSuffixes(bytes.NewBufferString(contentWithoutExclusions), parsedLine.result[2])
+	return replaceSuffixes(bytes.NewBufferString(contentWithoutExclusions), parsedLine.suffixReplacements)
 }
 
-func buildPairMap(input string) (map[string]string, error) {
-	replacer := regexp.MustCompile(`\s+`)
-	cleanInput := replacer.ReplaceAllString(input, " ")
-	logger.Trace().Msgf("Building pair map for: %s", cleanInput)
-	list := strings.Split(cleanInput, " ")
-	if len(list)%2 > 0 {
-		return nil, fmt.Errorf("uneven number of arguments found: %s", cleanInput)
-	}
-
-	pairMap := map[string]string{}
-	for i := 0; i < len(list); i += 2 {
-		pairMap[list[i]] = list[i+1]
-	}
-
-	logger.Trace().Msgf("Built pair map: %v", pairMap)
-	return pairMap, nil
-}
-
-func replaceSuffixes(inputLines *bytes.Buffer, suffixReplacementsInput string) (string, error) {
-	if len(suffixReplacementsInput) == 0 {
+func replaceSuffixes(inputLines *bytes.Buffer, suffixReplacements map[string]string) (string, error) {
+	if suffixReplacements == nil {
 		return inputLines.String(), nil
-	}
-
-	suffixReplacements, err := buildPairMap(suffixReplacementsInput)
-	if err != nil {
-		return "", err
 	}
 
 	var sb strings.Builder
