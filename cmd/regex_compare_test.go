@@ -23,19 +23,19 @@ type compareTestSuite struct {
 
 func (s *compareTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *compareTestSuite) writeRuleFile(ruleId string, contents string) {
 	prefix := ruleId[:3]
 	fileName := fmt.Sprintf("prefix-%s-suffix.conf", prefix)
 	err := os.WriteFile(path.Join(s.rulesDir, fileName), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *compareTestSuite) captureStdout() *os.File {
 	read, write, err := os.Pipe()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	realStdout := os.Stdout
 	os.Stdout = write
@@ -48,21 +48,21 @@ func (s *compareTestSuite) captureStdout() *os.File {
 func (s *compareTestSuite) SetupTest() {
 	rebuildCompareCommand()
 	tempDir, err := os.MkdirTemp("", "compare-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.rulesDir = path.Join(s.tempDir, "rules")
 	err = os.Mkdir(s.rulesDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *compareTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunCompareTestSuite(t *testing.T) {
@@ -83,9 +83,8 @@ func (s *compareTestSuite) TestCompare_NormalRuleId() {
 	s.Equal("123456", args[0])
 
 	allFlag, err := flags.GetBool("all")
-	if s.NoError(err) {
-		s.False(allFlag)
-	}
+	s.Require().NoError(err)
+	s.False(allFlag)
 }
 
 func (s *compareTestSuite) TestCompare_AllFlag() {
@@ -106,9 +105,8 @@ id:123457`)
 	s.Len(args, 0)
 
 	allFlag, err := flags.GetBool("all")
-	if s.NoError(err) {
-		s.True(allFlag)
-	}
+	s.Require().NoError(err)
+	s.True(allFlag)
 }
 
 func (s *compareTestSuite) TestCompare_NoRuleIdNoAllFlagReturnsError() {
@@ -131,11 +129,11 @@ id:123456`)
 	s.writeDataFile("123456.ra", "foo")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	buffer := make([]byte, 1024)
 	_, err = read.Read(buffer)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	output := strings.Split(string(buffer), "\n")
 	s.Len(output, 2)
@@ -150,11 +148,11 @@ id:123456`)
 	s.writeDataFile("123456.ra", "foo")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	buffer := make([]byte, 1024)
 	_, err = read.Read(buffer)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	output := strings.Split(string(buffer), "\n")
 	s.Len(output, 10)

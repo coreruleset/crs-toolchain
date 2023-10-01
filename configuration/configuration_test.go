@@ -23,26 +23,26 @@ type configurationTestSuite struct {
 func (s *configurationTestSuite) writeConfig(config *Configuration) {
 	filePath := filepath.Join(s.assemblyDir, "toolchain.yaml")
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, os.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	encoder := yaml.NewEncoder(file)
 	err = encoder.Encode(config)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *configurationTestSuite) SetupTest() {
 	tempDir, err := os.MkdirTemp("", "configuration-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.assemblyDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.assemblyDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *configurationTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunconfigurationTestSuite(t *testing.T) {

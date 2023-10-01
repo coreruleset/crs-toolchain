@@ -24,23 +24,23 @@ func (s *renumberTestsTestSuite) writeTestFile(filename string, contents string)
 	prefix := filename[0:3]
 	rulesDir := path.Join(s.testsDir, "_prefix_"+prefix+"_suffix_")
 	err := os.Mkdir(rulesDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	err = os.WriteFile(path.Join(rulesDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *renumberTestsTestSuite) readTestFile(filename string) string {
 	prefix := filename[0:3]
 	rulesDir := path.Join(s.testsDir, "_prefix_"+prefix+"_suffix_")
 	contents, err := os.ReadFile(path.Join(rulesDir, filename))
-	s.NoError(err)
+	s.Require().NoError(err)
 	return string(contents)
 }
 
 func (s *renumberTestsTestSuite) captureStdout() *os.File {
 	read, write, err := os.Pipe()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	realStdout := os.Stdout
 	os.Stdout = write
@@ -55,21 +55,21 @@ func (s *renumberTestsTestSuite) SetupTest() {
 	rebuildRenumberTestsCommand()
 
 	tempDir, err := os.MkdirTemp("", "renumber-tests-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	dataDir := path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(dataDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.testsDir = path.Join(s.tempDir, "tests", "regression", "tests")
 	err = os.MkdirAll(s.testsDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *renumberTestsTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunRenumberTestsTestSuite(t *testing.T) {
@@ -80,7 +80,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_WithYaml() {
 	s.writeTestFile("123456.yaml", "test_title: homer")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	actual := s.readTestFile("123456.yaml")
 	s.Equal("test_title: 123456-1\n", actual)
@@ -90,7 +90,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_WithYml() {
 	s.writeTestFile("123456.yml", "test_title: homer")
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	actual := s.readTestFile("123456.yml")
 	s.Equal("test_title: 123456-1\n", actual)
@@ -153,7 +153,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_GitHubOutput() {
 
 	buffer := make([]byte, 1024)
 	_, err = read.Read(buffer)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	output := string(buffer)
 	s.Contains(output, "::warning::Test file not properly numbered")

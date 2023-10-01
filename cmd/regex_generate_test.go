@@ -22,17 +22,17 @@ func (s *generateTestSuite) SetupTest() {
 	rebuildGenerateCommand()
 
 	tempDir, err := os.MkdirTemp("", "generate-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *generateTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunGenerateTestSuite(t *testing.T) {
@@ -62,12 +62,11 @@ func (s *generateTestSuite) TestGenerate_Dash() {
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "-"})
 	_, err := rootCmd.ExecuteC()
 
-	if s.NoError(err) {
-		s.True(ruleValues.useStdin)
-	}
+	s.Require().NoError(err)
+	s.True(ruleValues.useStdin)
 }
 
 func (s *generateTestSuite) writeDatafile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }

@@ -23,27 +23,27 @@ type fileFormatTestSuite assembleTestSuite
 func (suite *assembleTestSuite) SetupSuite() {
 	var err error
 	suite.tempDir, err = os.MkdirTemp("", "assemble-test")
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	rootContext := context.New(suite.tempDir, "toolchain.yaml")
 	suite.ctx = NewContext(rootContext)
 }
 
 func (suite *assembleTestSuite) TearDownSuite() {
 	err := os.RemoveAll(suite.tempDir)
-	suite.NoError(err)
+	suite.Require().NoError(err)
 }
 
 func (suite *fileFormatTestSuite) SetupSuite() {
 	var err error
 	suite.tempDir, err = os.MkdirTemp("", "file-format-test")
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	rootContext := context.New(suite.tempDir, "toolchain.yaml")
 	suite.ctx = NewContext(rootContext)
 }
 
 func (suite *fileFormatTestSuite) TearDownSuite() {
 	err := os.RemoveAll(suite.tempDir)
-	suite.NoError(err)
+	suite.Require().NoError(err)
 }
 
 func TestRunAssembleTestSuite(t *testing.T) {
@@ -62,12 +62,12 @@ func (s *assembleTestSuite) TestNewAssemble() {
 func (s *assembleTestSuite) TestAssemble_MultipleLines() {
 	assemble := NewAssemble(s.ctx)
 	err := assemble.ProcessLine("homer")
-	s.NoError(err)
+	s.Require().NoError(err)
 	err = assemble.ProcessLine("simpson")
-	s.NoError(err)
+	s.Require().NoError(err)
 	output, err := assemble.Complete()
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Len(output, 1)
 	s.Equal("(?:(?:homer|simpson))", output[0])
 }
@@ -75,12 +75,12 @@ func (s *assembleTestSuite) TestAssemble_MultipleLines() {
 func (s *assembleTestSuite) TestAssemble_RegularExpressions() {
 	assemble := NewAssemble(s.ctx)
 	err := assemble.ProcessLine("home[r,]")
-	s.NoError(err)
+	s.Require().NoError(err)
 	err = assemble.ProcessLine(".imps[a-c]{2}n")
-	s.NoError(err)
+	s.Require().NoError(err)
 	output, err := assemble.Complete()
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Len(output, 1)
 	s.Equal("(?:(?:home[,r]|(?-s:.)imps[a-c]{2}n))", output[0])
 }
@@ -88,7 +88,7 @@ func (s *assembleTestSuite) TestAssemble_RegularExpressions() {
 func (s *assembleTestSuite) TestAssemble_InvalidRegularExpressionFails() {
 	assemble := NewAssemble(s.ctx)
 	err := assemble.ProcessLine("home[r")
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	_, err = assemble.Complete()
 	s.Error(err)

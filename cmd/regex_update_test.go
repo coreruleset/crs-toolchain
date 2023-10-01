@@ -24,21 +24,21 @@ func (s *updateTestSuite) SetupTest() {
 	rebuildUpdateCommand()
 
 	tempDir, err := os.MkdirTemp("", "update-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.tempDir = tempDir
 
 	s.dataDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.rulesDir = path.Join(s.tempDir, "rules")
 	err = os.Mkdir(s.rulesDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *updateTestSuite) TearDownTest() {
 	err := os.RemoveAll(s.tempDir)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func TestRunUpdateTestSuite(t *testing.T) {
@@ -59,9 +59,8 @@ func (s *updateTestSuite) TestUpdate_NormalRuleId() {
 	s.Equal("123456", args[0])
 
 	allFlag, err := flags.GetBool("all")
-	if s.NoError(err) {
-		s.False(allFlag)
-	}
+	s.Require().NoError(err)
+	s.False(allFlag)
 }
 
 func (s *updateTestSuite) TestUpdate_AllFlag() {
@@ -75,9 +74,8 @@ func (s *updateTestSuite) TestUpdate_AllFlag() {
 	s.Len(args, 0)
 
 	allFlag, err := flags.GetBool("all")
-	if s.NoError(err) {
-		s.True(allFlag)
-	}
+	s.Require().NoError(err)
+	s.True(allFlag)
 }
 
 func (s *updateTestSuite) TestUpdate_NoRuleIdNoAllFlagReturnsError() {
@@ -112,7 +110,7 @@ SecRule ARGS '@rx regex3" \
 	"id:123458"`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := `SecRule ARGS "@rx homer" \
 	"id:123456"
@@ -130,7 +128,7 @@ func (s *updateTestSuite) TestUpdate_UpdatesInverseRx() {
 	"id:123456"`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := `SecRule ARGS "!@rx homer" \
 	"id:123456"`
@@ -146,7 +144,7 @@ func (s *updateTestSuite) TestUpdate_UpdatesChainedRule() {
 		SecRule ARGS "@rx regex2" \`)
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
 	_, err := rootCmd.ExecuteC()
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	expected := `SecRule ARGS "@rx regex1" \
 	"id:123456, \
@@ -158,21 +156,21 @@ func (s *updateTestSuite) TestUpdate_UpdatesChainedRule() {
 
 func (s *updateTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *updateTestSuite) writeRuleFile(ruleId string, contents string) {
 	prefix := ruleId[:3]
 	fileName := fmt.Sprintf("prefix-%s-suffix.conf", prefix)
 	err := os.WriteFile(path.Join(s.rulesDir, fileName), []byte(contents), fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *updateTestSuite) readRuleFile(ruleId string) string {
 	prefix := ruleId[:3]
 	fileName := fmt.Sprintf("prefix-%s-suffix.conf", prefix)
 	contents, err := os.ReadFile(path.Join(s.rulesDir, fileName))
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	return string(contents)
 }

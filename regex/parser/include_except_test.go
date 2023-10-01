@@ -30,10 +30,10 @@ type parserIncludeExceptTestSuite struct {
 func (s *parserIncludeExceptTestSuite) writeFile(contents string, directory string) string {
 	filename := uuid.NewString() + ".ra"
 	file, err := os.Create(path.Join(directory, filename))
-	s.NoError(err, "couldn't create %s file in directory %s", filename, directory)
+	s.Require().NoError(err, "couldn't create %s file in directory %s", filename, directory)
 
 	_, err = file.WriteString(contents)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	return filepath.Join(directory, filename)
 }
@@ -45,26 +45,26 @@ func TestParserRunIncludeExceptTestSuite(t *testing.T) {
 func (s *parserIncludeExceptTestSuite) SetupTest() {
 	var err error
 	s.tempDir, err = os.MkdirTemp("", "include-except-tests")
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.assemblyDir = path.Join(s.tempDir, "regex-assembly")
 	err = os.MkdirAll(s.assemblyDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.includeDir = path.Join(s.assemblyDir, "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.excludeDir = path.Join(s.assemblyDir, "exclude")
 	err = os.MkdirAll(s.excludeDir, fs.ModePerm)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	rootContext := context.New(s.tempDir, "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
 }
 
 func (s *parserIncludeExceptTestSuite) TearDownTest() {
-	s.NoError(os.RemoveAll(s.tempDir))
+	s.Require().NoError(os.RemoveAll(s.tempDir))
 }
 
 func (s *parserIncludeExceptTestSuite) TestIncludeExcept_MoreExcludesThanIncludes() {
@@ -77,7 +77,7 @@ a*b|include3`, s.excludeDir)
 	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
 
 	assemblyFile, err := os.Open(assemblyPath)
-	s.NoError(err)
+	s.Require().NoError(err)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
@@ -99,7 +99,7 @@ leave me alone
 	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
 
 	assemblyFile, err := os.Open(assemblyPath)
-	s.NoError(err)
+	s.Require().NoError(err)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
@@ -123,7 +123,7 @@ a*b|include3`, s.excludeDir)
 	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
 
 	assemblyFile, err := os.Open(assemblyPath)
-	s.NoError(err)
+	s.Require().NoError(err)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
@@ -144,7 +144,7 @@ include3{{homer}}`, s.excludeDir)
 	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
 
 	assemblyFile, err := os.Open(assemblyPath)
-	s.NoError(err)
+	s.Require().NoError(err)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
@@ -159,7 +159,7 @@ func (s *parserIncludeExceptTestSuite) TestIncludeExcept_DontPanicWhenInclusions
 	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
 
 	assemblyFile, err := os.Open(assemblyPath)
-	s.NoError(err)
+	s.Require().NoError(err)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
@@ -174,7 +174,7 @@ func (s *parserIncludeExceptTestSuite) TestIncludeExcept_DontPanicWhenExclusions
 	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
 
 	assemblyFile, err := os.Open(assemblyPath)
-	s.NoError(err)
+	s.Require().NoError(err)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
