@@ -5,6 +5,8 @@ package parser
 
 import (
 	"bufio"
+	"bytes"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -30,34 +32,66 @@ func (h inclusionLineSlice) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 }
 
-func buildIncludeExceptString(parser *Parser, parsedLine ParsedLine) string {
-	includeFileName := parsedLine.result[0]
-	excludeFileName := parsedLine.result[1]
+func buildIncludeString(parser *Parser, parsedLine ParsedLine) (string, error) {
+	content, _ := parseFile(parser, parsedLine.includeFileName, nil)
+	return replaceSuffixes(content, parsedLine.suffixReplacements)
+}
 
+func buildIncludeExceptString(parser *Parser, parsedLine ParsedLine) (string, error) {
 	// 1. build a map with lines as keys for fast access;
-	//    store the line itself and its position in the value (a inclusionLine) for later
+	//    store the line itself and its position in the value (an inclusionLine) for later
 	// 2. remove exclusions from the map
 	// 3. put the inclusionLines back into an array, still out of order
 	// 4. build the resulting string by sorting the array and joining the lines
-	includeMap, definitions := buildinclusionLineMap(parser, includeFileName)
-	removeExclusions(parser, excludeFileName, includeMap, definitions)
+	includeMap, definitions := buildinclusionLineMap(parser, parsedLine.includeFileName)
+	removeExclusions(parser, parsedLine.excludeFileNames, includeMap, definitions)
 
 	inclusionLines := make(inclusionLineSlice, 0, len(includeMap))
 	for _, value := range includeMap {
 		inclusionLines = append(inclusionLines, value)
 	}
 
-	return stringFromInclusionLines(inclusionLines)
+	contentWithoutExclusions := stringFromInclusionLines(inclusionLines)
+	return replaceSuffixes(bytes.NewBufferString(contentWithoutExclusions), parsedLine.suffixReplacements)
 }
 
-func removeExclusions(parser *Parser, excludeFileName string, includeMap map[string]inclusionLine, definitions map[string]string) {
-	excludeContent, _ := parseFile(parser, excludeFileName, definitions)
-	scanner := bufio.NewScanner(excludeContent)
+func replaceSuffixes(inputLines *bytes.Buffer, suffixReplacements map[string]string) (string, error) {
+	if suffixReplacements == nil {
+		return inputLines.String(), nil
+	}
+
+	var sb strings.Builder
+	scanner := bufio.NewScanner(inputLines)
 	scanner.Split(bufio.ScanLines)
+	skipRegex := regexp.MustCompile(`^(?:##!|\s*$)`)
 	for scanner.Scan() {
-		exclusion := scanner.Text()
-		delete(includeMap, exclusion)
-		logger.Debug().Msgf("Excluded entry from include file: %s", exclusion)
+		entry := scanner.Text()
+		if !skipRegex.MatchString(entry) {
+			for match, replacement := range suffixReplacements {
+				var found bool
+				entry, found = strings.CutSuffix(entry, match)
+				if found {
+					entry += replacement
+				}
+			}
+		}
+		sb.WriteString(entry)
+		sb.WriteRune('\n')
+	}
+	return sb.String(), nil
+}
+
+func removeExclusions(parser *Parser, excludeFileNames []string, includeMap map[string]inclusionLine, definitions map[string]string) {
+	for _, fileName := range excludeFileNames {
+		logger.Debug().Msgf("Processing exclusions from %s", fileName)
+		excludeContent, _ := parseFile(parser, fileName, definitions)
+		scanner := bufio.NewScanner(excludeContent)
+		scanner.Split(bufio.ScanLines)
+		for scanner.Scan() {
+			exclusion := scanner.Text()
+			delete(includeMap, exclusion)
+			logger.Debug().Msgf("Excluded entry from include file: %s", exclusion)
+		}
 	}
 }
 

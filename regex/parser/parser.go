@@ -25,6 +25,7 @@ import (
 )
 
 var logger = log.With().Str("component", "parser").Logger()
+var spaceRegex = regexp.MustCompile(`\s+`)
 
 type parsedType int
 
@@ -63,10 +64,15 @@ type Parser struct {
 // if the type is `include`, then the result map will store the file name in the "include" key. The definition type
 // will just use the map for the name:value.
 type ParsedLine struct {
-	parsedType parsedType
-	result     []string
-	resultMap  map[string]string
-	line       string
+	parsedType         parsedType
+	line               string
+	includeFileName    string
+	excludeFileNames   []string
+	suffixReplacements map[string]string
+	definitions        map[string]string
+	prefix             string
+	suffix             string
+	flags              string
 }
 
 // NewParser creates a new parser from an io.Reader.
@@ -114,8 +120,8 @@ func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
 		case empty, comment:
 		case definition:
 			if !formatOnly {
-				// merge maps p.variables and parseLine.definition
-				err := mergo.Merge(&p.variables, parsedLine.resultMap)
+				// merge maps p.variables and parsedLine.definitions
+				err := mergo.Merge(&p.variables, parsedLine.definitions)
 				if err != nil {
 					logger.Error().Err(err).Msg("error merging definitions")
 				}
@@ -123,16 +129,23 @@ func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
 		case include:
 			if !formatOnly {
 				// go read the included file and paste text here
-				content, _ := parseFile(p, parsedLine.result[0], nil)
-				text = content.String()
+				var err error
+				text, err = buildIncludeString(p, parsedLine)
+				if err != nil {
+					logger.Panic().Err(err).Msg("Failed to parse `include` directive")
+				}
 			}
 		case includeExcept:
 			if !formatOnly {
-				// go read the included file but exclude exclusions
-				text = buildIncludeExceptString(p, parsedLine)
+				// go read the included files but exclude exclusions
+				var err error
+				text, err = buildIncludeExceptString(p, parsedLine)
+				if err != nil {
+					logger.Panic().Err(err).Msg("Failed to parse `include-except` directive")
+				}
 			}
 		case flags:
-			for _, flag := range parsedLine.result[0] {
+			for _, flag := range parsedLine.flags {
 				if flagIsAllowed(flag) {
 					p.Flags[flag] = true
 				} else {
@@ -140,9 +153,9 @@ func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
 				}
 			}
 		case prefix:
-			p.Prefixes = append(p.Prefixes, parsedLine.result[0])
+			p.Prefixes = append(p.Prefixes, parsedLine.prefix)
 		case suffix:
-			p.Suffixes = append(p.Suffixes, parsedLine.result[0])
+			p.Suffixes = append(p.Suffixes, parsedLine.suffix)
 		}
 		if formatOnly {
 			text = line + "\n"
@@ -182,30 +195,57 @@ func (p *Parser) parseLine(line string) ParsedLine {
 			switch name {
 			case commentPatternName:
 				pl.parsedType = comment
-				pl.result = []string{"comment"}
 			case includePatternName:
 				pl.parsedType = include
-				pl.result = []string{found[1]}
+				pl.includeFileName = found[1]
+				pl.suffixReplacements = buildPairMap(found[2])
 			case includeExceptPatternName:
 				pl.parsedType = includeExcept
-				pl.result = found[1:3]
+				pl.includeFileName = found[1]
+				pl.suffixReplacements = buildPairMap(found[3])
+				pl.excludeFileNames = splitArgs(found[2])
 			case definitionPatternName:
 				pl.parsedType = definition
-				pl.resultMap = map[string]string{found[1]: found[2]}
+				pl.definitions = map[string]string{found[1]: found[2]}
 			case flagsPatternName:
 				pl.parsedType = flags
-				pl.result = []string{found[1]}
+				pl.flags = found[1]
 			case prefixPatternName:
 				pl.parsedType = prefix
-				pl.result = []string{found[1]}
+				pl.prefix = found[1]
 			case suffixPatternName:
 				pl.parsedType = suffix
-				pl.result = []string{found[1]}
+				pl.suffix = found[1]
 			}
 			break
 		}
 	}
 	return pl
+}
+
+func buildPairMap(input string) map[string]string {
+	if len(strings.TrimSpace(input)) == 0 {
+		return nil
+	}
+
+	logger.Trace().Msgf("Building pair map for: %s", input)
+	list := splitArgs(input)
+	if len(list)%2 > 0 {
+		logger.Panic().Msgf("uneven number of arguments found: %s", input)
+	}
+
+	pairMap := map[string]string{}
+	for i := 0; i < len(list); i += 2 {
+		pairMap[list[i]] = list[i+1]
+	}
+
+	logger.Trace().Msgf("Built pair map: %v", pairMap)
+	return pairMap
+}
+
+func splitArgs(input string) []string {
+	cleanInput := spaceRegex.ReplaceAllString(input, " ")
+	return strings.Split(cleanInput, " ")
 }
 
 // parseFile does just a new call to the Parser on the named file. It will use the context to find files that have relative filenames.
