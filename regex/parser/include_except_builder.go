@@ -70,7 +70,7 @@ func replaceSuffixes(inputLines *bytes.Buffer, suffixReplacements map[string]str
 			for match, replacement := range suffixReplacements {
 				var found bool
 				entry, found = strings.CutSuffix(entry, match)
-				if found {
+				if found && replacement != `""` {
 					entry += replacement
 				}
 			}

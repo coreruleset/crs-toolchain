@@ -155,7 +155,7 @@ no suffix 2
 	s.Equal(expected.String(), actual.String())
 }
 
-func (s *parserIncludeTestSuite) TestParserInclude_SuffixReplacements_WithBacSpacing() {
+func (s *parserIncludeTestSuite) TestParserInclude_SuffixReplacements_WithBadSpacing() {
 	_, err := s.includeFile.WriteString(`no suffix1
 suffix with@
 suffix with~
@@ -171,6 +171,28 @@ no suffix 2`)
 	expected := bytes.NewBufferString(`no suffix1
 suffix with[\s><]
 suffix with[^\s]
+no suffix 2
+`)
+
+	s.Equal(expected.String(), actual.String())
+}
+
+func (s *parserIncludeTestSuite) TestParserInclude_SuffixReplacements_WithEmptyString() {
+	_, err := s.includeFile.WriteString(`no suffix1
+suffix with@
+suffix with~
+no suffix 2`)
+	s.Require().NoError(err, "writing temp include file failed")
+
+	s.reader = strings.NewReader(fmt.Sprintf(
+		"##!> include %s -- %s %s %s %s", s.includeFile.Name(),
+		"@", `""`,
+		"~", `""`))
+	parser := NewParser(s.ctx, s.reader)
+	actual, _ := parser.Parse(false)
+	expected := bytes.NewBufferString(`no suffix1
+suffix with
+suffix with
 no suffix 2
 `)
 
