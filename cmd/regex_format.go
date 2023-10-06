@@ -251,9 +251,17 @@ func processLine(line []byte, indent int) ([]byte, int, error) {
 	} else if matches := definitionRegex.FindSubmatch(line); matches != nil {
 		trimmedLine = []byte(fmt.Sprintf("##!> define %s %s", matches[1], matches[2]))
 	} else if matches := includeRegex.FindSubmatch(line); matches != nil {
-		trimmedLine = []byte(fmt.Sprintf("##!> include %s", matches[1]))
+		trimmedLineString := fmt.Sprintf("##!> include %s", matches[1])
+		if len(matches[2]) > 0 {
+			trimmedLineString += fmt.Sprintf(" -- %s", matches[2])
+		}
+		trimmedLine = []byte(trimmedLineString)
 	} else if matches := includeExceptRegex.FindSubmatch(line); matches != nil {
-		trimmedLine = []byte(fmt.Sprintf("##!> include-except %s %s", matches[1], matches[2]))
+		trimmedLineString := fmt.Sprintf("##!> include-except %s %s", matches[1], matches[2])
+		if len(matches[3]) > 0 {
+			trimmedLineString += fmt.Sprintf(" -- %s", matches[3])
+		}
+		trimmedLine = []byte(trimmedLineString)
 	}
 
 	adjustment := bytes.Repeat([]byte(" "), blockIndent*2)
