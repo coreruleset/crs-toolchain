@@ -435,6 +435,24 @@ func (s *formatTestSuite) TestFormat_FormatsIncludes() {
 	s.Equal(expected, output)
 }
 
+func (s *formatTestSuite) TestFormat_FormatsIncludes_WithSuffixReplacements() {
+	s.writeDataFile("123456.ra", `##!>include homer
+##!> include homer -- r s f g
+##!> include marge
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.Require().NoError(err)
+
+	expected := regexAssemblyStandardHeader + `
+##!> include homer
+##!> include homer -- r s f g
+##!> include marge
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
 func (s *formatTestSuite) TestFormat_FormatsExcept() {
 	s.writeDataFile("123456.ra", `##!>include-except without-separating-white-space homer
   ##!> include-except with-leading-white-space homer
@@ -448,6 +466,24 @@ func (s *formatTestSuite) TestFormat_FormatsExcept() {
 ##!> include-except without-separating-white-space homer
 ##!> include-except with-leading-white-space homer
 ##!> include-except with-trailing-white-space homer
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
+func (s *formatTestSuite) TestFormat_FormatsExcept_WithSuffixReplacements() {
+	s.writeDataFile("123456.ra", `##!>include-except simpson homer
+##!> include-except includefile exclude1 exclude2 -- @ [\s<>] ~ \S
+##!> include-except simpson homer
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	_, err := rootCmd.ExecuteC()
+	s.Require().NoError(err)
+
+	expected := regexAssemblyStandardHeader + `
+##!> include-except simpson homer
+##!> include-except includefile exclude1 exclude2 -- @ [\s<>] ~ \S
+##!> include-except simpson homer
 `
 	output := s.readDataFile("123456.ra")
 	s.Equal(expected, output)
