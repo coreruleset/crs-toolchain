@@ -12,7 +12,6 @@
       "pin": {
         "automerge": true
       },
-      "separateMinorPatch": true,
       "dependencyDashboardApproval": true,
       "matchUpdateTypes": ["major"],
       "matchSourceUrlPrefixes": ["https://github.com/"],
