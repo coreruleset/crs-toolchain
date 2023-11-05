@@ -17,7 +17,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/imdario/mergo"
+	"dario.cat/mergo"
 	"github.com/rs/zerolog/log"
 
 	"github.com/coreruleset/crs-toolchain/regex"

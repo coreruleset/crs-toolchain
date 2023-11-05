@@ -3,7 +3,7 @@ module github.com/coreruleset/crs-toolchain
 go 1.21
 
 require (
-	github.com/imdario/mergo v0.3.16
+	dario.cat/mergo v1.0.0
 	github.com/magefile/mage v1.15.0
 	github.com/spf13/cobra v1.7.0
 )
