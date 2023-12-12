@@ -10,7 +10,7 @@ require (
 
 require (
 	github.com/creativeprojects/go-selfupdate v1.1.2
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.5.0
 	github.com/itchyny/rassemble-go v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
