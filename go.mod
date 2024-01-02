@@ -9,14 +9,14 @@ require (
 )
 
 require (
-	github.com/creativeprojects/go-selfupdate v1.1.2
+	github.com/creativeprojects/go-selfupdate v1.1.3
 	github.com/google/uuid v1.5.0
 	github.com/itchyny/rassemble-go v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	code.gitea.io/sdk/gitea v0.16.0 // indirect
+	code.gitea.io/sdk/gitea v0.17.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidmz/go-pageant v1.0.2 // indirect
@@ -32,10 +32,10 @@ require (
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
-	github.com/xanzy/go-gitlab v0.93.2 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/oauth2 v0.13.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
+	github.com/xanzy/go-gitlab v0.95.2 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/oauth2 v0.15.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
