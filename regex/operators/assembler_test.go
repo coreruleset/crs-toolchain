@@ -271,7 +271,7 @@ b`
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
-	s.Equal("a prefix[a-b]", output)
+	s.Equal("a prefix[ab]", output)
 }
 
 func (s *specialCommentsTestSuite) TestHandlesSuffixComment() {
@@ -281,7 +281,7 @@ b`
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
-	s.Equal("[a-b]a suffix", output)
+	s.Equal("[ab]a suffix", output)
 }
 
 func (s *specialCasesTestSuite) TestIgnoresEmptyLines() {
@@ -327,7 +327,7 @@ b\x5c\x48
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
-	s.Equal(`[a-b]\x5cH`, output)
+	s.Equal(`[ab]\x5cH`, output)
 }
 
 func (s *specialCasesTestSuite) TestSpecialComments_HandlesEscapedAlternationsCorrectly() {
@@ -568,7 +568,7 @@ d
 
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
-	s.Equal(`[^0-9A-Z_a-z]*\(two(?:a+b|[c-d])`, output)
+	s.Equal(`[^0-9A-Z_a-z]*\(two(?:a+b|[cd])`, output)
 
 }
 
@@ -582,7 +582,7 @@ d
 
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
-	s.Equal(`(?:a+b|[c-d])[^0-9A-Z_a-z]*\(two`, output)
+	s.Equal(`(?:a+b|[cd])[^0-9A-Z_a-z]*\(two`, output)
 
 }
 func (s *assemblerTestSuite) TestAssemble_Assembling_3() {
@@ -717,7 +717,7 @@ func (s *assemblerTestSuite) TestAssemble_ConcatenatingWithStoredInput() {
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
 
-	s.Equal(`(?:\x5c|%(?:2f|5c))\.(?:%0[0-1])?(?:\x5c|%(?:2f|5c))`, output)
+	s.Equal(`(?:\x5c|%(?:2f|5c))\.(?:%0[01])?(?:\x5c|%(?:2f|5c))`, output)
 
 }
 
@@ -807,7 +807,7 @@ d
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
 
-	s.Equal(`[a-b][c-d]`, output)
+	s.Equal(`[ab][cd]`, output)
 
 }
 func (s *assemblerTestSuite) TestAssemble_ConcatenationWithPrefixAndSuffix() {
@@ -825,7 +825,7 @@ b
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
 
-	s.Equal(`prefix[a-b]suffix`, output)
+	s.Equal(`prefix[ab]suffix`, output)
 
 }
 func (s *assemblerTestSuite) TestAssemble_AssembleWrappedInGroupWithTailConcatenation() {
@@ -845,7 +845,7 @@ more
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
 
-	s.Equal(`[a-b][c-d]more`, output)
+	s.Equal(`[ab][cd]more`, output)
 
 }
 func (s *assemblerTestSuite) TestAssemble_AssembleWrappedInGroupWithTailAlternation() {
@@ -863,7 +863,7 @@ more
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
 
-	s.Equal(`[a-b][c-d]|more`, output)
+	s.Equal(`[ab][cd]|more`, output)
 
 }
 func (s *assemblerTestSuite) TestAssemble_NestedGroups() {
@@ -885,7 +885,7 @@ func (s *assemblerTestSuite) TestAssemble_RemoveExtraGroups() {
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
 
-	s.Equal(`a[b-c]d`, output)
+	s.Equal(`a[bc]d`, output)
 }
 
 // The Go regexp/syntax library will convert a dot (`.`) into `(?-s:.)`.
@@ -913,7 +913,7 @@ func (s *assemblerTestSuite) TestAssemble_DotRemainsDotWithSflag() {
 }
 
 // The Go regexp/syntax library will convert a caret (`^`) into `(?m:^)`.
-// We want to retain the original dot.
+// We want to retain the original without the flag.
 func (s *assemblerTestSuite) TestAssemble_CaretRemainsCaret() {
 	contents := "^a|b"
 	assembler := NewAssembler(s.ctx)
