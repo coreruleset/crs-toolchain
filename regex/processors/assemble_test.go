@@ -82,7 +82,7 @@ func (s *assembleTestSuite) TestAssemble_RegularExpressions() {
 
 	s.Require().NoError(err)
 	s.Len(output, 1)
-	s.Equal("(?:(?:home[,r]|(?-s:.)imps[a-c]{2}n))", output[0])
+	s.Equal("(?:(?:(?-s:home[,r]|.imps[a-c]{2}n)))", output[0])
 }
 
 func (s *assembleTestSuite) TestAssemble_InvalidRegularExpressionFails() {

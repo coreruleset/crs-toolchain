@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -17,12 +18,6 @@ import (
 	"github.com/coreruleset/crs-toolchain/regex/parser"
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
-
-var metaGroupReplacements = map[string]string{
-	"(?-s:.)": ".",
-	"(?m:^)":  "^",
-	"(?m:$)":  "$",
-}
 
 // Create the processor stack
 var processorStack ProcessorStack
@@ -136,11 +131,11 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		result = a.runSimplificationAssembly(result)
 		logger.Trace().Msgf("After simplification assembly: %s\n", result)
 		result = a.useHexEscapes(result)
-		logger.Trace().Msgf("After simplification assembly: %s\n", result)
+		logger.Trace().Msgf("After replacing non-printable characters with hex escapes: %s\n", result)
 		result = a.escapeDoublequotes(result)
 		logger.Trace().Msgf("After escaping double quotes: %s\n", result)
 		result = a.useHexBackslashes(result)
-		logger.Trace().Msgf("After use hex backslashes: %s\n", result)
+		logger.Trace().Msgf("After replacing plain backslashes with hex escapse: %s\n", result)
 		result = a.includeVerticalTabInSpaceClass(result)
 		logger.Trace().Msgf("After including vertical tabs: %s\n", result)
 		result = a.dontUseFlagsForMetaCharacters(result)
@@ -217,12 +212,7 @@ func (a *Operator) useHexBackslashes(input string) string {
 // compatible engines.
 func (a *Operator) includeVerticalTabInSpaceClass(input string) string {
 	logger.Trace().Msg("Fixing up regex to include \\v in white space class matches")
-	// Note: replacement order is important. Don't use a map.
-	result := strings.ReplaceAll(input, `[\t-\n\f-\r ]`, `[\s\v]`)
-	result = strings.ReplaceAll(result, `[^\t-\n\f-\r ]`, `[^\s\v]`)
-	// There's a range attached, can't just replace
-	result = strings.ReplaceAll(result, `\t-\n\f-\r -`, `\s\v -`)
-	return strings.ReplaceAll(result, `\t-\n\f-\r `, `\s\v`)
+	return strings.ReplaceAll(input, `\t\n\f\r `, `\s\v`)
 }
 
 // rassemble-go doesn't provide an option to specify literals.
@@ -256,17 +246,43 @@ func (a *Operator) useHexEscapes(input string) string {
 	return sb.String()
 }
 
-// The Go regexp/syntax library will convert:
-// - a dot (`.`) into `(?-s:.)`
-// - a caret (`^`) into `(?m:^)`
-// - a dollar (`$`) into (?m:$)`
-// We want to retain the original dot.
+// The Go regexp/syntax library will convert insert flags when it encounters
+// meta characters that could be ambiguous, such as `^`, `$`, `.`.
+// Remove both flags for the current context, e.g., `...(?m)...`, and flag groups
+// applied to subexpressions, e.g., `...(?m:...)...`
 func (a *Operator) dontUseFlagsForMetaCharacters(input string) string {
 	result := input
-	for needle, replacement := range metaGroupReplacements {
-		result = strings.ReplaceAll(result, needle, replacement)
+	flagsStartRegexp := regexp.MustCompile(`\(\?[-misU]+\)`)
+	result = flagsStartRegexp.ReplaceAllString(result, "")
+
+	flagGroupStartRegexp := regexp.MustCompile(`\(\?[-misU]+:`)
+	for {
+		location := flagGroupStartRegexp.FindStringIndex(result)
+		if len(location) > 0 {
+			result = replaceFlagGroup(result, location)
+		} else {
+			break
+		}
 	}
 	return result
+}
+
+// Remove flag groups like `...(?-s:...)...`
+func replaceFlagGroup(input string, location []int) string {
+	parensCounter := 1
+	groupStart := location[0]
+	bodyStart := location[1]
+	index := bodyStart
+	for ; parensCounter > 0; index++ {
+		char := input[index]
+		switch char {
+		case '(':
+			parensCounter++
+		case ')':
+			parensCounter--
+		}
+	}
+	return input[:groupStart] + input[bodyStart:index-1] + input[index:]
 }
 
 func (a *Operator) startPreprocessor(processorName string, args []string) error {
