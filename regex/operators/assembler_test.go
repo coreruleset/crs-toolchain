@@ -1005,3 +1005,13 @@ func (s *assemblerTestSuite) TestAssemble_ComplexAppendWithAlternation() {
 	s.Require().NoError(err)
 	s.Equal("process_prop-start_(?:access|env)_prop-finish_", output)
 }
+
+func (s *assemblerTestSuite) TestAssemble_FlagGroupReplacementWithEscapedParentheses() {
+	contents := `^\)ab\(c(capture)`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.Require().NoError(err)
+	s.Equal(contents, output)
+}

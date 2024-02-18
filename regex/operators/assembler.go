@@ -277,12 +277,27 @@ func replaceFlagGroup(input string, location []int) string {
 		char := input[index]
 		switch char {
 		case '(':
-			parensCounter++
+			if !isEscaped(input, index) {
+				parensCounter++
+			}
 		case ')':
-			parensCounter--
+			if !isEscaped(input, index) {
+				parensCounter--
+			}
 		}
 	}
 	return input[:groupStart] + input[bodyStart:index-1] + input[index:]
+}
+
+func isEscaped(input string, position int) bool {
+	escapeCounter := 0
+	for backtrackIndex := position - 1; backtrackIndex >= 0; backtrackIndex++ {
+		if input[backtrackIndex] != '\\' {
+			break
+		}
+		escapeCounter++
+	}
+	return escapeCounter%2 != 0
 }
 
 func (a *Operator) startPreprocessor(processorName string, args []string) error {
