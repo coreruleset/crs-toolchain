@@ -69,11 +69,14 @@ func updateRules(version string, year string, contents []byte) ([]byte, error) {
 	writer := bufio.NewWriter(output)
 	replaceVersion := fmt.Sprintf("${1}%s", version)
 	replaceYear := fmt.Sprintf("${1}%s${3}", year)
+	replaceSecRuleVersion := fmt.Sprintf("${1}%s", version)
+	replaceSecComponentSignature := fmt.Sprintf("${1}%s", version)
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = regex.CRSVersionRegex.ReplaceAllString(line, replaceVersion)
 		line = regex.CRSCopyrightYearRegex.ReplaceAllString(line, replaceYear)
-
+		line = regex.CRSYearSecRuleVerRegex.ReplaceAllString(line, replaceSecRuleVersion)
+		line = regex.CRSVersionComponentSignatureRegex.ReplaceAllString(line, replaceSecComponentSignature)
 		if _, err := writer.WriteString(line); err != nil {
 			return nil, err
 		}
@@ -86,10 +89,5 @@ func updateRules(version string, year string, contents []byte) ([]byte, error) {
 		return nil, err
 	}
 	outputBytes := output.Bytes()
-	// if the file was empty, we didn't change anything and we're done
-	if len(outputBytes) == 0 {
-		return outputBytes, nil
-	}
-	// remove the superfluous newline character
-	return outputBytes[:len(outputBytes)-1], nil
+	return outputBytes, nil
 }

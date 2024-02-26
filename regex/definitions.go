@@ -79,9 +79,19 @@ var DefinitionReferenceRegex = regexp.MustCompile(`{{([a-zA-Z0-9-_]+)}}`)
 
 // CRSVersionRegex matches the version contained on every rules file.
 // The version declared on the file is captured in group 1.
-var CRSVersionRegex = regexp.MustCompile(`^(# OWASP ModSecurity Core Rule Set ver\.)(.+)$`)
+var CRSVersionRegex = regexp.MustCompile(`^(# OWASP (ModSecurity Core Rule Set|CRS) ver\.)(.+)$`)
 
 // CRSCopyrightYearRegex matches the version and year range of the copyright text in setup,
 // setup example, and rule files.
 // The matched end year of the copyright year range will be captured in group 1.
-var CRSCopyrightYearRegex = regexp.MustCompile(`^(# Copyright \(c\) 2021-)(\d{4})( Core Rule Set project. All rights reserved.)$`)
+var CRSCopyrightYearRegex = regexp.MustCompile(`^(# Copyright \(c\) 2021-)(\d{4})( (Core Rule Set|CRS) project. All rights reserved.)$`)
+
+// CRSYearSecRuleVerRegex matches the version in the SecRule part of the text, (e.g. ver:'OWASP_CRS/4.0.0')
+// setup example, and rule files.
+// The matched year will be captured in group 1.
+var CRSYearSecRuleVerRegex = regexp.MustCompile(`(ver:'OWASP_CRS/)(\d+\.\d+\.\d+(-rc\d+)?)`)
+
+// CRSVersionComponentSignatureRegex matches the version in the SecComponentSignature part of the text, (e.g. OWASP_CRS/4.0.0-rc1)
+// setup example, and rule files.
+// The matched year will be captured in group 1.
+var CRSVersionComponentSignatureRegex = regexp.MustCompile(`^(SecComponentSignature "OWASP_CRS/)(\d+\.\d+\.\d+(-rc\d+)?)`)

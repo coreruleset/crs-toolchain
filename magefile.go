@@ -18,7 +18,7 @@ import (
 )
 
 var addLicenseVersion = "v1.1.1" // https://github.com/google/addlicense
-var golangCILintVer = "v1.55.2"  // https://github.com/golangci/golangci-lint/releases
+var golangCILintVer = "v1.56.2"  // https://github.com/golangci/golangci-lint/releases
 var gosImportsVer = "v0.3.8"     // https://github.com/rinchsan/gosimports/releases/tag/v0.1.5
 var goGciVer = "v0.10.1"         // https://github.com/daixiang0/gci/releases/tag/v0.8.2
 
