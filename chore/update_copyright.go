@@ -86,10 +86,5 @@ func updateRules(version string, year string, contents []byte) ([]byte, error) {
 		return nil, err
 	}
 	outputBytes := output.Bytes()
-	// if the file was empty, we didn't change anything and we're done
-	if len(outputBytes) == 0 {
-		return outputBytes, nil
-	}
-	// remove the superfluous newline character
-	return outputBytes[:len(outputBytes)-1], nil
+	return outputBytes, nil
 }
