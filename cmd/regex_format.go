@@ -22,7 +22,10 @@ import (
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
-const regexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/regex_assembly/.\n"
+const (
+	regexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/regex_assembly/.\n"
+	showCharsAround             = 20
+)
 
 // formatCmd represents the generate command
 var formatCmd = createFormatCommand()
@@ -164,11 +167,31 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 		return err
 	}
 
-	parser := parser.NewParser(ctxt, file)
-	parsedBytes, _ := parser.Parse(true)
+	raParser := parser.NewParser(ctxt, file)
+	parsedBytes, _ := raParser.Parse(true)
 	if err = file.Close(); err != nil {
 		logger.Error().Err(err).Msgf("file already closed %s", filePath)
 		return err
+	}
+
+	// sanity check: if we are using an ignore-case flag, we don't need to have any uppercase letters in the file
+	if raParser.Flags['i'] {
+		found := bytes.IndexAny(parsedBytes.Bytes(), "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+		if found > -1 {
+			// print bytes and show where the violation is
+			showLast := found + showCharsAround
+			showFirst := found - showCharsAround
+			lastByte := len(parsedBytes.Bytes())
+			if showLast > lastByte {
+				showLast = lastByte
+			}
+			if showFirst < 0 {
+				showFirst = 0
+			}
+			logger.Warn().Msgf("File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+			logger.Warn().Msgf("Problem found around char %d:\n%s\n", found, parsedBytes.String()[showFirst:showLast])
+			logger.Warn().Msg("Be aware that because of file inclusions and definitions, the actual line number or file might be different.")
+		}
 	}
 
 	scanner := bufio.NewScanner(parsedBytes)
