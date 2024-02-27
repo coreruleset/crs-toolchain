@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/creativeprojects/go-selfupdate v1.1.3
 	github.com/google/uuid v1.6.0
 	github.com/itchyny/rassemble-go v0.1.0
@@ -17,7 +18,6 @@ require (
 
 require (
 	code.gitea.io/sdk/gitea v0.17.1 // indirect
-	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect

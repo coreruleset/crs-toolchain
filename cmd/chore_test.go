@@ -58,7 +58,7 @@ func (s *choreTestSuite) TestChore_RulesFile() {
 
 #
 # This file REQUEST-901-INITIALIZATION.conf initializes the Core Rules`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-v", "NEW_VERSION", "-y", "1234"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-v", "1.2.3", "-y", "1234"})
 	_, err := rootCmd.ExecuteC()
 
 	s.Require().NoError(err, "failed to execute rootCmd")
