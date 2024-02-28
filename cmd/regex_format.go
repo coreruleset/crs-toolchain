@@ -191,6 +191,12 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 			logger.Warn().Msgf("File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
 			logger.Warn().Msgf("Problem found around char %d:\n%s\n", found, parsedBytes.String()[showFirst:showLast])
 			logger.Warn().Msg("Be aware that because of file inclusions and definitions, the actual line number or file might be different.")
+			message := "File not properly formatted"
+			if rootValues.output == gitHub {
+				message = "::warning::" + message
+			}
+			fmt.Println(message)
+			return &UnformattedFileError{filePath: filePath}
 		}
 	}
 

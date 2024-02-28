@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -505,7 +506,7 @@ this is a regex
 	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
 
 	_, err := rootCmd.ExecuteC()
-	s.Require().NoError(err)
+	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
 
 	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
 	s.Contains(out.String(), "Problem found around char 57:\\nanother regex\\n{1,3}[Bb]lah\\n\\n")
