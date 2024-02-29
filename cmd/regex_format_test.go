@@ -498,18 +498,19 @@ func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase() {
 	log := zerolog.New(out)
 	logger = log.With().Str("component", "parser-test").Logger()
 
-	s.writeDataFile("123456.ra", `##!+ i
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!+ i
 this is a regex
 ^[a-z]this is another regex
 {1,3}[Bb]lah
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456"})
 
 	_, err := rootCmd.ExecuteC()
 	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
 
 	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
-	s.Contains(out.String(), "Problem found around char 57:\\nanother regex\\n{1,3}[Bb]lah\\n\\n")
+	s.Contains(out.String(), "{1,3}[Bb]lah\\n=====^ [HERE]\\n\"}\n")
 }
 
 func (s *formatTestSuite) writeDataFile(filename string, contents string) {
