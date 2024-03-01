@@ -213,7 +213,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 		}
 		equalContent := bytes.Equal(currentContents, newContents)
 		if !equalContent || foundUppercase {
-			message = formatMessage("File not properly formatted")
+			message = formatMessage(fmt.Sprintf("File %s not properly formatted", filePath))
 			fmt.Println(message)
 			processFileError = &UnformattedFileError{filePath: filePath}
 		}
@@ -283,7 +283,7 @@ func processLine(line []byte, indent int) ([]byte, int, error) {
 
 func formatMessage(message string) string {
 	if rootValues.output == gitHub {
-		message = "::warning::" + message
+		message = fmt.Sprintf("::warning ::%s\n", message)
 	}
 	return message
 }
@@ -333,7 +333,13 @@ func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
 			found := strings.IndexAny(line, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 			if found > -1 {
 				res = true
-				message = fmt.Sprintf("%s\n%s^ [HERE]\n", lines[number], strings.Repeat("=", found-1))
+				// show the column where the uppercase letter was found
+				// for a better visual match, we add equal symbols a and a caret in a line below
+				fill := ""
+				if found > 0 {
+					fill = strings.Repeat("=", found-1)
+				}
+				message = fmt.Sprintf("\n%s\n%s^ [HERE]\n", lines[number], fill)
 			}
 		}
 	}

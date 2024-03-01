@@ -513,6 +513,25 @@ this is a regex
 	s.Contains(out.String(), "{1,3}[Bb]lah\\n=====^ [HERE]\\n\"}\n")
 }
 
+func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercasePositionIndicator() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!+ i
+First letter is uppercase
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
+
+	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+	s.Contains(out.String(), "First letter is uppercase\\n^ [HERE]\\n\"}\n")
+}
+
 func (s *formatTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
 	s.Require().NoError(err)
