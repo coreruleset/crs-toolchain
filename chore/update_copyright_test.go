@@ -144,3 +144,17 @@ func (s *copyrightUpdateTestsTestSuite) TestUpdateCopyrightTests_AddsNewLine() {
 
 	s.Equal(expected, string(out))
 }
+
+// Test that the function supports release candidate naming
+func (s *copyrightUpdateTestsTestSuite) TestUpdateCopyrightTests_SupportsReleaseCandidateNaming() {
+	contents := `# ------------------------------------------------------------------------
+# OWASP ModSecurity Core Rule Set ver.4.0.1
+`
+	expected := `# ------------------------------------------------------------------------
+# OWASP ModSecurity Core Rule Set ver.4.1.0-rc1
+`
+	out, err := updateRules("4.1.0-rc1", "2041", []byte(contents))
+	s.Require().NoError(err)
+
+	s.Equal(expected, string(out))
+}
