@@ -70,8 +70,8 @@ func updateRules(version string, year string, contents []byte) ([]byte, error) {
 	writer := bufio.NewWriter(output)
 	replaceVersion := fmt.Sprintf("${1}%s", version)
 	// only keep numbers from the version
-	shortVersion := regexp.MustCompile(`(\d)\.(\d)\.(\d)*`).FindString(version)
-	replaceShortVersion := fmt.Sprintf("${1}%s", shortVersion)
+	onlyNumbersVersion := strings.Join(regexp.MustCompile(`\d+`).FindAllString(version, -1), "")
+	replaceShortVersion := fmt.Sprintf("${1}%s", onlyNumbersVersion)
 	replaceYear := fmt.Sprintf("${1}%s${3}", year)
 	replaceSecRuleVersion := fmt.Sprintf("${1}%s", version)
 	replaceSecComponentSignature := fmt.Sprintf("${1}%s", version)

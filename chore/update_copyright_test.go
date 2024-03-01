@@ -74,6 +74,14 @@ func (s *copyrightUpdateTestsTestSuite) TestUpdateCopyrightTests_SetYear() {
 # Please see the enclosed LICENSE file for full details.
 # ------------------------------------------------------------------------
 
+SecAction \
+    "id:900990,\
+    phase:1,\
+    pass,\
+    t:none,\
+    nolog,\
+    setvar:tx.crs_setup_version=400"
+
 SecRule &TX:crs_setup_version "@eq 0" \
     "id:901001,\
     phase:1,\
@@ -104,6 +112,14 @@ SecComponentSignature "OWASP_CRS/3.3.5"
 # Apache Software License (ASL) version 2
 # Please see the enclosed LICENSE file for full details.
 # ------------------------------------------------------------------------
+
+SecAction \
+    "id:900990,\
+    phase:1,\
+    pass,\
+    t:none,\
+    nolog,\
+    setvar:tx.crs_setup_version=49912"
 
 SecRule &TX:crs_setup_version "@eq 0" \
     "id:901001,\
