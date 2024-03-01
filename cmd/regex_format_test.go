@@ -532,6 +532,43 @@ First letter is uppercase
 	s.Contains(out.String(), "First letter is uppercase\\n^ [HERE]\\n\"}\n")
 }
 
+func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercaseEscapedUppercase() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!+ i
+this regex has a \S letter which should not match
+multiple escape sequences \S\S\S
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+}
+
+func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercaseUnevenlyEscapedUppercase() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!+ i
+multiple escape sequences \A\B\S should be good.
+odd number of escape sequences should be good also \\\A\\\S
+even number of escape sequences should be bad \\\\A\\B
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
+	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+	s.Contains(out.String(), "even number of escape sequences should be bad")
+}
+
 func (s *formatTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
 	s.Require().NoError(err)
