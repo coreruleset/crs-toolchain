@@ -22,7 +22,10 @@ import (
 	"github.com/coreruleset/crs-toolchain/regex/processors"
 )
 
-const regexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/regex_assembly/.\n"
+const (
+	regexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/regex_assembly/.\n"
+	showCharsAround             = 20
+)
 
 // formatCmd represents the generate command
 var formatCmd = createFormatCommand()
@@ -156,6 +159,8 @@ func processAll(ctxt *processors.Context, checkOnly bool) error {
 }
 
 func processFile(filePath string, ctxt *processors.Context, checkOnly bool) error {
+	var processFileError error
+	message := ""
 	filename := path.Base(filePath)
 	logger.Info().Msgf("Processing %s", filename)
 	file, err := os.Open(filePath)
@@ -164,8 +169,8 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 		return err
 	}
 
-	parser := parser.NewParser(ctxt, file)
-	parsedBytes, _ := parser.Parse(true)
+	raParser := parser.NewParser(ctxt, file)
+	parsedBytes, _ := raParser.Parse(true)
 	if err = file.Close(); err != nil {
 		logger.Error().Err(err).Msgf("file already closed %s", filePath)
 		return err
@@ -197,24 +202,30 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 		currentContents, err := os.ReadFile(filePath)
 		if err != nil {
 			logger.Error().Err(err).Msgf("failed to read file %s", filePath)
+			return err
 		}
-		if !bytes.Equal(currentContents, newContents) {
-			message := "File not properly formatted"
-			if rootValues.output == gitHub {
-				message = "::warning::" + message
-			}
+		// sanity check: if we are using an ignore-case flag, we don't need to have any uppercase letters in the file
+		foundUppercase, errMessage := findUpperCaseOnIgnoreCaseFlag(lines, raParser.Flags['i'])
+		if foundUppercase {
+			logger.Warn().Msgf("File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+			logger.Warn().Msgf("%s", errMessage)
+			logger.Warn().Msg("Be aware that because of file inclusions and definitions, the actual line number or file might be different.")
+		}
+		equalContent := bytes.Equal(currentContents, newContents)
+		if !equalContent || foundUppercase {
+			message = formatMessage("File not properly formatted")
 			fmt.Println(message)
-			return &UnformattedFileError{filePath: filePath}
+			processFileError = &UnformattedFileError{filePath: filePath}
 		}
 	} else {
 		err = os.WriteFile(filePath, newContents, fs.ModePerm)
 		if err != nil {
 			logger.Error().Err(err).Msgf("failed to write file %s", filePath)
-			return err
+			processFileError = err
 		}
 	}
 
-	return nil
+	return processFileError
 }
 
 func processLine(line []byte, indent int) ([]byte, int, error) {
@@ -270,6 +281,13 @@ func processLine(line []byte, indent int) ([]byte, int, error) {
 	return trimmedLine, nextIndent, nil
 }
 
+func formatMessage(message string) string {
+	if rootValues.output == gitHub {
+		message = "::warning::" + message
+	}
+	return message
+}
+
 func formatEndOfFile(lines []string) []string {
 	eof := len(lines) - 1
 	if eof < 0 {
@@ -298,4 +316,26 @@ func checkStandardHeader(lines []string) bool {
 		return true
 	}
 	return false
+}
+
+// findUpperCaseOnIgnoreCaseFlag checks if the file contains uppercase letters when the ignore-case flag is set
+// returns true if the file contains uppercase letters, and an error message pointing the line where it was found.
+func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
+	res := false
+	message := ""
+	// check if the file contains uppercase letters
+	if iFlag {
+		for number, line := range lines {
+			// ignore line if it starts with ##!
+			if strings.HasPrefix(line, "##!") {
+				continue
+			}
+			found := strings.IndexAny(line, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+			if found > -1 {
+				res = true
+				message = fmt.Sprintf("%s\n%s^ [HERE]\n", lines[number], strings.Repeat("=", found-1))
+			}
+		}
+	}
+	return res, message
 }
