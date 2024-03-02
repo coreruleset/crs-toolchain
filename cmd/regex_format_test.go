@@ -569,6 +569,42 @@ even number of escape sequences should be bad \\\\A\\B
 	s.Contains(out.String(), "even number of escape sequences should be bad")
 }
 
+func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_PlusDefinitions() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!> define homer simpson
+##!+ i
+multiple escape sequences \A\B\S should be good.
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.Require().NoError(err)
+}
+
+func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_PlusDefinitionsWithUppercase() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!> define homer No_Bueno
+##!+ i
+multiple escape sequences \A\B\S should be good.
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
+	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+	s.Contains(out.String(), "##!> define homer No_Bueno\\n==================^ [HERE]")
+}
+
 func (s *formatTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
 	s.Require().NoError(err)

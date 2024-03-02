@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -322,19 +323,32 @@ func checkStandardHeader(lines []string) bool {
 // returns true if the file contains uppercase letters, and an error message pointing the line where it was found.
 func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
 	res := false
+	definition := false
 	message := ""
+	// this definition regex defers from the global one in that it captures the whole line up to the variable value.
+	definitionRegex := regexp.MustCompile(`^(##!>\s*define\s+([a-zA-Z0-9-_]+)\s+)(\S+)\s*$`)
 	// check if the file contains uppercase letters
 	if iFlag {
-		for _, line := range lines {
-			// ignore line if it starts with the following regex: \s+##!
-			if regex.CommentRegex.MatchString(line) {
+		for i, line := range lines {
+			// if this line is not a definition, then ignore if it is a comment
+			definition = definitionRegex.MatchString(line)
+			if !definition && regex.CommentRegex.MatchString(line) {
 				continue
 			}
+			if definition {
+				line = definitionRegex.FindStringSubmatch(line)[3]
+			}
+
 			found, index := findUppercaseNonEscaped(line)
 			if found {
 				// show the column where the uppercase letter was found
 				// for a better visual match, we add equal symbols a and a caret in a line below
 				fill := ""
+				if definition {
+					// restore the original line
+					line = lines[i]
+					index = definitionRegex.FindSubmatchIndex([]byte(line))[3]
+				}
 				if index > 0 {
 					fill = strings.Repeat("=", index)
 				}
