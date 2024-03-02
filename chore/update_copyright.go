@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -68,12 +69,16 @@ func updateRules(version string, year string, contents []byte) ([]byte, error) {
 	output := new(bytes.Buffer)
 	writer := bufio.NewWriter(output)
 	replaceVersion := fmt.Sprintf("${1}%s", version)
+	// only keep numbers from the version
+	onlyNumbersVersion := strings.Join(regexp.MustCompile(`\d+`).FindAllString(version, -1), "")
+	replaceShortVersion := fmt.Sprintf("${1}%s", onlyNumbersVersion)
 	replaceYear := fmt.Sprintf("${1}%s${3}", year)
 	replaceSecRuleVersion := fmt.Sprintf("${1}%s", version)
 	replaceSecComponentSignature := fmt.Sprintf("${1}%s", version)
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = regex.CRSVersionRegex.ReplaceAllString(line, replaceVersion)
+		line = regex.ShortCRSVersionRegex.ReplaceAllString(line, replaceShortVersion)
 		line = regex.CRSCopyrightYearRegex.ReplaceAllString(line, replaceYear)
 		line = regex.CRSYearSecRuleVerRegex.ReplaceAllString(line, replaceSecRuleVersion)
 		line = regex.CRSVersionComponentSignatureRegex.ReplaceAllString(line, replaceSecComponentSignature)
