@@ -325,21 +325,21 @@ func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
 	message := ""
 	// check if the file contains uppercase letters
 	if iFlag {
-		for number, line := range lines {
+		for _, line := range lines {
 			// ignore line if it starts with the following regex: \s+##!
 			if regex.CommentRegex.MatchString(line) {
 				continue
 			}
-			found := findUppercaseNonEscaped(line)
-			if found > -1 {
+			found, index := findUppercaseNonEscaped(line)
+			if found {
 				// show the column where the uppercase letter was found
 				// for a better visual match, we add equal symbols a and a caret in a line below
 				fill := ""
-				if found > 0 {
-					fill = strings.Repeat("=", found-1)
+				if index > 0 {
+					fill = strings.Repeat("=", index)
 				}
 				res = true
-				message = fmt.Sprintf("\n%s\n%s^ [HERE]\n", lines[number], fill)
+				message = fmt.Sprintf("\n%s\n%s^ [HERE]\n", line, fill)
 				break
 			}
 		}
@@ -347,8 +347,9 @@ func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
 	return res, message
 }
 
-// findUppercaseNonEscaped returns the index of the first uppercase letter that is not escaped
-func findUppercaseNonEscaped(line string) int {
+// findUppercaseNonEscaped finds an uppercase character that is not escaped in a given line
+// returns true if the line contains an uppercase character that is not escaped, and the index of the character
+func findUppercaseNonEscaped(line string) (bool, int) {
 	for i, c := range line {
 		if c >= 'A' && c <= 'Z' {
 			// go back and check if the character is escaped
@@ -365,9 +366,9 @@ func findUppercaseNonEscaped(line string) int {
 				}
 			}
 			if count%2 == 0 {
-				return i
+				return true, i
 			}
 		}
 	}
-	return -1
+	return false, -1
 }
