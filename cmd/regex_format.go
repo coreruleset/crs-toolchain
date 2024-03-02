@@ -213,7 +213,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 		}
 		equalContent := bytes.Equal(currentContents, newContents)
 		if !equalContent || foundUppercase {
-			message = formatMessage("File not properly formatted")
+			message = formatMessage(fmt.Sprintf("File %s not properly formatted", filePath))
 			fmt.Println(message)
 			processFileError = &UnformattedFileError{filePath: filePath}
 		}
@@ -260,7 +260,7 @@ func processLine(line []byte, indent int) ([]byte, int, error) {
 		trimmedLine = []byte(fmt.Sprintf("##!$ %s", matches[1]))
 		blockIndent = 0
 	} else if matches := definitionRegex.FindSubmatch(line); matches != nil {
-		trimmedLine = []byte(fmt.Sprintf("##!> define %s %s", matches[1], matches[2]))
+		trimmedLine = []byte(fmt.Sprintf("##!> define %s %s", matches[2], matches[3]))
 	} else if matches := includeRegex.FindSubmatch(line); matches != nil {
 		trimmedLineString := fmt.Sprintf("##!> include %s", matches[1])
 		if len(matches[2]) > 0 {
@@ -283,7 +283,7 @@ func processLine(line []byte, indent int) ([]byte, int, error) {
 
 func formatMessage(message string) string {
 	if rootValues.output == gitHub {
-		message = "::warning::" + message
+		message = fmt.Sprintf("::warning ::%s\n", message)
 	}
 	return message
 }
@@ -322,20 +322,64 @@ func checkStandardHeader(lines []string) bool {
 // returns true if the file contains uppercase letters, and an error message pointing the line where it was found.
 func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
 	res := false
+	definition := false
 	message := ""
 	// check if the file contains uppercase letters
 	if iFlag {
-		for number, line := range lines {
-			// ignore line if it starts with ##!
-			if strings.HasPrefix(line, "##!") {
+		for i, line := range lines {
+			// if this line is not a definition, then ignore if it is a comment
+			definition = definitionRegex.MatchString(line)
+			if !definition && regex.CommentRegex.MatchString(line) {
 				continue
 			}
-			found := strings.IndexAny(line, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-			if found > -1 {
+			if definition {
+				line = definitionRegex.FindStringSubmatch(line)[3]
+			}
+
+			found, index := findUppercaseNonEscaped(line)
+			if found {
+				// show the column where the uppercase letter was found
+				// for a better visual match, we add equal symbols a and a caret in a line below
+				fill := ""
+				if definition {
+					// restore the original line
+					line = lines[i]
+					index = definitionRegex.FindSubmatchIndex([]byte(line))[3]
+				}
+				if index > 0 {
+					fill = strings.Repeat("=", index)
+				}
 				res = true
-				message = fmt.Sprintf("%s\n%s^ [HERE]\n", lines[number], strings.Repeat("=", found-1))
+				message = fmt.Sprintf("\n%s\n%s^ [HERE]\n", line, fill)
+				break
 			}
 		}
 	}
 	return res, message
+}
+
+// findUppercaseNonEscaped finds an uppercase character that is not escaped in a given line
+// returns true if the line contains an uppercase character that is not escaped, and the index of the character
+func findUppercaseNonEscaped(line string) (bool, int) {
+	for i, c := range line {
+		if c >= 'A' && c <= 'Z' {
+			// go back and check if the character is escaped
+			count := 0
+			runes := []rune(line[:i]) // Convert string to rune slice
+			// Iterate over the rune slice in reverse order
+			for j := len(runes) - 1; j >= 0; j-- {
+				if runes[j] == '\\' {
+					// we found a backslash, so we need to check if it is escaped
+					count++
+					// if the character is not escaped, return the index
+				} else {
+					break
+				}
+			}
+			if count%2 == 0 {
+				return true, i
+			}
+		}
+	}
+	return false, -1
 }

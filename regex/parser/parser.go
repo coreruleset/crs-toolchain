@@ -206,7 +206,7 @@ func (p *Parser) parseLine(line string) ParsedLine {
 				pl.excludeFileNames = splitArgs(found[2])
 			case definitionPatternName:
 				pl.parsedType = definition
-				pl.definitions = map[string]string{found[1]: found[2]}
+				pl.definitions = map[string]string{found[2]: found[3]}
 			case flagsPatternName:
 				pl.parsedType = flags
 				pl.flags = found[1]

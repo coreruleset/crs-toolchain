@@ -14,11 +14,12 @@ var IncludeRegex = regexp.MustCompile(`##!>\s*include\s+(\S+)(?:\s*--\s*(.*?))?\
 var IncludeExceptRegex = regexp.MustCompile(`^##!>\s*include-except\s+(\S+)\s*(.*?)(?:\s*--\s*(.*?))?\s*$`)
 
 // DefinitionRegex matches a definition processor line (##! define <name> <value>)
-// The name is captured in group 1, the value in group 2.
-var DefinitionRegex = regexp.MustCompile(`^##!>\s*define\s+([a-zA-Z0-9-_]+)\s+(\S+)\s*$`)
+// Everything up to the value of the definition is captured in group 1.
+// The name is captured in group 2, the value in group 3.
+var DefinitionRegex = regexp.MustCompile(`^(##!>\s*define\s+([a-zA-Z0-9-_]+)\s+)(\S+)\s*$`)
 
 // CommentRegex matches a comment line (##!, no other directives)
-var CommentRegex = regexp.MustCompile(`^##!(?:[^^$+><=]|$)`)
+var CommentRegex = regexp.MustCompile(`^\s*##!(?:[^^$+><=]|$)`)
 
 // FlagsRegex matches a flags line (##!+ <value>).
 // The value is captured in group 1.
