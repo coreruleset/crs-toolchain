@@ -12,7 +12,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -261,7 +260,7 @@ func processLine(line []byte, indent int) ([]byte, int, error) {
 		trimmedLine = []byte(fmt.Sprintf("##!$ %s", matches[1]))
 		blockIndent = 0
 	} else if matches := definitionRegex.FindSubmatch(line); matches != nil {
-		trimmedLine = []byte(fmt.Sprintf("##!> define %s %s", matches[1], matches[2]))
+		trimmedLine = []byte(fmt.Sprintf("##!> define %s %s", matches[2], matches[3]))
 	} else if matches := includeRegex.FindSubmatch(line); matches != nil {
 		trimmedLineString := fmt.Sprintf("##!> include %s", matches[1])
 		if len(matches[2]) > 0 {
@@ -325,8 +324,6 @@ func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
 	res := false
 	definition := false
 	message := ""
-	// this definition regex defers from the global one in that it captures the whole line up to the variable value.
-	definitionRegex := regexp.MustCompile(`^(##!>\s*define\s+([a-zA-Z0-9-_]+)\s+)(\S+)\s*$`)
 	// check if the file contains uppercase letters
 	if iFlag {
 		for i, line := range lines {
