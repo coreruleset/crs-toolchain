@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/spf13/cobra"
 
@@ -187,6 +188,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 		if err != nil {
 			logger.Error().Err(err).Msgf("failed to format %s", filename)
 		}
+		line = formatLowercase(line, raParser)
 		lines = append(lines, string(line))
 	}
 
@@ -204,15 +206,8 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 			logger.Error().Err(err).Msgf("failed to read file %s", filePath)
 			return err
 		}
-		// sanity check: if we are using an ignore-case flag, we don't need to have any uppercase letters in the file
-		foundUppercase, errMessage := findUpperCaseOnIgnoreCaseFlag(lines, raParser.Flags['i'])
-		if foundUppercase {
-			logger.Warn().Msgf("File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
-			logger.Warn().Msgf("%s", errMessage)
-			logger.Warn().Msg("Be aware that because of file inclusions and definitions, the actual line number or file might be different.")
-		}
 		equalContent := bytes.Equal(currentContents, newContents)
-		if !equalContent || foundUppercase {
+		if !equalContent {
 			message = formatMessage(fmt.Sprintf("File %s not properly formatted", filePath))
 			fmt.Println(message)
 			processFileError = &UnformattedFileError{filePath: filePath}
@@ -281,6 +276,52 @@ func processLine(line []byte, indent int) ([]byte, int, error) {
 	return trimmedLine, nextIndent, nil
 }
 
+func formatLowercase(line []byte, raParser *parser.Parser) []byte {
+	if !raParser.Flags['i'] {
+		return line
+	}
+
+	// if this line is not a definition, then ignore if it is a comment
+	definition := definitionRegex.Match(line)
+	if !definition && regex.CommentRegex.Match(line) {
+		return line
+	}
+
+	contentToCheck := line
+	if definition {
+		contentToCheck = definitionRegex.FindSubmatch(line)[3]
+	}
+
+	runes := bytes.Runes(contentToCheck)
+	foundIndexes := findUppercaseNonEscaped(runes)
+	if len(foundIndexes) > 0 {
+		logger.Warn().Msgf("File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+		// show the column where the uppercase letter was found
+		// for a better visual match, we add equal symbols a and a caret in a line below
+		index := foundIndexes[0]
+		fill := ""
+		if definition {
+			index += definitionRegex.FindSubmatchIndex([]byte(line))[3]
+		}
+		if index > 0 {
+			fill = strings.Repeat("=", index)
+		}
+		logger.Warn().Msgf("\n%s\n%s^ [HERE]\n", line, fill)
+		logger.Warn().Msg("Be aware that because of file inclusions and definitions, the actual line number or file might be different.")
+	}
+
+	for _, index := range foundIndexes {
+		runes[index] = unicode.ToLower(runes[index])
+	}
+
+	transformed := []byte(string(runes))
+	if definition {
+		startIndex := definitionRegex.FindSubmatchIndex(line)[3]
+		transformed = append(line[:startIndex], transformed...)
+	}
+	return transformed
+}
+
 func formatMessage(message string) string {
 	if rootValues.output == gitHub {
 		message = fmt.Sprintf("::warning ::%s\n", message)
@@ -318,57 +359,16 @@ func checkStandardHeader(lines []string) bool {
 	return false
 }
 
-// findUpperCaseOnIgnoreCaseFlag checks if the file contains uppercase letters when the ignore-case flag is set
-// returns true if the file contains uppercase letters, and an error message pointing the line where it was found.
-func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
-	res := false
-	definition := false
-	message := ""
-	// check if the file contains uppercase letters
-	if iFlag {
-		for i, line := range lines {
-			// if this line is not a definition, then ignore if it is a comment
-			definition = definitionRegex.MatchString(line)
-			if !definition && regex.CommentRegex.MatchString(line) {
-				continue
-			}
-			if definition {
-				line = definitionRegex.FindStringSubmatch(line)[3]
-			}
-
-			found, index := findUppercaseNonEscaped(line)
-			if found {
-				// show the column where the uppercase letter was found
-				// for a better visual match, we add equal symbols a and a caret in a line below
-				fill := ""
-				if definition {
-					// restore the original line
-					line = lines[i]
-					index = definitionRegex.FindSubmatchIndex([]byte(line))[3]
-				}
-				if index > 0 {
-					fill = strings.Repeat("=", index)
-				}
-				res = true
-				message = fmt.Sprintf("\n%s\n%s^ [HERE]\n", line, fill)
-				break
-			}
-		}
-	}
-	return res, message
-}
-
-// findUppercaseNonEscaped finds an uppercase character that is not escaped in a given line
-// returns true if the line contains an uppercase character that is not escaped, and the index of the character
-func findUppercaseNonEscaped(line string) (bool, int) {
-	for i, c := range line {
-		if c >= 'A' && c <= 'Z' {
+// findUppercaseNonEscaped finds all uppercase ASCII characters in the input that are not escaped.
+// Returns an array with the indexes of all matches.
+func findUppercaseNonEscaped(input []rune) []int {
+	foundIndexes := []int{}
+	for i, r := range input {
+		if r >= 'A' && r <= 'Z' {
 			// go back and check if the character is escaped
 			count := 0
-			runes := []rune(line[:i]) // Convert string to rune slice
-			// Iterate over the rune slice in reverse order
-			for j := len(runes) - 1; j >= 0; j-- {
-				if runes[j] == '\\' {
+			for j := i - 1; j >= 0; j-- {
+				if input[j] == '\\' {
 					// we found a backslash, so we need to check if it is escaped
 					count++
 					// if the character is not escaped, return the index
@@ -377,9 +377,9 @@ func findUppercaseNonEscaped(line string) (bool, int) {
 				}
 			}
 			if count%2 == 0 {
-				return true, i
+				foundIndexes = append(foundIndexes, i)
 			}
 		}
 	}
-	return false, -1
+	return foundIndexes
 }
