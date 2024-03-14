@@ -132,7 +132,7 @@ func performCompare(processAll bool, ctx *processors.Context) error {
 				if err != nil && len(chainOffsetString) > 0 {
 					return errors.New("failed to match chain offset. Value must not be larger than 255")
 				}
-				regex := runAssemble(filePath, ctx)
+				regex := runAssemble(filePath)
 				err = processRegexForCompare(id, uint8(chainOffset), regex, ctx)
 				if err != nil && errors.Is(err, &ComparisonError{}) {
 					failed = true
@@ -154,7 +154,7 @@ func performCompare(processAll bool, ctx *processors.Context) error {
 			return &ComparisonError{}
 		}
 	} else {
-		regex := runAssemble(path.Join(ctx.RootContext().AssemblyDir(), ruleValues.fileName), ctx)
+		regex := runAssemble(path.Join(ctx.RootContext().AssemblyDir(), ruleValues.fileName))
 		return processRegexForCompare(ruleValues.id, ruleValues.chainOffset, regex, ctx)
 	}
 	return nil
@@ -177,7 +177,7 @@ func processRegexForCompare(ruleId string, chainOffset uint8, regex string, ctxt
 	logger.Debug().Msgf("Processing regex-assembly file %s", filePath)
 
 	currentRegex := readCurrentRegex(filePath, ruleId, chainOffset)
-	return compareRegex(filePath, ruleId, chainOffset, regex, currentRegex)
+	return compareRegex(ruleId, regex, currentRegex)
 }
 
 func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string {
@@ -220,7 +220,7 @@ func readCurrentRegex(filePath string, ruleId string, chainOffset uint8) string 
 	return found[0][2]
 }
 
-func compareRegex(filePath string, ruleId string, chainOffset uint8, generatedRegex string, currentRegex string) error {
+func compareRegex(ruleId string, generatedRegex string, currentRegex string) error {
 	if currentRegex == generatedRegex {
 		fmt.Println("Regex of", ruleId, "has not changed")
 		return nil

@@ -513,6 +513,35 @@ this is a regex
 	s.Contains(out.String(), "{1,3}[Bb]lah\\n======^ [HERE]\\n\"}\n")
 }
 
+func (s *formatTestSuite) TestFormat_IgnoreCaseFlagWithUppercase() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!+ i
+this is a regex
+^[a-z]this is another regex
+{1,3}[Bb]lah
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+	s.Contains(out.String(), "{1,3}[Bb]lah\\n======^ [HERE]\\n\"}\n")
+
+	expected := regexAssemblyStandardHeader + `
+##!+ i
+this is a regex
+^[a-z]this is another regex
+{1,3}[bb]lah
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
 func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercasePositionIndicator() {
 	// send logs to buffer
 	out := &bytes.Buffer{}
@@ -532,6 +561,31 @@ First letter is uppercase
 	s.Contains(out.String(), "First letter is uppercase\\n^ [HERE]\\n\"}\n")
 }
 
+func (s *formatTestSuite) TestFormat_IgnoreCaseFlagWithUppercasePositionIndicator() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!+ i
+First letter is uppercase
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+	s.Contains(out.String(), "First letter is uppercase\\n^ [HERE]\\n\"}\n")
+
+	expected := regexAssemblyStandardHeader + `
+##!+ i
+first letter is uppercase
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
 func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercaseEscapedUppercase() {
 	// send logs to buffer
 	out := &bytes.Buffer{}
@@ -547,6 +601,31 @@ multiple escape sequences \S\S\S
 
 	_, err := rootCmd.ExecuteC()
 	s.NoError(err)
+}
+
+func (s *formatTestSuite) TestFormat_IgnoreCaseFlagWithUppercaseEscapedUppercase() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!+ i
+this regex has a \S letter which should not match
+multiple escape sequences \S\S\S
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+
+	expected := regexAssemblyStandardHeader + `
+##!+ i
+this regex has a \S letter which should not match
+multiple escape sequences \S\S\S
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercaseUnevenlyEscapedUppercase() {
@@ -569,6 +648,35 @@ even number of escape sequences should be bad \\\\A\\B
 	s.Contains(out.String(), "even number of escape sequences should be bad")
 }
 
+func (s *formatTestSuite) TestFormat_IgnoreCaseFlagWithUppercaseUnevenlyEscapedUppercase() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!+ i
+multiple escape sequences \A\B\S should be good.
+odd number of escape sequences should be good also \\\A\\\S
+even number of escape sequences should be bad \\\\A\\B
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+	s.Contains(out.String(), "even number of escape sequences should be bad")
+
+	expected := regexAssemblyStandardHeader + `
+##!+ i
+multiple escape sequences \A\B\S should be good.
+odd number of escape sequences should be good also \\\A\\\S
+even number of escape sequences should be bad \\\\a\\b
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
+}
+
 func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_PlusDefinitions() {
 	// send logs to buffer
 	out := &bytes.Buffer{}
@@ -584,6 +692,31 @@ multiple escape sequences \A\B\S should be good.
 
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
+}
+
+func (s *formatTestSuite) TestFormat_IgnoreCaseFlagWithUppercase_PlusDefinitions() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!> define homer simpson
+##!+ i
+multiple escape sequences \A\B\S should be good.
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.Require().NoError(err)
+
+	expected := regexAssemblyStandardHeader + `
+##!> define homer simpson
+##!+ i
+multiple escape sequences \A\B\S should be good.
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_PlusDefinitionsWithUppercase() {
@@ -603,6 +736,33 @@ multiple escape sequences \A\B\S should be good.
 	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
 	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
 	s.Contains(out.String(), "##!> define homer No_Bueno\\n==================^ [HERE]")
+}
+
+func (s *formatTestSuite) TestFormat_IgnoreCaseFlagWithUppercase_PlusDefinitionsWithUppercase() {
+	// send logs to buffer
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", regexAssemblyStandardHeader+`
+##!> define homer No_Bueno
+##!+ i
+multiple escape sequences \A\B\S should be good.
+`)
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456", "-o", "github"})
+
+	_, err := rootCmd.ExecuteC()
+	s.NoError(err)
+	s.Contains(out.String(), "File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+	s.Contains(out.String(), "##!> define homer No_Bueno\\n==================^ [HERE]")
+
+	expected := regexAssemblyStandardHeader + `
+##!> define homer no_bueno
+##!+ i
+multiple escape sequences \A\B\S should be good.
+`
+	output := s.readDataFile("123456.ra")
+	s.Equal(expected, output)
 }
 
 func (s *formatTestSuite) writeDataFile(filename string, contents string) {
