@@ -91,7 +91,7 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Version512() {
 }
 
 func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Year2100() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-y", "2100", "-v", "experimental"})
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-y", "2100", "-v", "7.1.22"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("update-copyright", cmd.Name())

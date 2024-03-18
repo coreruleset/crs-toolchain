@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/coreruleset/crs-toolchain/chore"
@@ -23,6 +24,14 @@ func init() {
 	buildChoreUpdateCopyrightCommand()
 }
 
+func validateSemver(version string) error {
+	_, err := semver.NewVersion(version)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func createChoreUpdateCopyrightCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "update-copyright",
@@ -30,6 +39,9 @@ func createChoreUpdateCopyrightCommand() *cobra.Command {
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if copyrightVariables.Version == "" {
 				return ErrUpdateCopyrightWithoutVersion
+			}
+			if err := validateSemver(copyrightVariables.Version); err != nil {
+				return err
 			}
 			return nil
 		},
