@@ -94,9 +94,9 @@ var CRSCopyrightYearRegex = regexp.MustCompile(`^(# Copyright \(c\) 2021-)(\d{4}
 // CRSYearSecRuleVerRegex matches the version in the SecRule part of the text, (e.g. ver:'OWASP_CRS/4.0.0')
 // setup example, and rule files.
 // The matched year will be captured in group 2.
-var CRSYearSecRuleVerRegex = regexp.MustCompile(`(ver:'OWASP_CRS/)(\d+\.\d+\.\d+(-rc\d+)?)`)
+var CRSYearSecRuleVerRegex = regexp.MustCompile(`(ver:'OWASP_CRS/)(\d+\.\d+\.\d+(-[a-z0-9-]+)?)`)
 
 // CRSVersionComponentSignatureRegex matches the version in the SecComponentSignature part of the text, (e.g. OWASP_CRS/4.0.0-rc1)
 // setup example, and rule files.
 // The matched year will be captured in group 2.
-var CRSVersionComponentSignatureRegex = regexp.MustCompile(`^(SecComponentSignature "OWASP_CRS/)(\d+\.\d+\.\d+(-rc\d+)?)`)
+var CRSVersionComponentSignatureRegex = regexp.MustCompile(`^(SecComponentSignature "OWASP_CRS/)(\d+\.\d+\.\d+(-[a-z0-9-]+)?)`)
