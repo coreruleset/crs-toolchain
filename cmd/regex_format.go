@@ -212,7 +212,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 			logger.Warn().Msg("Be aware that because of file inclusions and definitions, the actual line number or file might be different.")
 		}
 		equalContent := bytes.Equal(currentContents, newContents)
-		if !equalContent || foundUppercase {
+		if !equalContent {
 			message = formatMessage(fmt.Sprintf("File %s not properly formatted", filePath))
 			fmt.Println(message)
 			processFileError = &UnformattedFileError{filePath: filePath}
