@@ -10,7 +10,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
-	github.com/creativeprojects/go-selfupdate v1.1.4
+	github.com/creativeprojects/go-selfupdate v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/itchyny/rassemble-go v0.1.1
 	gopkg.in/yaml.v3 v3.0.1
