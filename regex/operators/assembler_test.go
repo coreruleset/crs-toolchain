@@ -361,7 +361,7 @@ func (s *specialCasesTestSuite) TestBackslashSReplacesPerlEquivalentCharacterCla
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
-	s.Equal(`[\s\v]`, output)
+	s.Equal(`[\s\x0b]`, output)
 }
 
 func (s *preprocessorsTestSuite) TestSequentialPreprocessors() {
@@ -495,7 +495,7 @@ func (s *definitionsTestSuite) TestDefinition_RetainsEscapes() {
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
 
-	s.Equal(`\n[\s\v]\b\v\t`, output)
+	s.Equal(`\n[\s\x0b]\b\v\t`, output)
 
 }
 

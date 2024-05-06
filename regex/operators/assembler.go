@@ -203,16 +203,23 @@ func (a *Operator) useHexBackslashes(input string) string {
 	return strings.ReplaceAll(input, `\\`, `\x5c`)
 }
 
-// In Perl, the vertical tab (`\v`, `\x0b`) is *not* part of `\s`, but it is
-// in newer versions of PCRE (both 3 and 2). Go's `regexp/syntax` package
+// In Perl, the vertical tab (`VT`, `\x0b`) is *not* part of `\s`, but it is
+// in newer versions of PCRE (both 3 and 2) (`\v` in PCRE is actually
+// a list of vertical characters, one of which is `VT`).
+// Go's `regexp/syntax` package
 // uses Perl as the reference and, hence, generates `[\t-\n\f-\r ]` as the
-// character class for `\s`, i.e., `\v` is missing.
-// We simply replace the generated class with `[\s\v]` to fix this.
-// Note that we could use `\s` for PCRE, but this will not work for re2
-// compatible engines.
+// character class for `\s`, i.e., `VT` is missing.
+// We simply replace the generated class with `[\s\0xb]` to fix this.
+// Note that we could use simply use  `\s` for PCRE, but this will not work
+// for re2 compatible engines.
+// Note also that we use the hex escape code for the vertical tab because in
+// PCRE2 ranges in character classes are not allowed to start with escape codes
+// that expand to multiple code points, which includes `\v`. In the original
+// implementation of PCRE, `\v` was not illegal but led to the range token (`-`)
+// to be interpreted as a literal.
 func (a *Operator) includeVerticalTabInSpaceClass(input string) string {
-	logger.Trace().Msg("Fixing up regex to include \\v in white space class matches")
-	return strings.ReplaceAll(input, `\t\n\f\r `, `\s\v`)
+	logger.Trace().Msg("Fixing up regex to include vertical tab (VT) in white space class matches")
+	return strings.ReplaceAll(input, `\t\n\f\r `, `\s\x0b`)
 }
 
 // rassemble-go doesn't provide an option to specify literals.
@@ -235,7 +242,6 @@ func (a *Operator) includeVerticalTabInSpaceClass(input string) string {
 func (a *Operator) useHexEscapes(input string) string {
 	var sb strings.Builder
 	for _, char := range input {
-		// dec_value = ord(char)
 		if char < 32 || char > 126 {
 			sb.WriteString(`\x`)
 			sb.WriteString(fmt.Sprintf("%x", char))
