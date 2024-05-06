@@ -20,15 +20,15 @@ func TestRunRenumberTestsTestSuite(t *testing.T) {
 	suite.Run(t, new(renumberTestsTestSuite))
 }
 
-func (s *renumberTestsTestSuite) TestRenumberTests_SetTitle() {
+func (s *renumberTestsTestSuite) TestRenumberTests_Setid() {
 	contents := `---
 meta:
   enabled: true
   name: 123456.yaml
 tests:
-  - test_title: bapedibupi
+  - test_id: bapedibupi
     desc: "test 1"
-  - test_title: "pine apple"
+  - test_id: "pine apple"
     desc: "test 2"
 `
 	expected := `---
@@ -36,12 +36,12 @@ meta:
   enabled: true
   name: 123456.yaml
 tests:
-  - test_title: 123456-1
+  - test_id: 1
     desc: "test 1"
-  - test_title: 123456-2
+  - test_id: 2
     desc: "test 2"
 `
-	out, err := NewTestRenumberer().processYaml("123456", []byte(contents))
+	out, err := NewTestRenumberer().processYaml([]byte(contents))
 	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
@@ -53,9 +53,9 @@ meta:
   enabled: true
   name: 123456.yaml
 tests:
-  - test_title: bapedibupi
+  - test_id: bapedibupi
     desc: "test 1"
-  - test_title: "pine apple"
+  - test_id: "pine apple"
     desc: "test 2"
 
 
@@ -65,12 +65,12 @@ meta:
   enabled: true
   name: 123456.yaml
 tests:
-  - test_title: 123456-1
+  - test_id: 1
     desc: "test 1"
-  - test_title: 123456-2
+  - test_id: 2
     desc: "test 2"
 `
-	out, err := NewTestRenumberer().processYaml("123456", []byte(contents))
+	out, err := NewTestRenumberer().processYaml([]byte(contents))
 	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
@@ -82,21 +82,21 @@ meta:
   enabled: true
   name: 123456.yaml
 tests:
-  - test_title: bapedibupi
+  - test_id: bapedibupi
     desc: "test 1"
-  - test_title: "pine apple"
+  - test_id: "pine apple"
     desc: "test 2"`
 	expected := `---
 meta:
   enabled: true
   name: 123456.yaml
 tests:
-  - test_title: 123456-1
+  - test_id: 1
     desc: "test 1"
-  - test_title: 123456-2
+  - test_id: 2
     desc: "test 2"
 `
-	out, err := NewTestRenumberer().processYaml("123456", []byte(contents))
+	out, err := NewTestRenumberer().processYaml([]byte(contents))
 	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
@@ -108,9 +108,9 @@ meta:
   enabled: true
   name: 123456.yaml
 tests:
-  - test_title: bapedibupi
+  - test_id: bapedibupi
     desc: "test 1"
-  - test_title: "pine apple"
+  - test_id: "pine apple"
     desc: "test 2"
      
        
@@ -120,12 +120,12 @@ meta:
   enabled: true
   name: 123456.yaml
 tests:
-  - test_title: 123456-1
+  - test_id: 1
     desc: "test 1"
-  - test_title: 123456-2
+  - test_id: 2
     desc: "test 2"
 `
-	out, err := NewTestRenumberer().processYaml("123456", []byte(contents))
+	out, err := NewTestRenumberer().processYaml([]byte(contents))
 	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
