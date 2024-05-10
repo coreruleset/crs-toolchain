@@ -111,11 +111,25 @@ func (t *TestRenumberer) processYaml(ruleId string, contents []byte) ([]byte, er
 	output := new(bytes.Buffer)
 	writer := bufio.NewWriter(output)
 	index := 0
+	idCount := 0
+	titleCount := 0
 	for scanner.Scan() {
 		line := scanner.Text()
-		matches := regex.TestTitleRegex.FindStringSubmatch(line)
+		matches := regex.TestIdRegex.FindStringSubmatch(line)
 		if matches != nil {
-			index++
+			idCount++
+			if idCount > index {
+				index++
+			}
+			line = fmt.Sprint(matches[1], " ", index)
+		}
+		// legacy support
+		matches = regex.TestTitleRegex.FindStringSubmatch(line)
+		if matches != nil {
+			titleCount++
+			if titleCount > index {
+				index++
+			}
 			line = fmt.Sprint(matches[1], " ", ruleId, "-", index)
 		}
 

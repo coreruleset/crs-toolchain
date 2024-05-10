@@ -70,6 +70,10 @@ var RuleIdFileNameRegex = regexp.MustCompile(`^(\d{6})(?:-chain(\d+))?(?:\.ra)?$
 // The rule ID is captured in group 1, the optional extension in group 2.
 var RuleIdTestFileNameRegex = regexp.MustCompile(`^(\d{6})(?:\.ya?ml)?$`)
 
+// TestIdRegex matches any test_id line in test YAML files (test_id: <ID>).
+// Everything up to the value of the test ID is captured in group 1, test ID in group 2.
+var TestIdRegex = regexp.MustCompile(`(.*test_id:)\s+(.*$)`)
+
 // TestTitleRegex matches any test_title line in test YAML files (test_title: "<title>").
 // Everything up to the value of the test title is captured in group 1, test title in group 2.
 var TestTitleRegex = regexp.MustCompile(`(.*test_title:)\s+(.*$)`)
