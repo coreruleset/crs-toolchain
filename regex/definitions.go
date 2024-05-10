@@ -74,6 +74,10 @@ var RuleIdTestFileNameRegex = regexp.MustCompile(`^(\d{6})(?:\.ya?ml)?$`)
 // Everything up to the value of the test ID is captured in group 1, test ID in group 2.
 var TestIdRegex = regexp.MustCompile(`(.*test_id:)\s+(.*$)`)
 
+// TestTitleRegex matches any test_title line in test YAML files (test_title: "<title>").
+// Everything up to the value of the test title is captured in group 1, test title in group 2.
+var TestTitleRegex = regexp.MustCompile(`(.*test_title:)\s+(.*$)`)
+
 // DefinitionReferenceRegex matches any reference to a definition.
 // The matched reference name will be captured in group 1.
 var DefinitionReferenceRegex = regexp.MustCompile(`{{([a-zA-Z0-9-_]+)}}`)

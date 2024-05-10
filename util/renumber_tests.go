@@ -85,7 +85,7 @@ func (t *TestRenumberer) processFile(filePath string, checkOnly bool, gitHubOutp
 		return err
 	}
 
-	output, err := t.processYaml(contents)
+	output, err := t.processYaml(ruleId, contents)
 	if err != nil {
 		return err
 	}
@@ -105,18 +105,32 @@ func (t *TestRenumberer) processFile(filePath string, checkOnly bool, gitHubOutp
 	return os.WriteFile(filePath, output, fs.ModePerm)
 }
 
-func (t *TestRenumberer) processYaml(contents []byte) ([]byte, error) {
+func (t *TestRenumberer) processYaml(ruleId string, contents []byte) ([]byte, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(contents))
 	scanner.Split(bufio.ScanLines)
 	output := new(bytes.Buffer)
 	writer := bufio.NewWriter(output)
 	index := 0
+	idCount := 0
+	titleCount := 0
 	for scanner.Scan() {
 		line := scanner.Text()
 		matches := regex.TestIdRegex.FindStringSubmatch(line)
 		if matches != nil {
-			index++
+			idCount++
+			if idCount > index {
+				index++
+			}
 			line = fmt.Sprint(matches[1], " ", index)
+		}
+		// legacy support
+		matches = regex.TestTitleRegex.FindStringSubmatch(line)
+		if matches != nil {
+			titleCount++
+			if titleCount > index {
+				index++
+			}
+			line = fmt.Sprint(matches[1], " ", ruleId, "-", index)
 		}
 
 		if _, err := writer.WriteString(line); err != nil {
