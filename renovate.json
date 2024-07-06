@@ -4,6 +4,7 @@
     "config:base",
     "schedule:weekly"
   ],
+  "ignoreDeps": ["github.com/itchyny/rassemble-go"],
   "packageRules": [
     {
       "groupName": "all non-major dependencies",
