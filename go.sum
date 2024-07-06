@@ -38,8 +38,8 @@ github.com/hashicorp/go-version v1.7.0 h1:5tqGy27NaOTB8yJKUZELlFAS/LTKJkrmONwQKe
 github.com/hashicorp/go-version v1.7.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/itchyny/rassemble-go v0.1.0 h1:PaH3f4XNlFx2SImEezdREmkW+/w2t3aLZS9xleHEPjY=
-github.com/itchyny/rassemble-go v0.1.0/go.mod h1:3P4ZuUAYUp+hBvdkVPrL/IhiR0U5CLeCLaqREgGJB7c=
+github.com/itchyny/rassemble-go v0.1.2 h1:4Jtms+JnlXJPbBfeXzdgXf/TJnFWilFzA6bXn+ZF6yM=
+github.com/itchyny/rassemble-go v0.1.2/go.mod h1:VWc9FWUhn/1G2gGivJlq+K9toP2ylbKOwO46P/bPZFo=
 github.com/kr/pretty v0.2.0 h1:s5hAObm+yFO5uHYt5dYjxi2rXrsnmRpJx4OYvIWUaQs=
 github.com/kr/pretty v0.2.0/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=

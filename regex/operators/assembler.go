@@ -26,11 +26,12 @@ var processor processors.IProcessor
 // NewAssembler creates a new Operator based on context.
 func NewAssembler(ctx *processors.Context) *Operator {
 	return &Operator{
-		name:    "assemble",
-		details: make(map[string]string),
-		lines:   []string{},
-		ctx:     ctx,
-		stats:   NewStats(),
+		name:                          "assemble",
+		details:                       make(map[string]string),
+		lines:                         []string{},
+		ctx:                           ctx,
+		stats:                         NewStats(),
+		groupReplacementStringBuilder: &strings.Builder{},
 	}
 }
 
@@ -135,11 +136,13 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		result = a.escapeDoublequotes(result)
 		logger.Trace().Msgf("After escaping double quotes: %s\n", result)
 		result = a.useHexBackslashes(result)
-		logger.Trace().Msgf("After replacing plain backslashes with hex escapse: %s\n", result)
+		logger.Trace().Msgf("After replacing plain backslashes with hex escapes: %s\n", result)
 		result = a.includeVerticalTabInSpaceClass(result)
 		logger.Trace().Msgf("After including vertical tabs: %s\n", result)
 		result = a.dontUseFlagsForMetaCharacters(result)
 		logger.Trace().Msgf("After removing meta character flags: %s\n", result)
+		result = a.removeOutermostNonCapturingGroup(result)
+		logger.Trace().Msgf("After removing outermost non-capturing group: %s\n", result)
 	}
 
 	if len(flagsPrefix) > 0 && len(result) > 0 {
@@ -256,16 +259,16 @@ func (a *Operator) useHexEscapes(input string) string {
 // meta characters that could be ambiguous, such as `^`, `$`, `.`.
 // Remove both flags for the current context, e.g., `...(?m)...`, and flag groups
 // applied to subexpressions, e.g., `...(?m:...)...`
-func (a *Operator) dontUseFlagsForMetaCharacters(input string) string {
+func (o *Operator) dontUseFlagsForMetaCharacters(input string) string {
 	result := input
 	flagsStartRegexp := regexp.MustCompile(`\(\?[-misU]+\)`)
-	result = flagsStartRegexp.ReplaceAllString(result, "")
+	result = flagsStartRegexp.ReplaceAllLiteralString(result, "")
 
 	flagGroupStartRegexp := regexp.MustCompile(`\(\?[-misU]+:`)
 	for {
 		location := flagGroupStartRegexp.FindStringIndex(result)
 		if len(location) > 0 {
-			result = replaceFlagGroup(result, location)
+			result = o.removeGroup(result, location[0], location[1], false)
 		} else {
 			break
 		}
@@ -273,12 +276,48 @@ func (a *Operator) dontUseFlagsForMetaCharacters(input string) string {
 	return result
 }
 
-// Remove flag groups like `...(?-s:...)...`
-func replaceFlagGroup(input string, location []int) string {
+// Remove groups like `...(?-s:...)...`.
+// If a group has an alternation on the same level as the group that
+// should be replaced, the group needs to be retained in order to
+// retain semantics, but the flags should still be removed.
+// Ignore alternations if `ignoreAlternations` is true. This can be used
+// to remove a top level group, in which case alternations with and without
+// the group would be equivalent.
+func (o *Operator) removeGroup(input string, groupStart int, bodyStart int, ignoreAlternations bool) string {
+	bodyEnd, hasAlternation := o.findGroupEnd(input, bodyStart)
+	hasAlternation = hasAlternation && !ignoreAlternations
+
+	o.groupReplacementStringBuilder.Reset()
+	o.groupReplacementStringBuilder.WriteString(input[:groupStart])
+	if hasAlternation {
+		o.groupReplacementStringBuilder.WriteString("(?:")
+	}
+	o.groupReplacementStringBuilder.WriteString(input[bodyStart : bodyEnd+1])
+	if hasAlternation {
+		o.groupReplacementStringBuilder.WriteString(")")
+	}
+	o.groupReplacementStringBuilder.WriteString(input[bodyEnd+2:])
+	return o.groupReplacementStringBuilder.String()
+}
+
+func (o *Operator) removeOutermostNonCapturingGroup(input string) string {
+	matcher := regexp.MustCompile(`^\(\?:.*\)$`)
+	if !matcher.MatchString(input) {
+		return input
+	}
+
+	bodyEnd, _ := o.findGroupEnd(input, 3)
+	if bodyEnd+1 < len(input)-1 {
+		return input
+	}
+
+	return o.removeGroup(input, 0, 3, true)
+}
+
+func (o *Operator) findGroupEnd(input string, groupBodyStart int) (int, bool) {
+	hasAlternation := false
 	parensCounter := 1
-	groupStart := location[0]
-	bodyStart := location[1]
-	index := bodyStart
+	index := groupBodyStart
 	for ; parensCounter > 0; index++ {
 		char := input[index]
 		switch char {
@@ -290,9 +329,14 @@ func replaceFlagGroup(input string, location []int) string {
 			if !isEscaped(input, index) {
 				parensCounter--
 			}
+		case '|':
+			if parensCounter == 1 {
+				hasAlternation = true
+			}
 		}
 	}
-	return input[:groupStart] + input[bodyStart:index-1] + input[index:]
+
+	return index - 2, hasAlternation
 }
 
 func isEscaped(input string, position int) bool {

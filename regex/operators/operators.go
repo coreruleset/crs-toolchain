@@ -6,6 +6,7 @@ package operators
 import (
 	"errors"
 	"io"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -15,11 +16,12 @@ import (
 var logger = log.With().Str("component", "operators").Logger()
 
 type Operator struct {
-	name    string
-	details map[string]string
-	lines   []string
-	stats   *Stats
-	ctx     *processors.Context
+	name                          string
+	details                       map[string]string
+	lines                         []string
+	stats                         *Stats
+	ctx                           *processors.Context
+	groupReplacementStringBuilder *strings.Builder
 }
 
 type ProcessorStack struct {
