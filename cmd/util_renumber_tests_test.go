@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/coreruleset/crs-toolchain/util"
+	"github.com/coreruleset/crs-toolchain/v2/util"
 )
 
 type renumberTestsTestSuite struct {
