@@ -1015,3 +1015,48 @@ func (s *assemblerTestSuite) TestAssemble_FlagGroupReplacementWithEscapedParenth
 	s.Require().NoError(err)
 	s.Equal(contents, output)
 }
+
+// regexp/syntax procudes flag groups we don't want. Make sure that
+// Removal of those groups does not remove groups that are semantically
+// relevant, which is the case when the flag group wraps an alternation.
+func (s *assemblerTestSuite) TestAssemble_ReplaceFlagGroupsWithAlternations() {
+	contents := `(?-s:(?s:.)(?i:A|B .))`
+	expected := `.(?:A|B .)`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.Require().NoError(err)
+	s.Equal(expected, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_RemoveOutermostNonMatchingGroup() {
+	contents := `(?:ab|cd)`
+	expected := `ab|cd`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.Require().NoError(err)
+	s.Equal(expected, output)
+}
+func (s *assemblerTestSuite) TestAssemble_RemoveOutermostNonMatchingGroup_WithExtraGroup() {
+	contents := `(?:(?:ab|cd))`
+	expected := `ab|cd`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.Require().NoError(err)
+	s.Equal(expected, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_RemoveOutermostNonMatchingGroup_Dont() {
+	contents := `(?:ab|cd)e|fg`
+	assembler := NewAssembler(s.ctx)
+
+	output, err := assembler.Run(contents)
+
+	s.Require().NoError(err)
+	s.Equal(contents, output)
+}
