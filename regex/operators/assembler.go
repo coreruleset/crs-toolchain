@@ -284,7 +284,7 @@ func (o *Operator) dontUseFlagsForMetaCharacters(input string) string {
 // to remove a top level group, in which case alternations with and without
 // the group would be equivalent.
 func (o *Operator) removeGroup(input string, groupStart int, bodyStart int, ignoreAlternations bool) string {
-	bodyEnd, hasAlternation := o.findGroupEnd(input, bodyStart)
+	bodyEnd, hasAlternation := o.findGroupBodyEnd(input, bodyStart)
 	hasAlternation = hasAlternation && !ignoreAlternations
 
 	o.groupReplacementStringBuilder.Reset()
@@ -300,13 +300,14 @@ func (o *Operator) removeGroup(input string, groupStart int, bodyStart int, igno
 	return o.groupReplacementStringBuilder.String()
 }
 
+// Removes the topmost non-capturing group if it is redundant.
 func (o *Operator) removeOutermostNonCapturingGroup(input string) string {
 	matcher := regexp.MustCompile(`^\(\?:.*\)$`)
 	if !matcher.MatchString(input) {
 		return input
 	}
 
-	bodyEnd, _ := o.findGroupEnd(input, 3)
+	bodyEnd, _ := o.findGroupBodyEnd(input, 3)
 	if bodyEnd+1 < len(input)-1 {
 		return input
 	}
@@ -314,7 +315,10 @@ func (o *Operator) removeOutermostNonCapturingGroup(input string) string {
 	return o.removeGroup(input, 0, 3, true)
 }
 
-func (o *Operator) findGroupEnd(input string, groupBodyStart int) (int, bool) {
+// Returns the index of the last token of the group whose body starts at
+// `groupBodyStart`. Resturns `true`, as the second value, if the group
+// has an alternation on the topmost level, `false` otherwise.
+func (o *Operator) findGroupBodyEnd(input string, groupBodyStart int) (int, bool) {
 	hasAlternation := false
 	parensCounter := 1
 	index := groupBodyStart
