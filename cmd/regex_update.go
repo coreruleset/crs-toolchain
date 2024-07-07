@@ -130,7 +130,6 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 }
 
 func runAssemble(filePath string) string {
-	// FIXME: duplicated in generate.go
 	rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
 	ctxt := processors.NewContext(rootContext)
 	assembler := operators.NewAssembler(ctxt)
