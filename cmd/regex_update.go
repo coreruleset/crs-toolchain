@@ -129,8 +129,7 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 	}
 }
 
-func runAssemble(filePath string, ctx *processors.Context) string {
-	// FIXME: duplicated in generate.go
+func runAssemble(filePath string) string {
 	rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
 	ctxt := processors.NewContext(rootContext)
 	assembler := operators.NewAssembler(ctxt)
@@ -158,7 +157,7 @@ func runAssemble(filePath string, ctx *processors.Context) string {
 
 func processRule(ruleId string, chainOffset uint8, dataFilePath string, ctxt *processors.Context) {
 	logger.Info().Msgf("Processing %s, chain offset %d", ruleId, chainOffset)
-	regex := runAssemble(dataFilePath, ctxt)
+	regex := runAssemble(dataFilePath)
 
 	rulePrefix := ruleId[:3]
 	matches, err := filepath.Glob(fmt.Sprintf("%s/*-%s-*", ctxt.RootContext().RulesDir(), rulePrefix))
