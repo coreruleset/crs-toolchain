@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -20,6 +21,7 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/regex"
 	"github.com/coreruleset/crs-toolchain/v2/regex/parser"
 	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
 const (
@@ -191,7 +193,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 	}
 
 	if !checkStandardHeader(lines) {
-		logger.Info().Msgf("file %s does not have standard header", filePath)
+		logger.Info().Msgf("file %s does not have standard header", filename)
 		// prepend the standard header
 		lines = append([]string{regexAssemblyStandardHeader}, lines...)
 	}
@@ -205,15 +207,15 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool) erro
 			return err
 		}
 		// sanity check: if we are using an ignore-case flag, we don't need to have any uppercase letters in the file
-		foundUppercase, errMessage := findUpperCaseOnIgnoreCaseFlag(lines, raParser.Flags['i'])
+		foundUppercase, errMessage := findUpperCaseCharacterClassOnIgnoreCaseFlag(lines, raParser.Flags['i'])
 		if foundUppercase {
-			logger.Warn().Msgf("File contains uppercase letters, but ignore-case flag is set. Please check your source files.")
+			logger.Warn().Msgf("%s contains uppercase letters in character classes, but ignore-case flag is set. Please check your source files.", filename)
 			logger.Warn().Msgf("%s", errMessage)
 			logger.Warn().Msg("Be aware that because of file inclusions and definitions, the actual line number or file might be different.")
 		}
 		equalContent := bytes.Equal(currentContents, newContents)
 		if !equalContent || foundUppercase {
-			message = formatMessage(fmt.Sprintf("File %s not properly formatted", filePath))
+			message = formatMessage(fmt.Sprintf("%s not properly formatted", filename))
 			fmt.Println(message)
 			processFileError = &UnformattedFileError{filePath: filePath}
 		}
@@ -318,9 +320,9 @@ func checkStandardHeader(lines []string) bool {
 	return false
 }
 
-// findUpperCaseOnIgnoreCaseFlag checks if the file contains uppercase letters when the ignore-case flag is set
+// findUpperCaseCharacterClassOnIgnoreCaseFlag checks if the file contains uppercase letters when the ignore-case flag is set
 // returns true if the file contains uppercase letters, and an error message pointing the line where it was found.
-func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
+func findUpperCaseCharacterClassOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
 	res := false
 	definition := false
 	message := ""
@@ -344,7 +346,7 @@ func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
 				if definition {
 					// restore the original line
 					line = lines[i]
-					index = definitionRegex.FindSubmatchIndex([]byte(line))[3]
+					index += definitionRegex.FindSubmatchIndex([]byte(line))[3]
 				}
 				if index > 0 {
 					fill = strings.Repeat("=", index)
@@ -361,23 +363,27 @@ func findUpperCaseOnIgnoreCaseFlag(lines []string, iFlag bool) (bool, string) {
 // findUppercaseNonEscaped finds an uppercase character that is not escaped in a given line
 // returns true if the line contains an uppercase character that is not escaped, and the index of the character
 func findUppercaseNonEscaped(line string) (bool, int) {
-	for i, c := range line {
-		if c >= 'A' && c <= 'Z' {
-			// go back and check if the character is escaped
-			count := 0
-			runes := []rune(line[:i]) // Convert string to rune slice
-			// Iterate over the rune slice in reverse order
-			for j := len(runes) - 1; j >= 0; j-- {
-				if runes[j] == '\\' {
-					// we found a backslash, so we need to check if it is escaped
-					count++
-					// if the character is not escaped, return the index
-				} else {
-					break
+	characterClassRegex := regexp.MustCompile(`(?:^|[^\\])\[.+?[^\\]\]`)
+	matches := characterClassRegex.FindAllStringIndex(line, -1)
+	if matches == nil {
+		return false, -1
+	}
+
+	for _, location := range matches {
+		start := location[0]
+		end := location[1]
+		// Skip match of non-backslash character before the first bracket.
+		// Don't skip if the match is at the start of the string.
+		if start > 0 {
+			start += 1
+		}
+		match := line[start:end]
+		for i, c := range match {
+			if c >= 'A' && c <= 'Z' {
+				// Escaped upper case letters are probably shortahands like `\W`, `\S`
+				if !utils.IsEscaped(match, i) {
+					return true, i + start
 				}
-			}
-			if count%2 == 0 {
-				return true, i
 			}
 		}
 	}
