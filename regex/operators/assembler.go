@@ -17,6 +17,7 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/regex"
 	"github.com/coreruleset/crs-toolchain/v2/regex/parser"
 	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
 // Create the processor stack
@@ -326,11 +327,11 @@ func (o *Operator) findGroupBodyEnd(input string, groupBodyStart int) (int, bool
 		char := input[index]
 		switch char {
 		case '(':
-			if !regex.IsEscaped(input, index) {
+			if !utils.IsEscaped(input, index) {
 				parensCounter++
 			}
 		case ')':
-			if !regex.IsEscaped(input, index) {
+			if !utils.IsEscaped(input, index) {
 				parensCounter--
 			}
 		case '|':
