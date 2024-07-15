@@ -5,7 +5,7 @@ package utils
 
 func IsEscaped(input string, position int) bool {
 	escapeCounter := 0
-	for backtrackIndex := position - 1; backtrackIndex >= 0; backtrackIndex++ {
+	for backtrackIndex := position - 1; backtrackIndex >= 0; backtrackIndex-- {
 		if input[backtrackIndex] != '\\' {
 			break
 		}
