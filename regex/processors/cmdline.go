@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/coreruleset/crs-toolchain/v2/regex"
 	"github.com/itchyny/rassemble-go"
 )
 
@@ -134,11 +135,16 @@ func (c *CmdLine) regexpStr(input string) string {
 	}
 
 	result := bytes.Buffer{}
-	for i, char := range []byte(input) {
+	strippedInput, suffix := c.computeSuffix(input)
+	for i, char := range []byte(strippedInput) {
 		if i > 0 {
 			result.WriteString(c.evasionPatterns[evasionPattern])
 		}
 		result.WriteString(c.regexpChar(char))
+	}
+	if len(suffix) > 0 {
+		result.WriteString(c.evasionPatterns[evasionPattern])
+		result.WriteString(suffix)
 	}
 	return result.String()
 }
@@ -153,13 +159,41 @@ func (c *CmdLine) regexpChar(char byte) string {
 		chars = "\\."
 	case '-':
 		chars = "\\-"
-	case '@':
-		chars = c.evasionPatterns[suffixPattern]
-	case '~':
-		chars = c.evasionPatterns[suffixExpandedCommand]
 	default:
 		chars = string(char)
 	}
 	logger.Trace().Msgf("regexpChar out: %s", chars)
 	return strings.Replace(chars, " ", "\\s+", -1)
+}
+
+// Computes the evasion suffix based on the presence of `@` or `~` at
+// the end of the input. Returns the input without `@` or `~` or removes the
+// backslash if the end of the input is an escape sequence of `\~` or `\@`.
+// Returns the evasion suffix to append to the transformed input.
+func (c *CmdLine) computeSuffix(input string) (string, string) {
+	suffix := ""
+	strippedInput := input
+	length := len(input)
+	if length < 2 {
+		return strippedInput, suffix
+	}
+
+	isEscaped := regex.IsEscaped(input, length-1)
+	if !isEscaped {
+		switch input[length-1] {
+		case '@':
+			suffix = c.evasionPatterns[suffixPattern]
+		case '~':
+			suffix = c.evasionPatterns[suffixExpandedCommand]
+		default:
+			return strippedInput, suffix
+		}
+
+		strippedInput = input[:length-1]
+	} else {
+		// remove the backslash
+		strippedInput = input[:length-2] + string(input[length-1])
+	}
+
+	return strippedInput, suffix
 }

@@ -115,3 +115,59 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
 
 	s.Equal(`f_av-w_o_av-w_o`, cmd.proc.lines[0])
 }
+
+func (s *cmdLineTestSuite) TestCmdLine_ProcessTildeOnlyAtLineEnd() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	err := cmd.ProcessLine(`~foo`)
+	s.Require().NoError(err)
+
+	s.Equal(`~_av-u_f_av-u_o_av-u_o`, cmd.proc.lines[0])
+
+	err = cmd.ProcessLine(`f~oo`)
+	s.Require().NoError(err)
+
+	s.Equal(`f_av-u_~_av-u_o_av-u_o`, cmd.proc.lines[1])
+}
+
+func (s *cmdLineTestSuite) TestCmdLine_IgnoreEscapedTildeAtLineEnd() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	err := cmd.ProcessLine(`\~foo`)
+	s.Require().NoError(err)
+
+	s.Equal(`\_av-u_~_av-u_f_av-u_o_av-u_o`, cmd.proc.lines[0])
+
+	err = cmd.ProcessLine(`foo\~`)
+	s.Require().NoError(err)
+
+	s.Equal(`f_av-u_o_av-u_o_av-u_~`, cmd.proc.lines[1])
+}
+
+func (s *cmdLineTestSuite) TestCmdLine_ProcessAtOnlyAtLineEnd() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	err := cmd.ProcessLine(`@foo`)
+	s.Require().NoError(err)
+
+	s.Equal(`@_av-u_f_av-u_o_av-u_o`, cmd.proc.lines[0])
+
+	err = cmd.ProcessLine(`f@oo`)
+	s.Require().NoError(err)
+
+	s.Equal(`f_av-u_@_av-u_o_av-u_o`, cmd.proc.lines[1])
+}
+
+func (s *cmdLineTestSuite) TestCmdLine_IgnoreEscapedAtAtLineEnd() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	err := cmd.ProcessLine(`\@foo`)
+	s.Require().NoError(err)
+
+	s.Equal(`\_av-u_@_av-u_f_av-u_o_av-u_o`, cmd.proc.lines[0])
+
+	err = cmd.ProcessLine(`foo\@`)
+	s.Require().NoError(err)
+
+	s.Equal(`f_av-u_o_av-u_o_av-u_@`, cmd.proc.lines[1])
+}
