@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/coreruleset/crs-toolchain/v2/chore"
+	release "github.com/coreruleset/crs-toolchain/v2/chore/release"
 	"github.com/coreruleset/crs-toolchain/v2/context"
 	"github.com/spf13/cobra"
 )
@@ -52,7 +52,7 @@ func createChoreReleaseCommand() *cobra.Command {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
-			chore.Release(rootContext, releaseParsedArgs.repositoryPath, releaseParsedArgs.version, releaseVariables.sourceRef)
+			release.Release(rootContext, releaseParsedArgs.repositoryPath, releaseParsedArgs.version, releaseVariables.sourceRef)
 		},
 	}
 }

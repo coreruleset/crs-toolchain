@@ -10,7 +10,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 
-	"github.com/coreruleset/crs-toolchain/v2/chore"
+	copyright "github.com/coreruleset/crs-toolchain/v2/chore/update_copyright"
 	"github.com/coreruleset/crs-toolchain/v2/context"
 )
 
@@ -48,7 +48,7 @@ func createChoreUpdateCopyrightCommand() *cobra.Command {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
-			chore.UpdateCopyright(rootContext, copyrightParsedVariables.version, copyrightVariables.Year)
+			copyright.UpdateCopyright(rootContext, copyrightParsedVariables.version, copyrightVariables.Year)
 		},
 	}
 }
