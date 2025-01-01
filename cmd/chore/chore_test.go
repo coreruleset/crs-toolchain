@@ -25,9 +25,16 @@ type choreTestSuite struct {
 }
 
 func (s *choreTestSuite) SetupTest() {
-	s.rootDir = s.T().TempDir()
-	s.dataDir = path.Join(s.rootDir, "regex-assembly")
-	err := os.MkdirAll(s.dataDir, fs.ModePerm)
+	rebuildChoreCommand()
+	rebuildChoreUpdateCopyrightCommand()
+	rebuildChoreReleaseCommand()
+
+	tempDir, err := os.MkdirTemp("", "chore-tests")
+	s.Require().NoError(err)
+	s.tempDir = tempDir
+
+	s.dataDir = path.Join(s.tempDir, "regex-assembly")
+	err = os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.Require().NoError(err)
 
 	s.rulesDir = path.Join(s.rootDir, "rules")
@@ -55,8 +62,8 @@ func (s *choreTestSuite) TestChore_RulesFile() {
 
 #
 # This file REQUEST-901-INITIALIZATION.conf initializes the Core Rules`)
-	s.cmd.SetArgs([]string{"update-copyright", "-v", "1.2.3", "-y", "1234"})
-	_, err := s.cmd.ExecuteC()
+	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-v", "1.2.3", "-y", "2024"})
+	_, err := rootCmd.ExecuteC()
 
 	s.Require().NoError(err, "failed to execute rootCmd")
 }
