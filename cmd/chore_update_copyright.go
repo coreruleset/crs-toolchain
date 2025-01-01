@@ -42,7 +42,7 @@ func createChoreUpdateCopyrightCommand() *cobra.Command {
 			copyrightParsedVariables.version = version
 
 			if copyrightVariables.Year < 1970 || copyrightVariables.Year > 9999 {
-				return fmt.Errorf("Year outside of valid range [1970, 9999]: %d", copyrightVariables.Year)
+				return fmt.Errorf("year outside of valid range [1970, 9999]: %d", copyrightVariables.Year)
 			}
 			return nil
 		},

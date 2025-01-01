@@ -7,7 +7,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/coreruleset/crs-toolchain/v2/context"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -65,8 +64,6 @@ func (s *choreReleaseTestSuite) TestCreateAndcheckoutBranch() {
 
 func (s *choreReleaseTestSuite) TestCreateCommit() {
 	branchName := "v1.2.3"
-	version, err := semver.NewVersion(branchName)
-	s.Require().NoError(err)
 	ctxt := context.New(s.repoDir, "")
 	createAndCheckOutBranch(ctxt, branchName, "main")
 
@@ -74,10 +71,10 @@ func (s *choreReleaseTestSuite) TestCreateCommit() {
 	os.WriteFile(path.Join(s.repoDir, "file"), []byte("content"), os.ModePerm)
 	cmd := exec.Command("git", "add", ".")
 	cmd.Dir = s.repoDir
-	err = cmd.Run()
+	err := cmd.Run()
 	s.Require().NoError(err)
 
-	createCommit(ctxt, version)
+	createCommit(ctxt, branchName)
 
 	repo, err := git.PlainOpen(s.repoDir)
 	s.Require().NoError(err)
