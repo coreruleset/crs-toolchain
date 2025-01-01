@@ -7,13 +7,17 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	copyright "github.com/coreruleset/crs-toolchain/v2/chore/update_copyright"
 	"github.com/coreruleset/crs-toolchain/v2/context"
 	"github.com/go-git/go-git/v5"
+	"github.com/rs/zerolog/log"
 )
+
+var logger = log.With().Str("component", "release").Logger()
 
 func Release(context *context.Context, repositoryPath string, version *semver.Version, sourceRef string) {
 	createAndCheckOutBranch(context, fmt.Sprintf("v%d.%d.%d", version.Major(), version.Minor(), version.Patch()), sourceRef)
-	UpdateCopyright(context, version, uint16(time.Now().Year()))
+	copyright.UpdateCopyright(context, version, uint16(time.Now().Year()))
 	createCommit(context, version)
 }
 
@@ -23,22 +27,16 @@ func createAndCheckOutBranch(context *context.Context, branchName string, source
 		panic(err)
 	}
 
-	cmd := exec.Command("git", "switch", "-c", branchName, sourceRef)
-	cmd.Dir = context.RootDir()
-	out, err := cmd.CombinedOutput()
-	print(out)
+	out, err := runGit(context.RootDir(), "switch", "-c", branchName, sourceRef)
 	if err != nil {
-		//FIXME
-		panic(err)
+		logger.Fatal().Err(err).Bytes("command-output", out).Msg("failed to create commit for release")
 	}
 }
 
 func createCommit(context *context.Context, version *semver.Version) {
-	cmd := exec.Command("git", "commit", "-am", "Release "+fmt.Sprintf("v%d.%d.%d", version.Major(), version.Minor(), version.Patch()))
-	err := cmd.Run()
+	out, err := runGit(context.RootDir(), "commit", "-am", "Release "+fmt.Sprintf("v%d.%d.%d", version.Major(), version.Minor(), version.Patch()))
 	if err != nil {
-		//FIXME
-		panic(err)
+		logger.Fatal().Err(err).Bytes("command-output", out).Msg("failed to create commit for release")
 	}
 }
 
@@ -64,4 +62,10 @@ func checkForCleanWorkTree(context *context.Context) error {
 		return errors.New("worktree not clean. Please stash or commit your changes first")
 	}
 	return nil
+}
+
+func runGit(repositoryPath string, args ...string) ([]byte, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = repositoryPath
+	return cmd.CombinedOutput()
 }

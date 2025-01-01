@@ -1,8 +1,10 @@
 package chore
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -69,8 +71,9 @@ func (s *choreReleaseTestSuite) TestCreateCommit() {
 	createAndCheckOutBranch(ctxt, branchName, "main")
 
 	// Add something to commit, as `createCommit` doesn't allow empty commits
-	os.WriteFile(s.repoDir+"file", []byte("content"), os.ModePerm)
+	os.WriteFile(path.Join(s.repoDir, "file"), []byte("content"), os.ModePerm)
 	cmd := exec.Command("git", "add", ".")
+	cmd.Dir = s.repoDir
 	err = cmd.Run()
 	s.Require().NoError(err)
 
@@ -84,15 +87,17 @@ func (s *choreReleaseTestSuite) TestCreateCommit() {
 	s.Require().NoError(err)
 	s.True(status.IsClean())
 
+	// HEAD has the new commit message
 	revision, err := repo.ResolveRevision("HEAD")
 	s.Require().NoError(err)
 	commit, err := repo.CommitObject(*revision)
 	s.Require().NoError(err)
-	s.Equal("Release "+branchName, commit.Message)
+	s.Equal(fmt.Sprintf("Release %s\n", branchName), commit.Message)
 
+	// parent of HEAD is main
 	parent, err := commit.Parent(0)
 	s.Require().NoError(err)
-	branch, err := repo.ResolveRevision(plumbing.Revision(branchName))
+	branchHash, err := repo.ResolveRevision(plumbing.Revision("main"))
 	s.Require().NoError(err)
-	s.Equal(*branch, parent.Hash)
+	s.Equal(*branchHash, parent.Hash)
 }
