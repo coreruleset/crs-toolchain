@@ -24,14 +24,6 @@ func init() {
 	buildChoreUpdateCopyrightCommand()
 }
 
-func validateSemver(version string) error {
-	_, err := semver.NewVersion(version)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func createChoreUpdateCopyrightCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "update-copyright",
@@ -40,7 +32,7 @@ func createChoreUpdateCopyrightCommand() *cobra.Command {
 			if copyrightVariables.Version == "" {
 				return ErrUpdateCopyrightWithoutVersion
 			}
-			if err := validateSemver(copyrightVariables.Version); err != nil {
+			if _, err := semver.NewVersion(copyrightVariables.Version); err != nil {
 				return err
 			}
 			return nil
