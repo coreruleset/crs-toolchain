@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreruleset/crs-toolchain/v2/context"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -41,7 +42,8 @@ func TestRunChoreReleaseTestSuite(t *testing.T) {
 
 func (s *choreReleaseTestSuite) TestCreateBranch() {
 	branchName := "v1.2.3"
-	createAndCheckOutBranch(s.repoDir, branchName)
+	ctxt := context.New(s.repoDir, "")
+	createAndCheckOutBranch(ctxt, branchName)
 	repo, err := git.PlainOpen(s.repoDir)
 	s.Require().NoError(err)
 

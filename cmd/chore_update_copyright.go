@@ -4,7 +4,7 @@
 package cmd
 
 import (
-	"strconv"
+	"fmt"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -17,7 +17,10 @@ import (
 var choreUpdateCopyrightCmd = createChoreUpdateCopyrightCommand()
 var copyrightVariables struct {
 	Version string
-	Year    string
+	Year    uint16
+}
+var copyrightParsedVariables struct {
+	version *semver.Version
 }
 
 func init() {
@@ -32,21 +35,27 @@ func createChoreUpdateCopyrightCommand() *cobra.Command {
 			if copyrightVariables.Version == "" {
 				return ErrUpdateCopyrightWithoutVersion
 			}
-			if _, err := semver.NewVersion(copyrightVariables.Version); err != nil {
+			version, err := semver.NewVersion(copyrightVariables.Version)
+			if err != nil {
 				return err
+			}
+			copyrightParsedVariables.version = version
+
+			if copyrightVariables.Year < 1970 || copyrightVariables.Year > 9999 {
+				return fmt.Errorf("Year outside of valid range [1970, 9999]: %d", copyrightVariables.Year)
 			}
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
-			chore.UpdateCopyright(rootContext, copyrightVariables.Version, copyrightVariables.Year)
+			chore.UpdateCopyright(rootContext, copyrightParsedVariables.version, copyrightVariables.Year)
 		},
 	}
 }
 
 func buildChoreUpdateCopyrightCommand() {
 	choreCmd.AddCommand(choreUpdateCopyrightCmd)
-	choreUpdateCopyrightCmd.Flags().StringVarP(&copyrightVariables.Year, "year", "y", strconv.Itoa(time.Now().Year()), "Four digit year")
+	choreUpdateCopyrightCmd.Flags().Uint16VarP(&copyrightVariables.Year, "year", "y", uint16(time.Now().Year()), "Four digit year")
 	choreUpdateCopyrightCmd.Flags().StringVarP(&copyrightVariables.Version, "version", "v", "", "Add this text as the version to the file.")
 }
 
