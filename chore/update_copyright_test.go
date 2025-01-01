@@ -13,9 +13,6 @@ type copyrightUpdateTestsTestSuite struct {
 	suite.Suite
 }
 
-func (s *copyrightUpdateTestsTestSuite) SetupTest() {
-}
-
 func TestRunUpdateCopyrightTestsTestSuite(t *testing.T) {
 	suite.Run(t, new(copyrightUpdateTestsTestSuite))
 }
