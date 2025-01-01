@@ -13,6 +13,10 @@ import (
 )
 
 var choreReleaseCmd = createChoreReleaseCommand()
+var releaseParsedArgs struct {
+	repositoryPath string
+	version        *semver.Version
+}
 
 func init() {
 	buildChoreReleaseCommand()
@@ -29,23 +33,23 @@ func createChoreReleaseCommand() *cobra.Command {
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			repositoryPath := args[0]
-			version := args[1]
 
 			if _, err := os.Stat(repositoryPath); err != nil {
 				return err
 			}
+			releaseParsedArgs.repositoryPath = repositoryPath
 
-			_, err := semver.NewVersion(version)
-			return err
+			version, err := semver.NewVersion(args[1])
+			if err != nil {
+				return err
+			}
+			releaseParsedArgs.version = version
+
+			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
-			version, err := semver.NewVersion(args[1])
-			if err != nil {
-				//FIXME
-				panic(err)
-			}
-			chore.Release(rootContext, args[0], version)
+			chore.Release(rootContext, releaseParsedArgs.repositoryPath, releaseParsedArgs.version)
 		},
 	}
 }

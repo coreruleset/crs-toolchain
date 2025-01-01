@@ -2,6 +2,7 @@ package chore
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/coreruleset/crs-toolchain/v2/context"
@@ -11,10 +12,12 @@ import (
 )
 
 func Release(context *context.Context, repositoryPath string, version *semver.Version) {
-	createAndCheckOutBranch(repositoryPath, fmt.Sprintf("v%d.%d.%d", version.Major(), version.Minor(), version.Patch()))
+	createAndCheckOutBranch(context, fmt.Sprintf("v%d.%d.%d", version.Major(), version.Minor(), version.Patch()))
+	UpdateCopyright(context, version, uint16(time.Now().Year()))
 }
 
-func createAndCheckOutBranch(repositoryPath string, branchName string) {
+func createAndCheckOutBranch(context *context.Context, branchName string) {
+	repositoryPath := context.RootDir()
 	r, err := git.PlainOpen(repositoryPath)
 	if err != nil {
 		//FIXME
