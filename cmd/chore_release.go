@@ -13,6 +13,9 @@ import (
 )
 
 var choreReleaseCmd = createChoreReleaseCommand()
+var releaseVariables struct {
+	sourceRef string
+}
 var releaseParsedArgs struct {
 	repositoryPath string
 	version        *semver.Version
@@ -49,13 +52,14 @@ func createChoreReleaseCommand() *cobra.Command {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
-			chore.Release(rootContext, releaseParsedArgs.repositoryPath, releaseParsedArgs.version)
+			chore.Release(rootContext, releaseParsedArgs.repositoryPath, releaseParsedArgs.version, releaseVariables.sourceRef)
 		},
 	}
 }
 
 func buildChoreReleaseCommand() {
 	choreCmd.AddCommand(choreReleaseCmd)
+	choreReleaseCmd.Flags().StringVarP(&releaseVariables.sourceRef, "source-ref", "s", "main", "Source reference for the release branch")
 }
 
 func rebuildChoreReleaseCommand() {
