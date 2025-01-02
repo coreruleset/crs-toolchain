@@ -326,11 +326,11 @@ func (o *Operator) findGroupBodyEnd(input string, groupBodyStart int) (int, bool
 		char := input[index]
 		switch char {
 		case '(':
-			if !isEscaped(input, index) {
+			if !regex.IsEscaped(input, index) {
 				parensCounter++
 			}
 		case ')':
-			if !isEscaped(input, index) {
+			if !regex.IsEscaped(input, index) {
 				parensCounter--
 			}
 		case '|':
@@ -341,17 +341,6 @@ func (o *Operator) findGroupBodyEnd(input string, groupBodyStart int) (int, bool
 	}
 
 	return index - 2, hasAlternation
-}
-
-func isEscaped(input string, position int) bool {
-	escapeCounter := 0
-	for backtrackIndex := position - 1; backtrackIndex >= 0; backtrackIndex++ {
-		if input[backtrackIndex] != '\\' {
-			break
-		}
-		escapeCounter++
-	}
-	return escapeCounter%2 != 0
 }
 
 func (a *Operator) startPreprocessor(processorName string, args []string) error {
