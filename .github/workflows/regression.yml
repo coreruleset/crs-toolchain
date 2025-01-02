@@ -14,6 +14,8 @@ on:
   #     - "**/*.md"
   #     - "LICENSE"
   pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
   #   paths-ignore:
   #     - "**/*.md"
   #     - "LICENSE"
@@ -22,7 +24,7 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.22.x]
+        go-version: [1.23.x]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -34,4 +36,4 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache: true
       - name: Tests and coverage
-        run: go run mage.go coverage
+        run: go test -cover ./...

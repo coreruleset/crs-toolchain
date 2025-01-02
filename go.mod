@@ -4,7 +4,6 @@ go 1.22
 
 require (
 	dario.cat/mergo v1.0.1
-	github.com/magefile/mage v1.15.0
 	github.com/spf13/cobra v1.8.1
 )
 
