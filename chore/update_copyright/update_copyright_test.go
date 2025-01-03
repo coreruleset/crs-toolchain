@@ -6,14 +6,12 @@ package chore
 import (
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/suite"
 )
 
 type copyrightUpdateTestsTestSuite struct {
 	suite.Suite
-}
-
-func (s *copyrightUpdateTestsTestSuite) SetupTest() {
 }
 
 func TestRunUpdateCopyrightTestsTestSuite(t *testing.T) {
@@ -56,7 +54,9 @@ SecComponentSignature "OWASP_CRS/4.0.0-rc1"
 #
 SecComponentSignature "OWASP_CRS/9.1.22"
 `
-	out, err := updateRules("9.1.22", "2042", []byte(contents))
+	version, err := semver.NewVersion("9.1.22")
+	s.Require().NoError(err)
+	out, err := updateRules(version, 2042, []byte(contents))
 	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
@@ -142,7 +142,9 @@ SecRule &TX:crs_setup_version "@eq 0" \
 #
 SecComponentSignature "OWASP_CRS/4.99.12"
 `
-	out, err := updateRules("4.99.12", "2041", []byte(contents))
+	version, err := semver.NewVersion("4.99.12")
+	s.Require().NoError(err)
+	out, err := updateRules(version, 2041, []byte(contents))
 	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
@@ -155,7 +157,9 @@ func (s *copyrightUpdateTestsTestSuite) TestUpdateCopyrightTests_AddsNewLine() {
 	expected := `# ------------------------------------------------------------------------
 # OWASP ModSecurity Core Rule Set ver.4.99.12
 `
-	out, err := updateRules("4.99.12", "2041", []byte(contents))
+	version, err := semver.NewVersion("4.99.12")
+	s.Require().NoError(err)
+	out, err := updateRules(version, 2041, []byte(contents))
 	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
@@ -169,7 +173,9 @@ func (s *copyrightUpdateTestsTestSuite) TestUpdateCopyrightTests_SupportsRelease
 	expected := `# ------------------------------------------------------------------------
 # OWASP ModSecurity Core Rule Set ver.4.1.0-rc1
 `
-	out, err := updateRules("4.1.0-rc1", "2041", []byte(contents))
+	version, err := semver.NewVersion("4.1.0-rc1")
+	s.Require().NoError(err)
+	out, err := updateRules(version, 2041, []byte(contents))
 	s.Require().NoError(err)
 
 	s.Equal(expected, string(out))
