@@ -35,3 +35,18 @@ func (s *utilsTestSuite) TestIsEscaped_IgnoreBackslash() {
 	s.True(IsEscaped(`a\\\bc`, 4))
 	s.False(IsEscaped(`a\\\bc`, 5))
 }
+
+func (s *utilsTestSuite) TestNegativeLookahead() {
+	s.Equal(
+		"(?i)(?:[^a]|(?:a[^bc])|ab[^c]|ac[^c]|acc[^c])",
+		NegativeLookahead([]string{"abc", "accc"}, "(?i)", ""),
+	)
+	s.Equal(
+		"(?i)(?:[^bl]|b[^a]|ba[^d]|bad[^l]|badl[^y]|b[^a]|ba[^d]|l[^y])$",
+		NegativeLookahead([]string{"badly", "bad", "ly"}, "(?i)", "$"),
+	)
+	s.Equal(
+		"(?:[^a1]|a[^b]|ab[^c]|1[^2]|12[^3]|123[^4])",
+		NegativeLookahead([]string{"abc", "1234"}, "", ""),
+	)
+}
