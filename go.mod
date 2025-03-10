@@ -2,8 +2,6 @@ module github.com/coreruleset/crs-toolchain/v2
 
 go 1.23.0
 
-toolchain go1.24.1
-
 require (
 	dario.cat/mergo v1.0.1
 	github.com/spf13/cobra v1.9.1
