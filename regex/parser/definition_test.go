@@ -75,11 +75,10 @@ func (s *parserIncludeWithDefinitions) SetupSuite() {
 		s.includeFile = append(s.includeFile, file)
 		// Write to file i-1
 		if i > 0 {
-			_, err := s.includeFile[i-1].WriteString(
-				fmt.Sprintf(
-					"##!> include %s\n"+
-						"This is comment %d.\n"+
-						"{{this-is-a-text}} to see if definitions work when included\n", file.Name(), i))
+			_, err := fmt.Fprintf(s.includeFile[i-1],
+				"##!> include %s\n"+
+					"This is comment %d.\n"+
+					"{{this-is-a-text}} to see if definitions work when included\n", file.Name(), i)
 			s.Require().NoError(err, "writing temp include file failed")
 		}
 	}

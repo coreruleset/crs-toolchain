@@ -164,7 +164,7 @@ func (c *CmdLine) regexpChar(char byte) string {
 		chars = string(char)
 	}
 	logger.Trace().Msgf("regexpChar out: %s", chars)
-	return strings.Replace(chars, " ", "\\s+", -1)
+	return strings.ReplaceAll(chars, " ", "\\s+")
 }
 
 // Computes the evasion suffix based on the presence of `@` or `~` at
