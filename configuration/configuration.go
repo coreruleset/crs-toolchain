@@ -11,8 +11,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const DefaultDictionaryCommitRef = "refs/heads/master"
+
 type Configuration struct {
+	Sources  Sources
 	Patterns Patterns
+}
+
+type Sources struct {
+	EnglishDictionary EnglishDictionary `yaml:"english_dictionary,omitempty"`
+}
+
+type EnglishDictionary struct {
+	CommitRef       string `yaml:"commit_ref"`
+	WasCommitRefSet bool
 }
 
 type Patterns struct {
@@ -48,6 +60,14 @@ func New(directory string, filename string) *Configuration {
 	newConfiguration.Patterns.AntiEvasionSuffix.Windows = strings.TrimSpace(newConfiguration.Patterns.AntiEvasionSuffix.Windows)
 	newConfiguration.Patterns.AntiEvasionNoSpaceSuffix.Unix = strings.TrimSpace(newConfiguration.Patterns.AntiEvasionNoSpaceSuffix.Unix)
 	newConfiguration.Patterns.AntiEvasionNoSpaceSuffix.Windows = strings.TrimSpace(newConfiguration.Patterns.AntiEvasionNoSpaceSuffix.Windows)
+
+	if strings.TrimSpace(newConfiguration.Sources.EnglishDictionary.CommitRef) == "" {
+		newConfiguration.Sources.EnglishDictionary.CommitRef = DefaultDictionaryCommitRef
+		newConfiguration.Sources.EnglishDictionary.WasCommitRefSet = false
+	} else {
+		newConfiguration.Sources.EnglishDictionary.CommitRef = strings.TrimSpace(newConfiguration.Sources.EnglishDictionary.CommitRef)
+		newConfiguration.Sources.EnglishDictionary.WasCommitRefSet = true
+	}
 
 	return newConfiguration
 }
