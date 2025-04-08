@@ -112,10 +112,10 @@ func buildinclusionLineMap(parser *Parser, includeFileName string) (inclusionLin
 func stringFromInclusionLines(inclusionLines inclusionLineSlice) string {
 	// Ensure that the last line is always empty.
 	// Corresponds to "regular" lines in the parser, to which `\n` is appended
-	length := len(inclusionLines)
-	if length == 0 {
+	switch len(inclusionLines) {
+	case 0:
 		return ""
-	} else if length == 1 {
+	case 1:
 		return inclusionLines[0].line + "\n"
 	}
 

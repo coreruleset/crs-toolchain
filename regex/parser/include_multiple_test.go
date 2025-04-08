@@ -54,7 +54,7 @@ func (s *parserMultiIncludeTestSuite) SetupSuite() {
 		s.includeFile = append(s.includeFile, file)
 		// Write to file i-1
 		if i > 0 {
-			_, err := s.includeFile[i-1].WriteString(fmt.Sprintf("##!> include %s\nThis is comment %d.\n", file.Name(), i))
+			_, err := fmt.Fprintf(s.includeFile[i-1], "##!> include %s\nThis is comment %d.\n", file.Name(), i)
 			s.Require().NoError(err, "writing temp include file failed")
 		}
 	}
