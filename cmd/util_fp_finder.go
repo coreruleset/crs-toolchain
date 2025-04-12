@@ -14,6 +14,7 @@ import (
 
 // fpFinderCommand represents the update command
 var fpFinderCommand = createFpFinderCommand()
+var extendedDictPath string
 
 func init() {
 	buildFpFinderCommand()
@@ -28,25 +29,16 @@ func createFpFinderCommand() *cobra.Command {
 		}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fpFinder := util.NewFpFinder()
-
-			sortEnabled, err := cmd.Flags().GetBool("sort")
-			if err != nil {
-				logger.Error().Err(err).Msg("Failed to read value for 'sort' flag")
-				return err
-			}
-
-			uniqEnabled, err := cmd.Flags().GetBool("uniq")
-			if err != nil {
-				logger.Error().Err(err).Msg("Failed to read value for 'uniq' flag")
-				return err
-			}
-
 			filenameArg := args[0]
 			if !checkFilePath(filenameArg) {
 				return fmt.Errorf("file %s doesn't exist", filenameArg)
 			}
 
-			return fpFinder.FpFinder(filenameArg, sortEnabled, uniqEnabled)
+			if extendedDictPath != "" && !checkFilePath(extendedDictPath) {
+				return fmt.Errorf("extended dictionary %s doesn't exist", extendedDictPath)
+			}
+
+			return fpFinder.FpFinder(filenameArg, extendedDictPath)
 		},
 	}
 
@@ -54,14 +46,11 @@ func createFpFinderCommand() *cobra.Command {
 
 func buildFpFinderCommand() {
 	utilCmd.AddCommand(fpFinderCommand)
-	fpFinderCommand.Flags().BoolP("sort", "s", false, "Sort the output alphabetically")
-	fpFinderCommand.Flags().BoolP("uniq", "u", false, "Remove duplicated value from the output")
+	fpFinderCommand.Flags().StringVarP(&extendedDictPath, "extended-dictionary", "e", "", "Absolute or relative path to the extended dictionary")
 }
 
 func checkFilePath(path string) bool {
 	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
-	}
+	os.IsNotExist(err)
 	return err == nil
 }

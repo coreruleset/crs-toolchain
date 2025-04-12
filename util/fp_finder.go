@@ -5,20 +5,18 @@ package util
 
 import (
 	"bufio"
-	_ "embed"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"sort"
 	"strings"
 )
 
 type FpFinderError struct{}
-
-//go:embed english-extended.txt
-var extendedDictionnary string
 
 const dictionaryURL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt"
 const dictionaryFileName = "words_alpha.txt"
@@ -34,7 +32,7 @@ func NewFpFinder() *FpFinder {
 	return &FpFinder{}
 }
 
-func (t *FpFinder) FpFinder(inputFilePath string, sortEnabled bool, uniqEnabled bool) error {
+func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath string) error {
 	// Get the dictionary path in ~/.crs-toolchain
 	dictionaryPath, err := t.getDictionaryPath()
 	if err != nil {
@@ -43,39 +41,49 @@ func (t *FpFinder) FpFinder(inputFilePath string, sortEnabled bool, uniqEnabled 
 
 	// Check if the dictionary exists, if not, download it
 	if _, err := os.Stat(dictionaryPath); os.IsNotExist(err) {
-		logger.Debug().Msgf("Dictionary file not found. Downloading...")
+		logger.Debug().Msg("Dictionary file not found. Downloading...")
 		if err := t.downloadFile(dictionaryPath, dictionaryURL); err != nil {
-			logger.Fatal().Err(err).Msgf("Failed to download dictionary: %v", err)
+			logger.Fatal().Err(err).Msg("Failed to download dictionary")
 		}
-		logger.Debug().Msgf("Download complete.")
+		logger.Debug().Msg("Download complete.")
 	} else {
-		logger.Debug().Msgf("Dictionary file found, skipping download.")
+		logger.Debug().Msg("Dictionary file found, skipping download.")
 	}
 
 	// Load dictionary into memory
-	dict, err := t.loadDictionnary(dictionaryPath, minSize)
+	englishDict, err := t.loadDictionary(dictionaryPath, minSize)
 	if err != nil {
-		logger.Fatal().Err(err).Msgf("Failed to load dictionary: %v", err)
+		logger.Fatal().Err(err).Msg("Failed to load english dictionary")
+	}
+
+	var dict map[string]struct{}
+	if extendedDictionaryFilePath != "" {
+		extendedDict, err := t.loadDictionary(extendedDictionaryFilePath, 0)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to load extended dictionary")
+		}
+
+		// Add words from the embedded extendedDictionary
+		dict = t.mergeDictionaries(englishDict, extendedDict)
+	} else {
+		dict = englishDict
 	}
 
 	// Load input file into memory
 	inputFile, err := t.loadFileContent(inputFilePath)
 	if err != nil {
-		logger.Fatal().Err(err).Msgf("Failed to load input file: %v", err)
+		logger.Fatal().Err(err).Msg("Failed to load input file")
 	}
 
 	// Filter words not in dictionary, remove duplicates, and sort alphabetically
 	filteredWords := t.filterContent(inputFile, dict, minSize)
 
-	if uniqEnabled {
-		filteredWords = t.removeDuplicates(filteredWords)
-	}
+	// Remove adjacent duplicate words from the sorted list
+	filteredWords = slices.Compact(filteredWords)
 
-	if sortEnabled {
-		sort.Slice(filteredWords, func(i, j int) bool {
-			return strings.ToLower(filteredWords[i]) < strings.ToLower(filteredWords[j])
-		})
-	}
+	sort.Slice(filteredWords, func(i, j int) bool {
+		return strings.ToLower(filteredWords[i]) < strings.ToLower(filteredWords[j])
+	})
 
 	for _, str := range filteredWords {
 		fmt.Println(str)
@@ -115,14 +123,14 @@ func (t *FpFinder) downloadFile(filepath, url string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
+		return fmt.Errorf("failed to download %s: bad status: %s", url, resp.Status)
 	}
 
 	_, err = io.Copy(out, resp.Body)
 	return err
 }
 
-func (t *FpFinder) loadDictionnary(path string, minSize int) (map[string]struct{}, error) {
+func (t *FpFinder) loadDictionary(path string, minSize int) (map[string]struct{}, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -142,13 +150,20 @@ func (t *FpFinder) loadDictionnary(path string, minSize int) (map[string]struct{
 		return nil, err
 	}
 
-	// Add words from the embedded extendedDictionnary
-	for _, word := range strings.Split(extendedDictionnary, "\n") {
-		word = strings.TrimSpace(word)
-		content[word] = struct{}{}
+	return content, nil
+}
+
+func (t *FpFinder) mergeDictionaries(a, b map[string]struct{}) map[string]struct{} {
+	merged := make(map[string]struct{})
+
+	for k := range a {
+		merged[k] = struct{}{}
+	}
+	for k := range b {
+		merged[k] = struct{}{}
 	}
 
-	return content, nil
+	return merged
 }
 
 func (t *FpFinder) loadFileContent(path string) ([]string, error) {
@@ -174,24 +189,11 @@ func (t *FpFinder) loadFileContent(path string) ([]string, error) {
 	return content, nil
 }
 
-func (t *FpFinder) removeDuplicates(input []string) []string {
-	seen := make(map[string]struct{})
-	var result []string
-
-	for _, item := range input {
-		if _, exists := seen[item]; !exists {
-			seen[item] = struct{}{}
-			result = append(result, item)
-		}
-	}
-
-	return result
-}
-
 func (t *FpFinder) filterContent(inputFile []string, dict map[string]struct{}, minSize int) []string {
+	var commentPattern = regexp.MustCompile(`^\s*#`)
 	var filteredWords []string
 	for _, word := range inputFile {
-		if strings.HasPrefix(word, "#") {
+		if commentPattern.MatchString(word) {
 			continue
 		}
 

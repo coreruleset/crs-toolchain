@@ -20,18 +20,10 @@ func TestRunFpFinderTestSuite(t *testing.T) {
 	suite.Run(t, new(fpFinderTestSuite))
 }
 
-func (s *fpFinderTestSuite) TestFpFinder_Removeduplicates() {
-	input := []string{"apple", "banana", "apple", "orange", "banana"}
-	expected := []string{"apple", "banana", "orange"}
-
-	result := NewFpFinder().removeDuplicates(input)
-
-	s.Equal(expected, result)
-}
-
 func (s *fpFinderTestSuite) TestFpFinder_FilterContent() {
 	input := []string{
 		"# this is a comment",
+		" # this is another comment with a space in front",
 		"apple", "banana", "apple", "",
 	}
 
@@ -43,5 +35,20 @@ func (s *fpFinderTestSuite) TestFpFinder_FilterContent() {
 	expected := []string{"banana"}
 
 	result := NewFpFinder().filterContent(input, dict, 3)
+	s.Equal(expected, result)
+}
+
+func (s *fpFinderTestSuite) TestFpFinder_MergeDictionaries() {
+	a := map[string]struct{}{"apple": {}, "banana": {}}
+	b := map[string]struct{}{"cherry": {}, "date": {}}
+
+	expected := map[string]struct{}{
+		"apple":  {},
+		"banana": {},
+		"cherry": {},
+		"date":   {},
+	}
+
+	result := NewFpFinder().mergeDictionaries(a, b)
 	s.Equal(expected, result)
 }
