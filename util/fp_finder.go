@@ -6,20 +6,19 @@ package util
 import (
 	"bufio"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
 type FpFinderError struct{}
 
-const dictionaryURL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt"
-const dictionaryFileName = "words_alpha.txt"
+const dictionaryURLFormat = "https://raw.githubusercontent.com/dwyl/english-words/%s/%s"
+const dictionaryBaseFileName = "words_alpha.txt"
 const minSize = 3
 
 func (t *FpFinderError) Error() string {
@@ -32,9 +31,10 @@ func NewFpFinder() *FpFinder {
 	return &FpFinder{}
 }
 
-func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath string) error {
+func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath string, englishDictionaryCommitHash string) error {
 	// Get the dictionary path in ~/.crs-toolchain
-	dictionaryPath, err := t.getDictionaryPath()
+	dictionaryFileName := fmt.Sprintf("%s-%s", englishDictionaryCommitHash, dictionaryBaseFileName)
+	dictionaryPath, err := utils.GetCacheFilePath(dictionaryFileName)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("Error getting dictionary path: %v", err)
 	}
@@ -42,7 +42,8 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 	// Check if the dictionary exists, if not, download it
 	if _, err := os.Stat(dictionaryPath); os.IsNotExist(err) {
 		logger.Debug().Msg("Dictionary file not found. Downloading...")
-		if err := t.downloadFile(dictionaryPath, dictionaryURL); err != nil {
+		dictionaryURL := fmt.Sprintf(dictionaryURLFormat, englishDictionaryCommitHash, dictionaryBaseFileName)
+		if err := utils.DownloadFile(dictionaryPath, dictionaryURL); err != nil {
 			logger.Fatal().Err(err).Msg("Failed to download dictionary")
 		}
 		logger.Debug().Msg("Download complete.")
@@ -90,44 +91,6 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 	}
 
 	return nil
-}
-
-func (t *FpFinder) getDictionaryPath() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	crsToolchainDir := filepath.Join(homeDir, ".crs-toolchain")
-
-	// Create ~/.crs-toolchain folder if it doesn't exist
-	if _, err := os.Stat(crsToolchainDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(crsToolchainDir, 0755); err != nil {
-			return "", err
-		}
-	}
-
-	return filepath.Join(crsToolchainDir, dictionaryFileName), nil
-}
-
-func (t *FpFinder) downloadFile(filepath, url string) error {
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download %s: bad status: %s", url, resp.Status)
-	}
-
-	_, err = io.Copy(out, resp.Body)
-	return err
 }
 
 func (t *FpFinder) loadDictionary(path string, minSize int) (map[string]struct{}, error) {

@@ -15,6 +15,7 @@ import (
 // fpFinderCommand represents the update command
 var fpFinderCommand = createFpFinderCommand()
 var extendedDictPath string
+var englishDictionaryCommitHash string
 
 func init() {
 	buildFpFinderCommand()
@@ -38,7 +39,7 @@ func createFpFinderCommand() *cobra.Command {
 				return fmt.Errorf("extended dictionary %s doesn't exist", extendedDictPath)
 			}
 
-			return fpFinder.FpFinder(filenameArg, extendedDictPath)
+			return fpFinder.FpFinder(filenameArg, extendedDictPath, englishDictionaryCommitHash)
 		},
 	}
 
@@ -47,6 +48,7 @@ func createFpFinderCommand() *cobra.Command {
 func buildFpFinderCommand() {
 	utilCmd.AddCommand(fpFinderCommand)
 	fpFinderCommand.Flags().StringVarP(&extendedDictPath, "extended-dictionary", "e", "", "Absolute or relative path to the extended dictionary")
+	fpFinderCommand.Flags().StringVarP(&englishDictionaryCommitHash, "english-dictionary-commit-hash", "c", "8179fe68775df3f553ef19520db065228e65d1d3", "English dictionary commit hash from Github")
 }
 
 func checkFilePath(path string) bool {
