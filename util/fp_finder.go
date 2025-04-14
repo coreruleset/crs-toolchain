@@ -9,7 +9,6 @@ import (
 	"os"
 	"regexp"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/coreruleset/crs-toolchain/v2/utils"
@@ -64,7 +63,7 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 			logger.Fatal().Err(err).Msg("Failed to load extended dictionary")
 		}
 
-		// Add words from the embedded extendedDictionary
+		// Add words from extendedDictionary
 		dict = t.mergeDictionaries(englishDict, extendedDict)
 	} else {
 		dict = englishDict
@@ -81,10 +80,6 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 
 	// Remove adjacent duplicate words from the sorted list
 	filteredWords = slices.Compact(filteredWords)
-
-	sort.Slice(filteredWords, func(i, j int) bool {
-		return strings.ToLower(filteredWords[i]) < strings.ToLower(filteredWords[j])
-	})
 
 	for _, str := range filteredWords {
 		fmt.Println(str)

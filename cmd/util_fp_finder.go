@@ -48,11 +48,10 @@ func createFpFinderCommand() *cobra.Command {
 func buildFpFinderCommand() {
 	utilCmd.AddCommand(fpFinderCommand)
 	fpFinderCommand.Flags().StringVarP(&extendedDictPath, "extended-dictionary", "e", "", "Absolute or relative path to the extended dictionary")
-	fpFinderCommand.Flags().StringVarP(&englishDictionaryCommitHash, "english-dictionary-commit-hash", "c", "8179fe68775df3f553ef19520db065228e65d1d3", "English dictionary commit hash from Github")
+	fpFinderCommand.Flags().StringVarP(&englishDictionaryCommitHash, "english-dictionary-commit-hash", "c", "refs/heads/master", "English dictionary commit hash from GitHub https://github.com/dwyl/english-words/blob/master/words_alpha.txt")
 }
 
 func checkFilePath(path string) bool {
 	_, err := os.Stat(path)
-	os.IsNotExist(err)
 	return err == nil
 }
