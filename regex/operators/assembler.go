@@ -247,8 +247,8 @@ func (a *Operator) useHexEscapes(input string) string {
 	var sb strings.Builder
 	for _, char := range input {
 		if char < 32 || char > 126 {
-			sb.WriteString(`\x`)
-			sb.WriteString(fmt.Sprintf("%x", char))
+			sb.WriteString(`\x{`)
+			sb.WriteString(fmt.Sprintf("%x}", char))
 		} else {
 			sb.WriteRune(char)
 		}
