@@ -354,7 +354,7 @@ func (s *specialCasesTestSuite) TestDoesNotConvertHexEscapesOfNonPrintableCharac
 	s.Equal(`H\x{e2}\x93\x{ab}`, output)
 }
 
-func (s *specialCasesTestSuite) TestHexConversionOfNonPrintableCharacters() {
+func (s *specialCasesTestSuite) TestHexConversionOfNonAsciiCharacters() {
 	contents := `(?:’)`
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
