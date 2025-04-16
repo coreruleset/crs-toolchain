@@ -246,8 +246,11 @@ func (a *Operator) includeVerticalTabInSpaceClass(input string) string {
 func (a *Operator) useHexEscapes(input string) string {
 	var sb strings.Builder
 	for _, char := range input {
-		if char < 32 || char > 126 {
-			sb.WriteString(fmt.Sprintf("\x{%x}", char))
+		if char < 32 {
+			// For control characters (ASCII < 32), use the shorthand hex notation (\xHH).
+			sb.WriteString(fmt.Sprintf("\\x%x", char))
+		} else if char > 126 {
+			sb.WriteString(fmt.Sprintf("\\x{%x}", char))
 		} else {
 			sb.WriteRune(char)
 		}
