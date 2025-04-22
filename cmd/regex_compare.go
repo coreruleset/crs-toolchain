@@ -23,6 +23,8 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
+const maxGroupSplittingDepth = 2
+
 type ComparisonError struct {
 }
 
@@ -230,8 +232,8 @@ func compareRegex(ruleId string, generatedRegex string, currentRegex string) err
 
 	fmt.Println("Regex of", ruleId, "has changed!")
 
-	generatedRegexLines := splitByGroupsUpToLength(generatedRegex, 2)
-	currentRegexLines := splitByGroupsUpToLength(currentRegex, 2)
+	generatedRegexLines := splitByGroupsUpToDepth(generatedRegex, maxGroupSplittingDepth)
+	currentRegexLines := splitByGroupsUpToDepth(currentRegex, maxGroupSplittingDepth)
 	numLinesGenerated := len(generatedRegexLines)
 	numLinesCurrent := len(currentRegexLines)
 	skippedChars := 0
@@ -275,7 +277,7 @@ func compareRegex(ruleId string, generatedRegex string, currentRegex string) err
 	return &ComparisonError{}
 }
 
-func splitByGroupsUpToLength(input string, maxDepth int) []string {
+func splitByGroupsUpToDepth(input string, maxDepth int) []string {
 	lines := []string{input}
 	for range maxDepth {
 		lineBuffer := []string{}
