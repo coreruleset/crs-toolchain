@@ -155,6 +155,6 @@ id:123456`)
 	s.Require().NoError(err)
 
 	output := strings.Split(string(buffer), "\n")
-	s.Len(output, 10)
+	s.Len(output, 5)
 	s.Equal("Regex of 123456 has changed!", output[0])
 }

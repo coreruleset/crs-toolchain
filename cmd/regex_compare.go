@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -21,7 +20,10 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/context"
 	"github.com/coreruleset/crs-toolchain/v2/regex"
 	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
+
+const maxGroupSplittingDepth = 2
 
 type ComparisonError struct {
 }
@@ -229,49 +231,98 @@ func compareRegex(ruleId string, generatedRegex string, currentRegex string) err
 	}
 
 	fmt.Println("Regex of", ruleId, "has changed!")
-	diffFound := false
-	maxChunks := int(math.Ceil((math.Max(float64(len(currentRegex)), float64(len(generatedRegex))) / 50)))
-	for index := 0; index < maxChunks*50; index += 50 {
-		currentChunk := ""
-		generatedChunk := ""
-		counter := ""
-		endIndex := int(math.Min(float64(len(currentRegex)), float64(index+50)))
-		if endIndex > index {
-			currentChunk = currentRegex[index:endIndex]
+
+	generatedRegexLines := splitByGroupsUpToDepth(generatedRegex, maxGroupSplittingDepth)
+	currentRegexLines := splitByGroupsUpToDepth(currentRegex, maxGroupSplittingDepth)
+	numLinesGenerated := len(generatedRegexLines)
+	numLinesCurrent := len(currentRegexLines)
+	skippedChars := 0
+	for i := range max(numLinesCurrent, numLinesGenerated) {
+		currentLine := ""
+		generatedLine := ""
+		if i < numLinesCurrent {
+			currentLine = currentRegexLines[i]
 		}
-		endIndex = int(math.Min(float64(len(generatedRegex)), float64(index+50)))
-		if endIndex > index {
-			generatedChunk = generatedRegex[index:endIndex]
+		if i < numLinesGenerated {
+			generatedLine = generatedRegexLines[i]
+		}
+		if currentLine == generatedLine {
+			skippedChars += len(currentLine)
+			continue
+		} else {
+			if skippedChars > 0 {
+				fmt.Printf("Skipped %d identical characters\n\n", skippedChars)
+			}
+			skippedChars = 0
 		}
 
-		printFirstDiff := !diffFound && currentChunk != generatedChunk
+		os.Stdout.WriteString("current:    ")
+		if i < numLinesCurrent {
+			os.Stdout.WriteString(currentLine)
+		} else {
+			os.Stdout.WriteString("---")
+		}
 
-		if printFirstDiff {
-			diffFound = true
-			fmt.Printf("\n===========\nfirst difference\n-----------")
+		os.Stdout.WriteString("\n")
+
+		os.Stdout.WriteString("generated:  ")
+		if i < numLinesGenerated {
+			os.Stdout.WriteString(generatedLine)
+		} else {
+			os.Stdout.WriteString("---")
 		}
-		if currentChunk != "" {
-			fmt.Printf("\ncurrent:  ")
-			fmt.Print(strings.Repeat(" ", 5), currentChunk)
-			counter := fmt.Sprint("(", (index/50)+1, " / ", maxChunks, ")")
-			if currentChunk != generatedChunk {
-				counter = "~ " + counter
+		os.Stdout.WriteString("\n\n")
+	}
+
+	return &ComparisonError{}
+}
+
+func splitByGroupsUpToDepth(input string, maxDepth int) []string {
+	lines := []string{input}
+	for range maxDepth {
+		lineBuffer := []string{}
+		for _, line := range lines {
+			newLines := splitByGroups(line)
+			lineBuffer = append(lineBuffer, newLines...)
+		}
+		lines = lineBuffer
+	}
+
+	return lines
+}
+
+func splitByGroups(input string) []string {
+	parenthesisCounter := 0
+	lines := []string{}
+	sb := strings.Builder{}
+	for position, currentRune := range input {
+		if currentRune == '(' && !utils.IsEscaped(input, position) {
+			parenthesisCounter++
+			if parenthesisCounter == 1 && sb.Len() > 0 {
+				lines = append(lines, sb.String())
+				sb.Reset()
 			}
-			fmt.Print(strings.Repeat(" ", 60-len(currentChunk)), counter)
-		}
-		if generatedChunk != "" {
-			fmt.Printf("\ngenerated: ")
-			fmt.Print(strings.Repeat(" ", 4), generatedChunk)
-			counter = fmt.Sprint("(", (index/50)+1, " / ", maxChunks, ")")
-			if currentChunk != generatedChunk {
-				counter = "~ " + counter
+			sb.WriteRune(currentRune)
+
+		} else if currentRune == ')' && !utils.IsEscaped(input, position) {
+			parenthesisCounter--
+			sb.WriteRune(currentRune)
+			if parenthesisCounter <= 0 {
+				lines = append(lines, sb.String())
+				sb.Reset()
 			}
-			fmt.Println(strings.Repeat(" ", 59-len(generatedChunk)), counter)
-		}
-		if printFirstDiff {
-			fmt.Println("===========")
+		} else {
+			sb.WriteRune(currentRune)
 		}
 	}
-	fmt.Printf("\n")
-	return &ComparisonError{}
+	if sb.Len() > 0 {
+		lines = append(lines, sb.String())
+	}
+
+	if len(lines) == 1 && lines[0][0] == '(' && lines[0][len(lines[0])-1] == ')' {
+		lines = splitByGroups(lines[0][1 : len(lines[0])-1])
+		lines[0] = "(" + lines[0]
+		lines[len(lines)-1] = lines[len(lines)-1] + ")"
+	}
+	return lines
 }
