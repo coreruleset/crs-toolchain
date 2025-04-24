@@ -7,10 +7,12 @@ import (
 	"path"
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/coreruleset/crs-toolchain/v2/configuration"
 	"github.com/coreruleset/crs-toolchain/v2/context"
 )
 
@@ -103,4 +105,98 @@ func (s *choreReleaseTestSuite) TestCreateCommit() {
 	branchHash, err := repo.ResolveRevision(plumbing.Revision("main"))
 	s.Require().NoError(err)
 	s.Equal(*branchHash, parent.Hash)
+}
+
+func (s *choreReleaseTestSuite) TestUpdateVersionTable_NewMinor() {
+	contents := `
+Some lorem ipsum garbage
+
+| Version   | Supported          |
+| --------- | ------------------ |
+| 4.13.z    | :white_check_mark: |
+| 4.12.z    | :white_check_mark: |
+| 4.y.z     | :x:                |
+| 3.3.x     | :white_check_mark: |
+| 3.2.x     | :x:                |
+| 3.1.x     | :x:                |
+| 3.0.x     | :x:                |
+| 2.x       | :x:                |
+
+More garbage.
+`
+	expected := `
+Some lorem ipsum garbage
+
+| Version   | Supported          |
+| --------- | ------------------ |
+| 4.14.z    | :white_check_mark: |
+| 4.13.z    | :white_check_mark: |
+| 4.12.z    | :x:                |
+| 4.y.z     | :x:                |
+| 3.3.x     | :white_check_mark: |
+| 3.2.x     | :x:                |
+| 3.1.x     | :x:                |
+| 3.0.x     | :x:                |
+| 2.x       | :x:                |
+
+More garbage.
+`
+	filePath := path.Join(s.repoDir, securityReadmeFileName)
+	err := os.WriteFile(filePath, []byte(contents), os.ModePerm)
+	s.Require().NoError(err)
+	version, err := semver.NewVersion("4.14.0")
+	s.Require().NoError(err)
+	context := context.NewWithConfiguration(s.repoDir, &configuration.Configuration{})
+	updateSecurityReadme(context, version)
+
+	newContents, err := os.ReadFile(filePath)
+	s.Require().NoError(err)
+	s.Equal(expected, string(newContents))
+}
+
+func (s *choreReleaseTestSuite) TestUpdateVersionTable_NewMajor() {
+	contents := `
+Some lorem ipsum garbage
+
+| Version   | Supported          |
+| --------- | ------------------ |
+| 4.13.z    | :white_check_mark: |
+| 4.12.z    | :white_check_mark: |
+| 4.y.z     | :x:                |
+| 3.3.x     | :white_check_mark: |
+| 3.2.x     | :x:                |
+| 3.1.x     | :x:                |
+| 3.0.x     | :x:                |
+| 2.x       | :x:                |
+
+More garbage.
+`
+	expected := `
+Some lorem ipsum garbage
+
+| Version   | Supported          |
+| --------- | ------------------ |
+| 5.0.z     | :white_check_mark: |
+| 4.13.z    | :white_check_mark: |
+| 4.12.z    | :x:                |
+| 4.y.z     | :x:                |
+| 3.3.x     | :x:                |
+| 3.2.x     | :x:                |
+| 3.1.x     | :x:                |
+| 3.0.x     | :x:                |
+| 2.x       | :x:                |
+
+More garbage.
+`
+	filePath := path.Join(s.repoDir, securityReadmeFileName)
+	err := os.WriteFile(filePath, []byte(contents), os.ModePerm)
+	s.Require().NoError(err)
+	version, err := semver.NewVersion("5.0.0")
+	s.Require().NoError(err)
+	context := context.NewWithConfiguration(s.repoDir, &configuration.Configuration{})
+	updateSecurityReadme(context, version)
+
+	newContents, err := os.ReadFile(filePath)
+	s.Require().NoError(err)
+	s.Equal(expected, string(newContents))
 }
