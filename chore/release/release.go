@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"time"
 
@@ -20,9 +22,13 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/context"
 )
 
-const examplesPath = "util/crs-rules-check/examples"
-const branchNameTemplate = "release/v%d.%d.%d"
-const prTitleTemplate = "chore: release v%d.%d.%d"
+const (
+	examplesPath           = "util/crs-rules-check/examples"
+	branchNameTemplate     = "release/v%d.%d.%d"
+	prTitleTemplate        = "chore: release v%d.%d.%d"
+	securityReadmeFileName = "SECURITY.md"
+	versionTableMarker     = "| Version"
+)
 
 var logger = log.With().Str("component", "release").Logger()
 
@@ -35,6 +41,7 @@ func Release(context *context.Context, repositoryPath string, version *semver.Ve
 	branchName := fmt.Sprintf(branchNameTemplate, version.Major(), version.Minor(), version.Patch())
 	createAndCheckOutBranch(context, branchName, sourceRef)
 	copyright.UpdateCopyright(context, version, uint16(time.Now().Year()), []string{examplesPath})
+	updateSecurityReadme(context, version)
 	createCommit(context, branchName)
 	pushBranch(remoteName, branchName)
 	createPullRequest(version, branchName, sourceRef)
@@ -152,4 +159,78 @@ func findRemoteName() string {
 	}
 
 	return remoteName
+}
+
+func updateSecurityReadme(context *context.Context, newVersion *semver.Version) {
+	logger.Info().Msgf("updating supported version information in %s", securityReadmeFileName)
+
+	filePath := path.Join(context.RootDir(), securityReadmeFileName)
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		logger.Warn().Msgf("%s not found, cannot update supported version information", securityReadmeFileName)
+		return
+	} else if err != nil {
+		logger.Warn().Err(err).Msgf("failed to stat %s", securityReadmeFileName)
+		return
+	}
+
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		logger.Warn().Err(err).Msgf("failed to read from %s", securityReadmeFileName)
+		return
+	}
+
+	lines := make([]string, 0, 100)
+	scanner := bufio.NewScanner(bytes.NewReader(contents))
+	found := false
+	for scanner.Scan() {
+		line := scanner.Text()
+		lines = append(lines, line)
+		if strings.HasPrefix(line, versionTableMarker) {
+			found = true
+			// append table header separator line
+			scanner.Scan()
+			lines = append(lines, scanner.Text())
+			patchedLines, err := updateVersionTable(scanner, newVersion)
+			if err != nil {
+				return
+			}
+			lines = append(lines, patchedLines...)
+		}
+	}
+	if !found {
+		logger.Warn().Msgf("Did not find version table in %s", securityReadmeFileName)
+		return
+	}
+
+	lines = append(lines, "")
+	err = os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0)
+	if err != nil {
+		logger.Warn().Err(err).Msgf("failed to write %s", securityReadmeFileName)
+	}
+}
+
+func updateVersionTable(scanner *bufio.Scanner, newVersion *semver.Version) ([]string, error) {
+	lines := make([]string, 0, 15)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(strings.TrimSpace(line)) == 0 {
+			break
+		}
+		lines = append(lines, line)
+	}
+	newVersionTable, err := newVersionTable(lines)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add the newly supported version
+	newVersionTable.Prepend(&versionTableEntry{
+		versionString: fmt.Sprintf("%d.%d.z", newVersion.Major(), newVersion.Minor()),
+		version:       newVersion,
+		supported:     true,
+	})
+	newVersionTable.updateVersionSupport(newVersion.Major())
+
+	return newVersionTable.ToLines(), nil
 }
