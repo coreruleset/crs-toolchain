@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/coreruleset/crs-toolchain/v2/utils"
@@ -75,8 +76,11 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 		logger.Fatal().Err(err).Msg("Failed to load input file")
 	}
 
-	// Filter words not in dictionary, remove duplicates, and sort alphabetically
+	// Filter words not in dictionary
 	filteredWords := t.filterContent(inputFile, dict, minSize)
+
+	// Sort words alphabetically (case-sensitive)
+	sort.Strings(filteredWords)
 
 	// Remove adjacent duplicate words from the sorted list
 	filteredWords = slices.Compact(filteredWords)
