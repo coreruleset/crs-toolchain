@@ -38,6 +38,20 @@ func (s *fpFinderTestSuite) TestFpFinder_FilterContent() {
 	s.Equal(expected, result)
 }
 
+func (s *fpFinderTestSuite) TestFpFinder_ProcessWords() {
+	input := []string{"apple", "banana", "orange", "banana", "pear", "#comment", "banana"}
+	dict := map[string]struct{}{
+		"apple":  {},
+		"orange": {},
+	}
+
+	expected := []string{"banana", "pear"}
+
+	result := NewFpFinder().processWords(input, dict, 3)
+
+	s.Equal(expected, result)
+}
+
 func (s *fpFinderTestSuite) TestFpFinder_MergeDictionaries() {
 	a := map[string]struct{}{"apple": {}, "banana": {}}
 	b := map[string]struct{}{"cherry": {}, "date": {}}
