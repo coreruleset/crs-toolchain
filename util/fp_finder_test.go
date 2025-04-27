@@ -52,6 +52,17 @@ func (s *fpFinderTestSuite) TestFpFinder_ProcessWords() {
 	s.Equal(expected, result)
 }
 
+func (s *fpFinderTestSuite) TestFpFinder_ProcessWords_Sorting() {
+	input := []string{"pear", "Banana", ".hiddenfruit", "kiwi", "banana", "Apple", ".dotfruit"}
+	dict := map[string]struct{}{} // empty dictionary, so no filtering
+
+	expected := []string{".dotfruit", ".hiddenfruit", "Apple", "Banana", "banana", "kiwi", "pear"}
+
+	result := NewFpFinder().processWords(input, dict, 3)
+
+	s.Equal(expected, result)
+}
+
 func (s *fpFinderTestSuite) TestFpFinder_MergeDictionaries() {
 	a := map[string]struct{}{"apple": {}, "banana": {}}
 	b := map[string]struct{}{"cherry": {}, "date": {}}
