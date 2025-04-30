@@ -75,11 +75,8 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 		logger.Fatal().Err(err).Msg("Failed to load input file")
 	}
 
-	// Filter words not in dictionary, remove duplicates, and sort alphabetically
-	filteredWords := t.filterContent(inputFile, dict, minSize)
-
-	// Remove adjacent duplicate words from the sorted list
-	filteredWords = slices.Compact(filteredWords)
+	// Process words from inputfile, sort the output and remove duplicates
+	filteredWords := t.processWords(inputFile, dict, minSize)
 
 	for _, str := range filteredWords {
 		fmt.Println(str)
@@ -138,6 +135,21 @@ func (t *FpFinder) loadFileContent(path string) ([]string, error) {
 	}
 
 	return content, nil
+}
+
+func (t *FpFinder) processWords(inputFile []string, dict map[string]struct{}, minSize int) []string {
+	// Filter words not in the dictionary
+	filteredWords := t.filterContent(inputFile, dict, minSize)
+
+	// Sort words alphabetically (case-insensitive)
+	slices.SortFunc(filteredWords, func(a, b string) int {
+		return strings.Compare(strings.ToLower(a), strings.ToLower(b))
+	})
+
+	// Remove adjacent duplicate words from the sorted list
+	filteredWords = slices.Compact(filteredWords)
+
+	return filteredWords
 }
 
 func (t *FpFinder) filterContent(inputFile []string, dict map[string]struct{}, minSize int) []string {
