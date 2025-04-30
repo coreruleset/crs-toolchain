@@ -9,7 +9,6 @@ import (
 	"os"
 	"regexp"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/coreruleset/crs-toolchain/v2/utils"
@@ -142,8 +141,10 @@ func (t *FpFinder) processWords(inputFile []string, dict map[string]struct{}, mi
 	// Filter words not in the dictionary
 	filteredWords := t.filterContent(inputFile, dict, minSize)
 
-	// Sort words alphabetically (case-sensitive)
-	sort.Strings(filteredWords)
+	// Sort words alphabetically (case-insensitive)
+	slices.SortFunc(filteredWords, func(a, b string) int {
+		return strings.Compare(strings.ToLower(a), strings.ToLower(b))
+	})
 
 	// Remove adjacent duplicate words from the sorted list
 	filteredWords = slices.Compact(filteredWords)
