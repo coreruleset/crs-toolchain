@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -33,7 +34,7 @@ func init() {
 func createUpdateCommand() *cobra.Command {
 
 	return &cobra.Command{
-		Use:   "update [RULE_ID]",
+		Use:   "update RULE_ID_1 RULE_ID_2 ... | filename1.ra filename2.ra ...",
 		Short: "Update regular expressions in rule files",
 		Long: `Update regular expressions in rule files.
 This command will generate regulare expressions from the data
@@ -42,24 +43,36 @@ files and update the associated rule.
 RULE_ID is the ID of the rule, e.g., 932100, or the regex-assembly file name.
 If the rule is a chained rule, RULE_ID must be specified with the
 offset of the chain from the chain starter rule. For example, to
-generate a second level chained rule, RULE_ID would be 932100-chain2.`,
-		Args: cobra.MatchAll(cobra.MaximumNArgs(1), func(cmd *cobra.Command, args []string) error {
+generate a second level chained rule, RULE_ID would be 932100-chain2.
+
+You can combine rule ids with filenames and the tool will work properly.
+`,
+		Args: func(cmd *cobra.Command, args []string) error {
 			allFlag := cmd.Flags().Lookup("all")
 			if !allFlag.Changed && len(args) == 0 {
-				return errors.New("expected either RULE_ID or flag, found neither")
+				return errors.New("expected either RULE_ID, filename or flag, found neither")
 			} else if allFlag.Changed && len(args) > 0 {
-				return errors.New("expected either RULE_ID or flag, found both")
+				return errors.New("expected either RULE_ID, filename or flag, found both")
 			}
 			return nil
-		}),
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return nil
 			}
-			err := parseRuleId(args[0])
-			if err != nil {
-				cmd.PrintErrf("failed to parse the rule ID from the input '%s'\n", args[0])
-				return err
+			// range over args to handle both RULE_ID and filename.ra
+			for _, arg := range args {
+				if strings.HasSuffix(arg, ".ra") {
+					if _, err := os.Stat(arg); err != nil {
+						cmd.PrintErrf("failed to read regex-assembly file %s: %v\n", arg, err)
+						return err
+					}
+				} else {
+					if err := parseRuleId(arg); err != nil {
+						cmd.PrintErrf("failed to parse rule ID %s: %v\n", arg, err)
+						return err
+					}
+				}
 			}
 
 			return nil
@@ -71,7 +84,7 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 			if err != nil {
 				logger.Fatal().Err(err).Msg("Failed to read value for 'all' flag")
 			}
-			performUpdate(processAll, ctxt)
+			performUpdate(processAll, args, ctxt)
 		},
 	}
 
@@ -92,7 +105,25 @@ func rebuildUpdateCommand() {
 	buildUpdateCommand()
 }
 
-func performUpdate(processAll bool, ctx *processors.Context) {
+func getIdAndChainOffsetFromFileName(fileName string) (string, uint8, error) {
+	name := path.Base(fileName)
+	subs := regex.RuleIdFileNameRegex.FindAllStringSubmatch(name, -1)
+	if subs == nil {
+		return "", 0, errors.New("failed to match rule ID from file name")
+	}
+
+	id := subs[0][1]
+	chainOffsetString := subs[0][2]
+
+	chainOffset, err := strconv.ParseUint(chainOffsetString, 10, 8)
+	if err != nil && len(chainOffsetString) > 0 {
+		return "", 0, errors.New("failed to match chain offset. Value must not be larger than 255")
+	}
+
+	return id, uint8(chainOffset), nil
+}
+
+func performUpdate(processAll bool, args []string, ctx *processors.Context) {
 	if processAll {
 		err := filepath.WalkDir(ctx.RootContext().AssemblyDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
 			if errors.Is(err, fs.ErrNotExist) {
@@ -101,18 +132,10 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 			}
 
 			if !dirEntry.IsDir() && path.Ext(dirEntry.Name()) == ".ra" {
-				subs := regex.RuleIdFileNameRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
-				if subs == nil {
-					// continue
-					return nil
-				}
-
-				id := subs[0][1]
-				chainOffsetString := subs[0][2]
-
-				chainOffset, err := strconv.ParseUint(chainOffsetString, 10, 8)
-				if err != nil && len(chainOffsetString) > 0 {
-					return errors.New("failed to match chain offset. Value must not be larger than 255")
+				id, chainOffset, err := getIdAndChainOffsetFromFileName(dirEntry.Name())
+				if err != nil {
+					logger.Error().Err(err).Msgf("Failed to parse rule ID from file name %s", dirEntry.Name())
+					return nil // continue processing other files
 				}
 
 				processRule(id, uint8(chainOffset), filePath, ctx)
@@ -124,8 +147,18 @@ func performUpdate(processAll bool, ctx *processors.Context) {
 			logger.Fatal().Err(err).Msg("Failed to perform rule update(s)")
 		}
 	} else {
-		filePath := path.Join(ctx.RootContext().AssemblyDir(), ruleValues.fileName)
-		processRule(ruleValues.id, ruleValues.chainOffset, filePath, ctx)
+		for _, arg := range args {
+			if strings.HasSuffix(arg, ".ra") {
+				id, chainOffset, err := getIdAndChainOffsetFromFileName(arg)
+				if err != nil {
+					logger.Error().Err(err).Msgf("Failed to parse rule ID from file name %s", arg)
+				}
+				processRule(id, uint8(chainOffset), arg, ctx)
+			} else {
+				filePath := path.Join(ctx.RootContext().AssemblyDir(), ruleValues.fileName)
+				processRule(ruleValues.id, ruleValues.chainOffset, filePath, ctx)
+			}
+		}
 	}
 }
 
