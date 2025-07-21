@@ -37,3 +37,6 @@ jobs:
           cache: true
       - name: Tests and coverage
         run: go test -cover ./...
+        env:
+          # self-updater tests make requests to the GitHub API
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
