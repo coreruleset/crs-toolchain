@@ -71,10 +71,7 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 			// Validate all provided arguments
 			for _, arg := range args {
 				// Handle relative paths by extracting the basename for validation
-				baseName := arg
-				if strings.Contains(arg, "/") || strings.Contains(arg, "\\") {
-					baseName = filepath.Base(arg)
-				}
+				baseName := extractBasename(arg)
 				
 				err := parseRuleIdValidation(baseName)
 				if err != nil {
@@ -125,15 +122,27 @@ func rebuildUpdateCommand() {
 	buildUpdateCommand()
 }
 
+// isPath returns true if the argument contains path separators
+func isPath(arg string) bool {
+	// More reliable than checking for specific separators - works cross-platform
+	return filepath.Dir(arg) != "."
+}
+
+// extractBasename extracts the basename from a path argument
+func extractBasename(arg string) string {
+	if isPath(arg) {
+		basename := filepath.Base(arg)
+		logger.Debug().Msgf("Extracted basename '%s' from path '%s'", basename, arg)
+		return basename
+	}
+	return arg
+}
+
 // parseAndValidateArgument parses an argument and validates that the corresponding file exists
 func parseAndValidateArgument(arg string, ctxt *processors.Context) (parsedRuleValues, error) {
 	// Handle relative paths by extracting the basename
 	// This supports pre-commit scenarios where files are passed as relative paths
-	baseName := arg
-	if strings.Contains(arg, "/") || strings.Contains(arg, "\\") {
-		baseName = filepath.Base(arg)
-		logger.Debug().Msgf("Extracted basename '%s' from path '%s'", baseName, arg)
-	}
+	baseName := extractBasename(arg)
 	
 	// Parse the basename using the existing rule ID logic (handles both RULE_IDs and filenames)
 	parsedRule, err := parseRuleIdToStruct(baseName)
@@ -143,14 +152,14 @@ func parseAndValidateArgument(arg string, ctxt *processors.Context) (parsedRuleV
 	
 	// For relative paths, check if the file exists at the given path first
 	// This supports pre-commit scenarios where the file path is provided directly
-	if strings.Contains(arg, "/") || strings.Contains(arg, "\\") {
+	if isPath(arg) {
 		// Check if the file exists at the relative path
 		if _, err := os.Stat(arg); err == nil {
 			// File exists at the relative path, we can proceed
 			logger.Debug().Msgf("Found file at relative path: %s", arg)
 			parsedRule.filePath = arg
 			return parsedRule, nil
-		} else if !os.IsNotExist(err) {
+		} else {
 			// Some other error occurred
 			return parsedRuleValues{}, fmt.Errorf("error checking file '%s': %w", arg, err)
 		}
