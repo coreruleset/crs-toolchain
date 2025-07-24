@@ -266,22 +266,6 @@ func performUpdateMultiple(parsedRules []parsedRuleValues, ctx *processors.Conte
 	return nil
 }
 
-// performUpdate is kept for backward compatibility but now delegates to the specific functions
-func performUpdate(processAll bool, ctx *processors.Context) {
-	if processAll {
-		err := performUpdateAll(ctx)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to perform rule update(s)")
-		}
-	} else {
-		filePath := path.Join(ctx.RootContext().AssemblyDir(), ruleValues.fileName)
-		err := processRule(ruleValues.id, ruleValues.chainOffset, filePath, ctx)
-		if err != nil {
-			logger.Fatal().Err(err).Msgf("Failed to process rule %s", ruleValues.id)
-		}
-	}
-}
-
 func runAssemble(filePath string) (string, error) {
 	rootContext := context.New(rootValues.workingDirectory.String(), rootValues.configurationFileName.String())
 	ctxt := processors.NewContext(rootContext)
