@@ -14,24 +14,14 @@ import (
 
 type generateTestSuite struct {
 	suite.Suite
-	tempDir string
 	dataDir string
 }
 
 func (s *generateTestSuite) SetupTest() {
 	rebuildGenerateCommand()
 
-	tempDir, err := os.MkdirTemp("", "generate-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.dataDir = path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.Require().NoError(err)
-}
-
-func (s *generateTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
+	s.dataDir = path.Join(s.T().TempDir(), "regex-assembly")
+	err := os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.Require().NoError(err)
 }
 
@@ -41,7 +31,7 @@ func TestRunGenerateTestSuite(t *testing.T) {
 
 func (s *generateTestSuite) TestGenerate_NormalRuleId() {
 	s.writeDatafile("123456.ra", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("generate", cmd.Name())
@@ -59,7 +49,7 @@ func (s *generateTestSuite) TestGenerate_NoRuleId() {
 }
 
 func (s *generateTestSuite) TestGenerate_Dash() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "-"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "generate", "-"})
 	_, err := rootCmd.ExecuteC()
 
 	s.Require().NoError(err)

@@ -21,7 +21,6 @@ import (
 type parserIncludeExceptTestSuite struct {
 	suite.Suite
 	ctx         *processors.Context
-	tempDir     string
 	assemblyDir string
 	includeDir  string
 	excludeDir  string
@@ -43,12 +42,8 @@ func TestParserRunIncludeExceptTestSuite(t *testing.T) {
 }
 
 func (s *parserIncludeExceptTestSuite) SetupTest() {
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "include-except-tests")
-	s.Require().NoError(err)
-
-	s.assemblyDir = path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(s.assemblyDir, fs.ModePerm)
+	s.assemblyDir = path.Join(s.T().TempDir(), "regex-assembly")
+	err := os.MkdirAll(s.assemblyDir, fs.ModePerm)
 	s.Require().NoError(err)
 
 	s.includeDir = path.Join(s.assemblyDir, "include")
@@ -59,12 +54,8 @@ func (s *parserIncludeExceptTestSuite) SetupTest() {
 	err = os.MkdirAll(s.excludeDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	rootContext := context.New(s.T().TempDir(), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
-}
-
-func (s *parserIncludeExceptTestSuite) TearDownTest() {
-	s.Require().NoError(os.RemoveAll(s.tempDir))
 }
 
 func (s *parserIncludeExceptTestSuite) TestIncludeExcept_MoreExcludesThanIncludes() {

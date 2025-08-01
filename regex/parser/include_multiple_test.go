@@ -23,7 +23,6 @@ type parserMultiIncludeTestSuite struct {
 	suite.Suite
 	ctx         *processors.Context
 	reader      io.Reader
-	tempDir     string
 	includeDir  string
 	includeFile []*os.File
 }
@@ -34,15 +33,11 @@ func TestRunParserMultiIncludeTestSuite(t *testing.T) {
 
 // Test Suite to perform multiple inclusions
 func (s *parserMultiIncludeTestSuite) SetupSuite() {
-	tempDir, err := os.MkdirTemp("", "include-multi-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.includeDir = path.Join(s.tempDir, "regex-assembly", "include")
-	err = os.MkdirAll(s.includeDir, fs.ModePerm)
+	s.includeDir = path.Join(s.T().TempDir(), "regex-assembly", "include")
+	err := os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	rootContext := context.New(s.T().TempDir(), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
 	for i := 0; i < 4; i++ {
 		file, err := os.Create(path.Join(s.includeDir, fmt.Sprintf("multi-include-%d.ra", i)))
@@ -58,11 +53,6 @@ func (s *parserMultiIncludeTestSuite) SetupSuite() {
 			s.Require().NoError(err, "writing temp include file failed")
 		}
 	}
-}
-
-func (s *parserMultiIncludeTestSuite) TearDownSuite() {
-	err := os.RemoveAll(s.tempDir)
-	s.Require().NoError(err)
 }
 
 func (s *parserMultiIncludeTestSuite) TestParserMultiInclude_FromMultiFile() {

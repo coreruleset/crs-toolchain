@@ -21,7 +21,6 @@ type parserIncludeWithDefinitions struct {
 	suite.Suite
 	ctx         *processors.Context
 	reader      io.Reader
-	tempDir     string
 	includeDir  string
 	includeFile []*os.File
 }

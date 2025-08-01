@@ -14,7 +14,6 @@ import (
 
 type choreUpdateCopyrightTestSuite struct {
 	suite.Suite
-	tempDir  string
 	dataDir  string
 	rulesDir string
 }
@@ -23,15 +22,11 @@ func (s *choreUpdateCopyrightTestSuite) SetupTest() {
 	rebuildChoreCommand()
 	rebuildChoreUpdateCopyrightCommand()
 
-	tempDir, err := os.MkdirTemp("", "update-copyright-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.dataDir = path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(s.dataDir, fs.ModePerm)
+	s.dataDir = path.Join(s.T().TempDir(), "regex-assembly")
+	err := os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	s.rulesDir = path.Join(s.tempDir, "rules")
+	s.rulesDir = path.Join(s.T().TempDir(), "rules")
 	err = os.Mkdir(s.rulesDir, fs.ModePerm)
 	s.Require().NoError(err)
 
@@ -49,7 +44,7 @@ func (s *choreUpdateCopyrightTestSuite) SetupTest() {
 # This file REQUEST-901-INITIALIZATION.conf initializes the Core Rules`)
 	s.FileExists(path.Join(s.rulesDir, "TEST-900.conf"))
 
-	s.writeFile(path.Join(s.tempDir, "crs-setup.conf.example"), `# ------------------------------------------------------------------------
+	s.writeFile(path.Join(s.T().TempDir(), "crs-setup.conf.example"), `# ------------------------------------------------------------------------
 # OWASP ModSecurity Core Rule Set ver.4.9.0-dev
 # Copyright (c) 2006-2020 Trustwave and contributors. All rights reserved.
 # Copyright (c) 2021-2022 Core Rule Set project. All rights reserved.
@@ -61,12 +56,7 @@ func (s *choreUpdateCopyrightTestSuite) SetupTest() {
 
 #
 # This file is the crs-setup.conf.example shipped with CRS`)
-	s.FileExists(path.Join(s.tempDir, "crs-setup.conf.example"))
-}
-
-func (s *choreUpdateCopyrightTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
-	s.Require().NoError(err)
+	s.FileExists(path.Join(s.T().TempDir(), "crs-setup.conf.example"))
 }
 
 func TestRunUpdateCopyrightTestSuite(t *testing.T) {
@@ -74,7 +64,7 @@ func TestRunUpdateCopyrightTestSuite(t *testing.T) {
 }
 
 func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Version512() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-v", "5.1.2"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "chore", "update-copyright", "-v", "5.1.2"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("update-copyright", cmd.Name())
@@ -85,13 +75,13 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Version512() {
 	s.Contains(string(contents), "OWASP ModSecurity Core Rule Set ver.5.1.2")
 
 	// check that crs-setup.conf.example was also modified
-	contents, err = os.ReadFile(path.Join(s.tempDir, "crs-setup.conf.example"))
+	contents, err = os.ReadFile(path.Join(s.T().TempDir(), "crs-setup.conf.example"))
 	s.Require().NoError(err)
 	s.Contains(string(contents), "OWASP ModSecurity Core Rule Set ver.5.1.2")
 }
 
 func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Year2100() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-y", "2100", "-v", "7.1.22"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "chore", "update-copyright", "-y", "2100", "-v", "7.1.22"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("update-copyright", cmd.Name())
@@ -102,13 +92,13 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_Year2100() {
 	s.Contains(string(contents), "2021-2100")
 
 	// check that crs-setup.conf.example was also modified
-	contents, err = os.ReadFile(path.Join(s.tempDir, "crs-setup.conf.example"))
+	contents, err = os.ReadFile(path.Join(s.T().TempDir(), "crs-setup.conf.example"))
 	s.Require().NoError(err)
 	s.Contains(string(contents), "2021-2100")
 }
 
 func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_ErrIfNoVersion() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-y", "2222"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "chore", "update-copyright", "-y", "2222"})
 	cmd, err := rootCmd.ExecuteC()
 
 	s.Equal("update-copyright", cmd.Name())
@@ -117,7 +107,7 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_ErrIfNoVersion() {
 }
 
 func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_DevRelease() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-v", "5.4.3-dev"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "chore", "update-copyright", "-v", "5.4.3-dev"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("update-copyright", cmd.Name())
@@ -129,7 +119,7 @@ func (s *choreUpdateCopyrightTestSuite) TestUpdateCopyright_DevRelease() {
 	s.NotContains(string(contents), "OWASP ModSecurity Core Rule Set ver.5.4.3-dev-dev")
 
 	// check that crs-setup.conf.example was also modified
-	contents, err = os.ReadFile(path.Join(s.tempDir, "crs-setup.conf.example"))
+	contents, err = os.ReadFile(path.Join(s.T().TempDir(), "crs-setup.conf.example"))
 	s.Require().NoError(err)
 	s.Contains(string(contents), "OWASP ModSecurity Core Rule Set ver.5.4.3-dev")
 	s.NotContains(string(contents), "OWASP ModSecurity Core Rule Set ver.5.4.3-dev-dev")
