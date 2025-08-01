@@ -4,7 +4,6 @@
 package operators
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -16,8 +15,7 @@ import (
 
 type assemblerTestSuite struct {
 	suite.Suite
-	ctx     *processors.Context
-	tempDir string
+	ctx *processors.Context
 }
 
 type fileFormatTestSuite assemblerTestSuite
@@ -36,82 +34,33 @@ func TestRunAssemblerTestSuite(t *testing.T) {
 }
 
 func (s *assemblerTestSuite) SetupSuite() {
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "assemble-test")
-	s.Require().NoError(err)
-	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	rootContext := context.New(s.T().TempDir(), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
-}
-
-func (s *assemblerTestSuite) TearDownSuite() {
-	err := os.RemoveAll(s.tempDir)
-	s.Require().NoError(err)
 }
 
 func (s *fileFormatTestSuite) SetupSuite() {
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "file-format-test")
-	s.Require().NoError(err)
-	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	rootContext := context.New(s.T().TempDir(), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
-}
-
-func (s *fileFormatTestSuite) TearDownSuite() {
-	err := os.RemoveAll(s.tempDir)
-	s.Require().NoError(err)
 }
 
 func (s *specialCommentsTestSuite) SetupSuite() {
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "special-comments-test")
-	s.Require().NoError(err)
-	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	rootContext := context.New(s.T().TempDir(), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
-}
-
-func (s *specialCommentsTestSuite) TearDownSuite() {
-	err := os.RemoveAll(s.tempDir)
-	s.Require().NoError(err)
 }
 
 func (s *specialCasesTestSuite) SetupSuite() {
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "special-cases-test")
-	s.Require().NoError(err)
-	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	rootContext := context.New(s.T().TempDir(), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
-}
-
-func (s *specialCasesTestSuite) TearDownSuite() {
-	err := os.RemoveAll(s.tempDir)
-	s.Require().NoError(err)
 }
 
 func (s *definitionsTestSuite) SetupSuite() {
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "definitions-test")
-	s.Require().NoError(err)
-	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	rootContext := context.New(s.T().TempDir(), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
-}
-
-func (s *definitionsTestSuite) TearDownSuite() {
-	err := os.RemoveAll(s.tempDir)
-	s.Require().NoError(err)
 }
 
 func (s *preprocessorsTestSuite) SetupSuite() {
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "preprocessor-test")
-	s.Require().NoError(err)
-
-	rootContext := context.NewWithConfiguration(s.tempDir, s.newTestConfiguration())
+	rootContext := context.NewWithConfiguration(s.T().TempDir(), s.newTestConfiguration())
 	s.ctx = processors.NewContext(rootContext)
-}
-
-func (s *preprocessorsTestSuite) TearDownSuite() {
-	err := os.RemoveAll(s.tempDir)
-	s.Require().NoError(err)
 }
 
 func (s *preprocessorsTestSuite) newTestConfiguration() *configuration.Configuration {

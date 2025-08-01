@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -30,7 +31,7 @@ func TestParserDefinitionsTestSuite(t *testing.T) {
 }
 
 func (s *parserDefinitionTestSuite) SetupSuite() {
-	rootContext := context.New(os.TempDir(), "toolchain.yaml")
+	rootContext := context.New(filepath.Dir(s.T().TempDir()), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
 	s.reader = strings.NewReader("##!> define this-is-a-text [a-zA-J]+8\n" +
 		"##!> define this-is-another-text [0-9](pine|apple)\n" +
@@ -50,18 +51,14 @@ func (s *parserDefinitionTestSuite) TestParserDefinition_BasicTest() {
 }
 
 func (s *parserIncludeWithDefinitions) SetupSuite() {
-	tempDir, err := os.MkdirTemp("", "include-multi-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.includeDir = path.Join(s.tempDir, "regex-assembly", "include")
-	err = os.MkdirAll(s.includeDir, fs.ModePerm)
+	s.includeDir = path.Join(s.T().TempDir(), "regex-assembly", "include")
+	err := os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	rootContext := context.New(os.TempDir(), "toolchain.yaml")
+	rootContext := context.New(filepath.Dir(s.T().TempDir()), "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
 	for i := 0; i < 4; i++ {
-		file, err := os.Create(path.Join(s.tempDir, fmt.Sprintf("multi-definitions-%d.ra", i)))
+		file, err := os.Create(path.Join(s.T().TempDir(), fmt.Sprintf("multi-definitions-%d.ra", i)))
 		s.Require().NoError(err, "couldn't create %s file", file.Name())
 		if i == 0 {
 			// Only the initial include goes to the reader

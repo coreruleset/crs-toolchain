@@ -17,7 +17,6 @@ import (
 
 type formatTestSuite struct {
 	suite.Suite
-	tempDir    string
 	dataDir    string
 	includeDir string
 }
@@ -25,21 +24,12 @@ type formatTestSuite struct {
 func (s *formatTestSuite) SetupTest() {
 	rebuildFormatCommand()
 
-	tempDir, err := os.MkdirTemp("", "format-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.dataDir = path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(s.dataDir, fs.ModePerm)
+	s.dataDir = path.Join(s.T().TempDir(), "regex-assembly")
+	err := os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.Require().NoError(err)
 
 	s.includeDir = path.Join(s.dataDir, "include")
 	err = os.MkdirAll(s.includeDir, fs.ModePerm)
-	s.Require().NoError(err)
-}
-
-func (s *formatTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
 	s.Require().NoError(err)
 }
 
@@ -49,7 +39,7 @@ func TestRunFormatTestSuite(t *testing.T) {
 
 func (s *formatTestSuite) TestFormat_NormalRuleId() {
 	s.writeDataFile("123456.ra", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("format", cmd.Name())
@@ -61,7 +51,7 @@ func (s *formatTestSuite) TestFormat_NormalRuleId() {
 
 func (s *formatTestSuite) TestFormat_NormalIncludeName() {
 	s.writeIncludeFile("shell-data.ra", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "shell-data"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "shell-data"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("format", cmd.Name())
@@ -86,7 +76,7 @@ func (s *formatTestSuite) TestFormat_ArgumentAndAllFlag() {
 }
 
 func (s *formatTestSuite) TestFormat_Dash() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "-"})
 	_, err := rootCmd.ExecuteC()
 
 	s.EqualError(err, "invalid argument '-'")
@@ -96,7 +86,7 @@ func (s *formatTestSuite) TestFormat_Dash() {
 func (s *formatTestSuite) TestFormat_TrimsTabs() {
 	s.writeDataFile("123456.ra", `line1	
 	line2`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -111,7 +101,7 @@ line2
 func (s *formatTestSuite) TestFormat_TrimsSpaces() {
 	s.writeDataFile("123456.ra", `line1    
     line2`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -127,7 +117,7 @@ func (s *formatTestSuite) TestFormat_IndentsAssembleBlock() {
 	s.writeDataFile("123456.ra", `##!> assemble
     		line
 ##!<`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -156,7 +146,7 @@ func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
 		  ##!=>	
 		  			##!<
 ##!<`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -185,7 +175,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterNoNewLine() {
 	s.writeDataFile("123456.ra", `##!> assemble
     		line
 ##!<`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -203,7 +193,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterOneNewLine() {
     		line
 ##!<
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -222,7 +212,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterTwoNewLines() {
 ##!<
 
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -237,7 +227,7 @@ func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineAfterTwoNewLines() {
 
 func (s *formatTestSuite) TestFormat_EndOfFileHasNewLineIfEmpty() {
 	s.writeDataFile("123456.ra", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -254,7 +244,7 @@ func (s *formatTestSuite) TestFormat_DoesNotRemoveEmptyLines() {
   line
 	   
 ##!<`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -278,7 +268,7 @@ func (s *formatTestSuite) TestFormat_DoesNotRemoveComments() {
   line
 ##! a comment	
 ##!<`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -305,7 +295,7 @@ func (s *formatTestSuite) TestFormat_OnlyIndentsAssembleProcessor() {
 ##!<
 
 ##!<`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -332,7 +322,7 @@ func (s *formatTestSuite) TestFormat_FormatsProcessors() {
 ##!> define 	homer   	simpson 
 ##!<
 ##!<`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -353,7 +343,7 @@ func (s *formatTestSuite) TestFormat_FormatsFlags() {
   ##!+ i
 ##!+ i 	
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -371,7 +361,7 @@ func (s *formatTestSuite) TestFormat_FormatsPrefix() {
   ##!^ prefix with leading white space
 ##!^ prefix with trailing white space 	
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -389,7 +379,7 @@ func (s *formatTestSuite) TestFormat_FormatsSuffix() {
   ##!$ suffix with leading white space
 ##!$ suffix with trailing white space 	
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -407,7 +397,7 @@ func (s *formatTestSuite) TestFormat_FormatsDefinitions() {
   ##!> define with-leading-white-space homer
 ##!> define with-trailing-white-space homer 	
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -425,7 +415,7 @@ func (s *formatTestSuite) TestFormat_FormatsIncludes() {
   ##!> include with-leading-white-space
 ##!> include with-trailing-white-space 	
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -443,7 +433,7 @@ func (s *formatTestSuite) TestFormat_FormatsIncludes_WithSuffixReplacements() {
 ##!> include homer -- r s f g
 ##!> include marge
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -461,7 +451,7 @@ func (s *formatTestSuite) TestFormat_FormatsExcept() {
   ##!> include-except with-leading-white-space homer
 ##!> include-except with-trailing-white-space homer	 
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -479,7 +469,7 @@ func (s *formatTestSuite) TestFormat_FormatsExcept_WithSuffixReplacements() {
 ##!> include-except includefile exclude1 exclude2 -- @ [\s<>] ~ \S
 ##!> include-except simpson homer
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -504,7 +494,7 @@ this is a regex
 ^[a-z]this is another regex
 {1,3}[Bb]lah
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "-c", "123456"})
 
 	_, err := rootCmd.ExecuteC()
 	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
@@ -522,7 +512,7 @@ func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_FirstCharacter() {
 ##!+ i
 [First] letter is uppercase
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "-c", "123456", "-o", "github"})
 
 	_, err := rootCmd.ExecuteC()
 	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
@@ -540,7 +530,7 @@ func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_LastCharacter() {
 ##!+ i
 Last letter is upper[casE]
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "-c", "123456", "-o", "github"})
 
 	_, err := rootCmd.ExecuteC()
 	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
@@ -559,7 +549,7 @@ func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_PlusDefinitions() {
 ##!+ i
 multiple escape sequences \A\B\S should be good.
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "-c", "123456", "-o", "github"})
 
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
@@ -576,7 +566,7 @@ func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_PlusDefinitionsWithUpp
 ##!+ i
 multiple escape sequences \A\B\S should be good.
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "-c", "123456", "-o", "github"})
 
 	_, err := rootCmd.ExecuteC()
 	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
@@ -594,7 +584,7 @@ func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_ComplexCharacterClass(
 ##!+ i
 I'm complex: [^S$%_+-fG-].
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "-c", "123456", "-o", "github"})
 
 	_, err := rootCmd.ExecuteC()
 	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
@@ -612,7 +602,7 @@ func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_CharacterClassWithBrac
 ##!+ i
 Chara[ct]er class with brackets: [$l\][2R [fl\]iF]
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "-c", "123456", "-o", "github"})
 
 	_, err := rootCmd.ExecuteC()
 	s.EqualError(err, fmt.Sprintf("File not properly formatted: %s", path.Join(s.dataDir, "123456.ra")))
@@ -630,7 +620,7 @@ func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_IgnoreShortHands() {
 ##!+ i
 [\W\S]
 `)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "format", "-c", "123456", "-o", "github"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "format", "-c", "123456", "-o", "github"})
 
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)

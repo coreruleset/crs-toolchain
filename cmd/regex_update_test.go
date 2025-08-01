@@ -15,7 +15,6 @@ import (
 
 type updateTestSuite struct {
 	suite.Suite
-	tempDir  string
 	dataDir  string
 	rulesDir string
 }
@@ -23,21 +22,12 @@ type updateTestSuite struct {
 func (s *updateTestSuite) SetupTest() {
 	rebuildUpdateCommand()
 
-	tempDir, err := os.MkdirTemp("", "update-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.dataDir = path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(s.dataDir, fs.ModePerm)
+	s.dataDir = path.Join(s.T().TempDir(), "regex-assembly")
+	err := os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	s.rulesDir = path.Join(s.tempDir, "rules")
+	s.rulesDir = path.Join(s.T().TempDir(), "rules")
 	err = os.Mkdir(s.rulesDir, fs.ModePerm)
-	s.Require().NoError(err)
-}
-
-func (s *updateTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
 	s.Require().NoError(err)
 }
 
@@ -48,7 +38,7 @@ func TestRunUpdateTestSuite(t *testing.T) {
 func (s *updateTestSuite) TestUpdate_NormalRuleId() {
 	s.writeDataFile("123456.ra", "")
 	s.writeRuleFile("123456", `SecRule "@rx regex" \\`+"\nid:123456")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "update", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("update", cmd.Name())
@@ -64,7 +54,7 @@ func (s *updateTestSuite) TestUpdate_NormalRuleId() {
 }
 
 func (s *updateTestSuite) TestUpdate_AllFlag() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "update", "--all"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("update", cmd.Name())
@@ -79,21 +69,21 @@ func (s *updateTestSuite) TestUpdate_AllFlag() {
 }
 
 func (s *updateTestSuite) TestUpdate_NoRuleIdNoAllFlagReturnsError() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "update"})
 	_, err := rootCmd.ExecuteC()
 
 	s.EqualError(err, "expected either RULE_ID or flag, found neither")
 }
 
 func (s *updateTestSuite) TestUpdate_BothRuleIdAndAllFlagReturnsError() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "123456", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "update", "123456", "--all"})
 	_, err := rootCmd.ExecuteC()
 
 	s.EqualError(err, "expected either RULE_ID or flag, found both")
 }
 
 func (s *updateTestSuite) TestUpdate_DashReturnsError() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "-"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "update", "-"})
 	_, err := rootCmd.ExecuteC()
 
 	s.EqualError(err, "failed to match rule ID")
@@ -108,7 +98,7 @@ SecRule ARGS "@rx regex2" \
 	"id:123457"
 SecRule ARGS '@rx regex3" \
 	"id:123458"`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "update", "--all"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -126,7 +116,7 @@ func (s *updateTestSuite) TestUpdate_UpdatesInverseRx() {
 	s.writeDataFile("123456.ra", "homer")
 	s.writeRuleFile("123456", `SecRule ARGS "!@rx regex1" \
 	"id:123456"`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "update", "--all"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -142,7 +132,7 @@ func (s *updateTestSuite) TestUpdate_UpdatesChainedRule() {
 	"id:123456, \
 	chain"
 		SecRule ARGS "@rx regex2" \`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "update", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "update", "--all"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 

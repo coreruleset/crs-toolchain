@@ -16,7 +16,6 @@ import (
 
 type configurationTestSuite struct {
 	suite.Suite
-	tempDir     string
 	assemblyDir string
 }
 
@@ -31,17 +30,8 @@ func (s *configurationTestSuite) writeConfig(config *Configuration) {
 }
 
 func (s *configurationTestSuite) SetupTest() {
-	tempDir, err := os.MkdirTemp("", "configuration-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.assemblyDir = path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(s.assemblyDir, fs.ModePerm)
-	s.Require().NoError(err)
-}
-
-func (s *configurationTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
+	s.assemblyDir = path.Join(s.T().TempDir(), "regex-assembly")
+	err := os.MkdirAll(s.assemblyDir, fs.ModePerm)
 	s.Require().NoError(err)
 }
 

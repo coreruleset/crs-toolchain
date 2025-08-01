@@ -16,7 +16,6 @@ import (
 
 type renumberTestsTestSuite struct {
 	suite.Suite
-	tempDir  string
 	testsDir string
 }
 
@@ -54,21 +53,12 @@ func (s *renumberTestsTestSuite) SetupTest() {
 	rebuildUtilCommand()
 	rebuildRenumberTestsCommand()
 
-	tempDir, err := os.MkdirTemp("", "renumber-tests-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	dataDir := path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(dataDir, fs.ModePerm)
+	dataDir := path.Join(s.T().TempDir(), "regex-assembly")
+	err := os.MkdirAll(dataDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	s.testsDir = path.Join(s.tempDir, "tests", "regression", "tests")
+	s.testsDir = path.Join(s.T().TempDir(), "tests", "regression", "tests")
 	err = os.MkdirAll(s.testsDir, fs.ModePerm)
-	s.Require().NoError(err)
-}
-
-func (s *renumberTestsTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
 	s.Require().NoError(err)
 }
 
@@ -78,7 +68,7 @@ func TestRunRenumberTestsTestSuite(t *testing.T) {
 
 func (s *renumberTestsTestSuite) TestRenumberTests_WithYaml() {
 	s.writeTestFile("123456.yaml", "test_id: homer")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -88,7 +78,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_WithYaml() {
 
 func (s *renumberTestsTestSuite) TestRenumberTests_WithYml() {
 	s.writeTestFile("123456.yml", "test_id: homer")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -98,7 +88,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_WithYml() {
 
 func (s *renumberTestsTestSuite) TestRenumberTests_NormalRuleId() {
 	s.writeTestFile("123456.yaml", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("renumber-tests", cmd.Name())
@@ -123,7 +113,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_ArgumentAndAllFlag() {
 }
 
 func (s *renumberTestsTestSuite) TestRenumberTests_Dash() {
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "-"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "-"})
 	_, err := rootCmd.ExecuteC()
 
 	s.EqualError(err, "invalid argument '-'")
@@ -132,7 +122,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_Dash() {
 func (s *renumberTestsTestSuite) TestRenumberTests_CheckOnly() {
 	contents := "test_id: homer"
 	s.writeTestFile("123456.yaml", contents)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "-c", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "-c", "123456"})
 	_, err := rootCmd.ExecuteC()
 
 	s.EqualError(err, "Tests are not properly numbered")
@@ -146,7 +136,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_GitHubOutput() {
 
 	contents := "test_id: homer"
 	s.writeTestFile("123456.yaml", contents)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "-cao", "github"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "-cao", "github"})
 	_, err := rootCmd.ExecuteC()
 
 	s.ErrorIs(err, &util.TestNumberingError{})
@@ -163,7 +153,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_GitHubOutput() {
 
 func (s *renumberTestsTestSuite) TestRenumberTests_Legacy_WithYaml() {
 	s.writeTestFile("123456.yaml", "test_title: homer")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -173,7 +163,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_Legacy_WithYaml() {
 
 func (s *renumberTestsTestSuite) TestRenumberTests_Legacy_WithYml() {
 	s.writeTestFile("123456.yml", "test_title: homer")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "123456"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -184,7 +174,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_Legacy_WithYml() {
 func (s *renumberTestsTestSuite) TestRenumberTests_Legacy_CheckOnly() {
 	contents := "test_title: homer"
 	s.writeTestFile("123456.yaml", contents)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "-c", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "-c", "123456"})
 	_, err := rootCmd.ExecuteC()
 
 	s.EqualError(err, "Tests are not properly numbered")
@@ -198,7 +188,7 @@ func (s *renumberTestsTestSuite) TestRenumberTests_Legacy_GitHubOutput() {
 
 	contents := "test_title: homer"
 	s.writeTestFile("123456.yaml", contents)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "util", "renumber-tests", "-cao", "github"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "util", "renumber-tests", "-cao", "github"})
 	_, err := rootCmd.ExecuteC()
 
 	s.ErrorIs(err, &util.TestNumberingError{})

@@ -14,7 +14,6 @@ import (
 
 type choreTestSuite struct {
 	suite.Suite
-	tempDir  string
 	dataDir  string
 	rulesDir string
 }
@@ -23,21 +22,12 @@ func (s *choreTestSuite) SetupTest() {
 	rebuildChoreCommand()
 	rebuildChoreUpdateCopyrightCommand()
 
-	tempDir, err := os.MkdirTemp("", "chore-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.dataDir = path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(s.dataDir, fs.ModePerm)
+	s.dataDir = path.Join(s.T().TempDir(), "regex-assembly")
+	err := os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	s.rulesDir = path.Join(s.tempDir, "rules")
+	s.rulesDir = path.Join(s.T().TempDir(), "rules")
 	err = os.Mkdir(s.rulesDir, fs.ModePerm)
-	s.Require().NoError(err)
-}
-
-func (s *choreTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
 	s.Require().NoError(err)
 }
 
@@ -58,7 +48,7 @@ func (s *choreTestSuite) TestChore_RulesFile() {
 
 #
 # This file REQUEST-901-INITIALIZATION.conf initializes the Core Rules`)
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "chore", "update-copyright", "-v", "1.2.3", "-y", "1234"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "chore", "update-copyright", "-v", "1.2.3", "-y", "1234"})
 	_, err := rootCmd.ExecuteC()
 
 	s.Require().NoError(err, "failed to execute rootCmd")

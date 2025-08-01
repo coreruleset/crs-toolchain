@@ -19,23 +19,15 @@ import (
 
 type selfUpdateTestSuite struct {
 	suite.Suite
-	tempDir        string
 	executablePath string
 }
 
 func (s *selfUpdateTestSuite) SetupTest() {
 	var err error
 	rebuildSelfUpdateCommand()
-	s.tempDir, err = os.MkdirTemp("", "self-update-tests")
-	s.Require().NoError(err)
 
-	s.executablePath = path.Join(s.tempDir, "crs-toolchain")
+	s.executablePath = path.Join(s.T().TempDir(), "crs-toolchain")
 	err = os.WriteFile(s.executablePath, []byte("Fake Binary"), fs.ModePerm)
-	s.Require().NoError(err)
-}
-
-func (s *selfUpdateTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
 	s.Require().NoError(err)
 }
 

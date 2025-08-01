@@ -16,7 +16,6 @@ import (
 
 type compareTestSuite struct {
 	suite.Suite
-	tempDir  string
 	dataDir  string
 	rulesDir string
 }
@@ -47,21 +46,12 @@ func (s *compareTestSuite) captureStdout() *os.File {
 
 func (s *compareTestSuite) SetupTest() {
 	rebuildCompareCommand()
-	tempDir, err := os.MkdirTemp("", "compare-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.dataDir = path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(s.dataDir, fs.ModePerm)
+	s.dataDir = path.Join(s.T().TempDir(), "regex-assembly")
+	err := os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	s.rulesDir = path.Join(s.tempDir, "rules")
+	s.rulesDir = path.Join(s.T().TempDir(), "rules")
 	err = os.Mkdir(s.rulesDir, fs.ModePerm)
-	s.Require().NoError(err)
-}
-
-func (s *compareTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
 	s.Require().NoError(err)
 }
 
@@ -72,7 +62,7 @@ func TestRunCompareTestSuite(t *testing.T) {
 func (s *compareTestSuite) TestCompare_NormalRuleId() {
 	s.writeDataFile("123456.ra", "")
 	s.writeRuleFile("123456", `SecRule... "@rx regex" \\`+"\nid:123456")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "123456"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "compare", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("compare", cmd.Name())
@@ -95,7 +85,7 @@ SecRule... "@rx oldbar" \
 id:123457`)
 	s.writeDataFile("123456.ra", "foo")
 	s.writeDataFile("123457.ra", "bar")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "compare", "--all"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	s.Equal("compare", cmd.Name())
@@ -127,7 +117,7 @@ func (s *compareTestSuite) TestCompare_NoChange() {
 	s.writeRuleFile("123456", `SecRule... "@rx foo" \
 id:123456`)
 	s.writeDataFile("123456.ra", "foo")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "compare", "--all"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
@@ -146,7 +136,7 @@ func (s *compareTestSuite) TestCompare_Change() {
 	s.writeRuleFile("123456", `SecRule... "@rx oldfoo" \
 id:123456`)
 	s.writeDataFile("123456.ra", "foo")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "compare", "--all"})
+	rootCmd.SetArgs([]string{"-d", s.T().TempDir(), "regex", "compare", "--all"})
 	_, err := rootCmd.ExecuteC()
 	s.Require().NoError(err)
 
