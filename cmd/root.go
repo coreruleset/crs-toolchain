@@ -7,24 +7,24 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
+	"github.com/coreruleset/crs-toolchain/v2/cmd/chore"
+	"github.com/coreruleset/crs-toolchain/v2/cmd/completion"
+	"github.com/coreruleset/crs-toolchain/v2/cmd/internal"
+	"github.com/coreruleset/crs-toolchain/v2/cmd/regex"
+	"github.com/coreruleset/crs-toolchain/v2/cmd/util"
 )
 
-const defaultLogLevel = zerolog.InfoLevel
-
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = createRootCommand()
 var logger = log.With().Str("component", "cmd").Logger()
-var rootValues = struct {
-	output                outputType
-	logLevel              logLevel
-	workingDirectory      workingDirectory
-	configurationFileName configurationFileName
-}{}
+var configurationFileNameFlag *internal.ConfigurationFileNameFlag
+var logLevelFlag *internal.LogLevelFlag
+var outputTypeFlag *internal.OutputTypeFlag
+var workingDirectoryFlag *internal.WorkingDirectoryFlag
 
 func Execute(version, commit, date, builtBy string) {
+	rootCmd := New()
 	rootCmd.Version = version
 	versionTemplate := fmt.Sprintf("{{with .Name}}"+
 		"{{printf \"%%s \" .}}{{end}}"+
@@ -37,49 +37,40 @@ func Execute(version, commit, date, builtBy string) {
 	}
 }
 
-func init() {
+func New() *cobra.Command {
 	cwd, err := os.Getwd()
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to resolve working directory")
 	}
-	rootValues = struct {
-		output                outputType
-		logLevel              logLevel
-		workingDirectory      workingDirectory
-		configurationFileName configurationFileName
-	}{
-		output:                text,
-		logLevel:              logLevel(defaultLogLevel.String()),
-		workingDirectory:      workingDirectory(cwd),
-		configurationFileName: configurationFileName("toolchain.yaml"),
-	}
-
-	buildRootCommand()
-}
-
-func createRootCommand() *cobra.Command {
-	return &cobra.Command{
+	cmdContext := internal.NewCommandContext(cwd)
+	rootCmd := &cobra.Command{
 		Use:   "crs-toolchain",
 		Short: "The Core Ruleset toolchain",
 	}
+
+	buildFlags(rootCmd, cmdContext)
+	rootCmd.AddCommand(
+		chore.New(cmdContext),
+		completion.New(),
+		regex.New(cmdContext),
+		util.New(cmdContext),
+	)
+	return rootCmd
 }
 
-func buildRootCommand() {
-	rootCmd.PersistentFlags().VarP(&rootValues.logLevel, "log-level", "l",
+func buildFlags(rootCmd *cobra.Command, cmdContext *internal.CommandContext) {
+	configurationFileNameFlag = &internal.ConfigurationFileNameFlag{Context: cmdContext, Logger: &logger}
+	logLevelFlag = &internal.LogLevelFlag{Context: cmdContext, Logger: &logger}
+	outputTypeFlag = &internal.OutputTypeFlag{Context: cmdContext}
+	workingDirectoryFlag = &internal.WorkingDirectoryFlag{Context: cmdContext, Logger: &logger}
+
+	rootCmd.PersistentFlags().VarP(logLevelFlag, "log-level", "l",
 		`Set the application log level
 Options: 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic', 'disabled'`)
-	rootCmd.PersistentFlags().VarP(&rootValues.output, "output", "o", "Output format. One of 'text', 'github'.")
-	rootCmd.PersistentFlags().VarP(&rootValues.workingDirectory, "directory", "d",
+	rootCmd.PersistentFlags().VarP(outputTypeFlag, "output", "o", "Output format. One of 'text', 'github'.")
+	rootCmd.PersistentFlags().VarP(workingDirectoryFlag, "directory", "d",
 		`Absolute or relative path to the CRS directory.
 If not specified, the command is assumed to run inside the CRS directory`)
-	rootCmd.PersistentFlags().VarP(&rootValues.configurationFileName, "configuration", "f",
+	rootCmd.PersistentFlags().VarP(configurationFileNameFlag, "configuration", "f",
 		"Name of the configuration file")
-}
-
-func rebuildRootCommand() {
-	rootCmd = createRootCommand()
-	rootValues.output = "text"
-	rootValues.logLevel = logLevel(defaultLogLevel.String())
-
-	buildRootCommand()
 }

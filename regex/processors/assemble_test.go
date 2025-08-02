@@ -4,7 +4,7 @@
 package processors
 
 import (
-	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -14,36 +14,21 @@ import (
 
 type assembleTestSuite struct {
 	suite.Suite
+	rootDir string
 	ctx     *Context
-	tempDir string
 }
 
 type fileFormatTestSuite assembleTestSuite
 
 func (suite *assembleTestSuite) SetupSuite() {
-	var err error
-	suite.tempDir, err = os.MkdirTemp("", "assemble-test")
-	suite.Require().NoError(err)
-	rootContext := context.New(suite.tempDir, "toolchain.yaml")
+	suite.rootDir = suite.T().TempDir()
+	rootContext := context.New(suite.rootDir, "toolchain.yaml")
 	suite.ctx = NewContext(rootContext)
-}
-
-func (suite *assembleTestSuite) TearDownSuite() {
-	err := os.RemoveAll(suite.tempDir)
-	suite.Require().NoError(err)
 }
 
 func (suite *fileFormatTestSuite) SetupSuite() {
-	var err error
-	suite.tempDir, err = os.MkdirTemp("", "file-format-test")
-	suite.Require().NoError(err)
-	rootContext := context.New(suite.tempDir, "toolchain.yaml")
+	rootContext := context.New(suite.rootDir, "toolchain.yaml")
 	suite.ctx = NewContext(rootContext)
-}
-
-func (suite *fileFormatTestSuite) TearDownSuite() {
-	err := os.RemoveAll(suite.tempDir)
-	suite.Require().NoError(err)
 }
 
 func TestRunAssembleTestSuite(t *testing.T) {
@@ -55,8 +40,8 @@ func (s *assembleTestSuite) TestNewAssemble() {
 	assemble := NewAssemble(s.ctx)
 
 	s.NotNil(assemble)
-	s.Equal(assemble.proc.ctx.RootContext().RootDir(), s.tempDir)
-	s.Equal(assemble.proc.ctx.RootContext().AssemblyDir(), s.tempDir+"/regex-assembly")
+	s.Equal(assemble.proc.ctx.RootContext().RootDir(), s.rootDir)
+	s.Equal(assemble.proc.ctx.RootContext().AssemblyDir(), path.Join(s.rootDir, "/regex-assembly"))
 }
 
 func (s *assembleTestSuite) TestAssemble_MultipleLines() {

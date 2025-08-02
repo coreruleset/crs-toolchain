@@ -21,6 +21,7 @@ import (
 
 type parserIncludeTestSuite struct {
 	suite.Suite
+	rootDir     string
 	ctx         *processors.Context
 	reader      io.Reader
 	tempDir     string
@@ -40,15 +41,12 @@ func TestRunParserIncludeTestSuite(t *testing.T) {
 }
 
 func (s *parserIncludeTestSuite) SetupTest() {
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "include-tests")
+	s.rootDir = s.T().TempDir()
+	s.includeDir = path.Join(s.rootDir, "regex-assembly", "include")
+	err := os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	s.includeDir = path.Join(s.tempDir, "regex-assembly", "include")
-	err = os.MkdirAll(s.includeDir, fs.ModePerm)
-	s.Require().NoError(err)
-
-	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	rootContext := context.New(s.rootDir, "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
 	s.includeFile, err = os.Create(path.Join(s.includeDir, "test.ra"))
 	s.Require().NoError(err, "couldn't create %s file", s.includeFile.Name())
