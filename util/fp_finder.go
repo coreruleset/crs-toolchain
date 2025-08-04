@@ -6,6 +6,7 @@ package util
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"slices"
@@ -70,7 +71,7 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 	}
 
 	// Load input file into memory
-	inputFile, err := t.loadFileContent(inputFilePath)
+	inputFile, err := t.loadInput(inputFilePath)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to load input file")
 	}
@@ -86,7 +87,7 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 }
 
 func (t *FpFinder) loadDictionary(path string, minWordLength int) (map[string]struct{}, error) {
-	lines, err := t.loadFileContent(path)
+	lines, err := t.loadInput(path)
 	if err != nil {
 		return nil, err
 	}
@@ -114,17 +115,37 @@ func (t *FpFinder) mergeDictionaries(a, b map[string]struct{}) map[string]struct
 	return merged
 }
 
-func (t *FpFinder) loadFileContent(path string) ([]string, error) {
+func (t *FpFinder) loadInput(path string) ([]string, error) {
+	if path == "-" {
+		return t.loadInputFromStdIn()
+	} else {
+		return t.loadInputFromFile(path)
+	}
+}
+
+func (t *FpFinder) loadInputFromStdIn() ([]string, error) {
+	logger.Trace().Msg("Reading from stdin")
+	words, err := t.wordsFromInput(os.Stdin)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to read from stdin")
+	}
+	return words, nil
+}
+
+func (t *FpFinder) loadInputFromFile(path string) ([]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 
 	defer file.Close()
+	return t.wordsFromInput(file)
+}
 
+func (t *FpFinder) wordsFromInput(reader io.Reader) ([]string, error) {
 	var content []string
 
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		word := strings.TrimSpace(scanner.Text())
 		content = append(content, word)

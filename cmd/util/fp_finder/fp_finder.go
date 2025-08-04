@@ -20,15 +20,20 @@ var englishDictionaryCommitRef string
 
 func New(cmdContext *internal.CommandContext) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "fp-finder FILEPATH",
+		Use:   "fp-finder FILEPATH | -",
 		Short: `False positive finder`,
+		Long: `Takes a list of words from FILEPATH (one word per line) and eliminates all words that
+can be found in an English dictionary, since these are likely to cause false positives.
+
+The special token '-' will cause the script to accept input
+from stdin instead.`,
 		Args: cobra.MatchAll(cobra.MaximumNArgs(1), cobra.MinimumNArgs(1), func(cmd *cobra.Command, args []string) error {
 			return nil
 		}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fpFinder := util.NewFpFinder()
 			filenameArg := args[0]
-			if !checkFilePath(filenameArg) {
+			if filenameArg != "-" && !checkFilePath(filenameArg) {
 				return fmt.Errorf("file %s doesn't exist", filenameArg)
 			}
 

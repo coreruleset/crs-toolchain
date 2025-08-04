@@ -40,3 +40,10 @@ func (s *fpFinderTestSuite) TestNoArgument() {
 	args := flags.Args()
 	s.Len(args, 0)
 }
+
+func (s *fpFinderTestSuite) TestDash() {
+	s.cmd.SetArgs([]string{"-"})
+	_, err := s.cmd.ExecuteC()
+
+	s.Require().NoError(err)
+}
