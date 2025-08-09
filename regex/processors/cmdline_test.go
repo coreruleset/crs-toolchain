@@ -4,6 +4,7 @@
 package processors
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -98,13 +99,69 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFoo() {
 	s.Equal(`f_av-u_o_av-u_o`, cmd.proc.lines[0])
 }
 
-func (s *cmdLineTestSuite) TestCmdLine_ProcessLinePattern() {
+func (s *cmdLineTestSuite) TestCmdLine_ProcessLineWithDash() {
 	cmd := NewCmdLine(s.ctx, CmdLineUnix)
 
-	err := cmd.ProcessLine(`gcc-10.`)
+	err := cmd.ProcessLine(`gcc10\-`)
 	s.Require().NoError(err)
 
-	s.Equal(`g_av-u_c_av-u_c_av-u_\-_av-u_1_av-u_0_av-u_\.`, cmd.proc.lines[0])
+	s.Equal(`g_av-u_c_av-u_c_av-u_1_av-u_0_av-u_\-`, cmd.proc.lines[0])
+
+	err = cmd.ProcessLine(`gcc\-10`)
+	s.Require().NoError(err)
+
+	s.Equal(`g_av-u_c_av-u_c_av-u_\-_av-u_1_av-u_0`, cmd.proc.lines[1])
+}
+
+func (s *cmdLineTestSuite) TestCmdLine_ProcessLineWithDot() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	err := cmd.ProcessLine(`gcc10\.`)
+	s.Require().NoError(err)
+
+	s.Equal(`g_av-u_c_av-u_c_av-u_1_av-u_0_av-u_\.`, cmd.proc.lines[0])
+
+	err = cmd.ProcessLine(`gcc\.10`)
+	s.Require().NoError(err)
+
+	s.Equal(`g_av-u_c_av-u_c_av-u_\._av-u_1_av-u_0`, cmd.proc.lines[1])
+}
+
+func (s *cmdLineTestSuite) TestCmdLine_ProcessLineWithPlus() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	err := cmd.ProcessLine(`gcc10\+`)
+	s.Require().NoError(err)
+
+	s.Equal(`g_av-u_c_av-u_c_av-u_1_av-u_0_av-u_\+`, cmd.proc.lines[0])
+
+	err = cmd.ProcessLine(`gcc\+10`)
+	s.Require().NoError(err)
+
+	s.Equal(`g_av-u_c_av-u_c_av-u_\+_av-u_1_av-u_0`, cmd.proc.lines[1])
+}
+
+func (s *cmdLineTestSuite) TestCmdLine_ProcessLineWithSpace() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	err := cmd.ProcessLine(`gcc 10`)
+	s.Require().NoError(err)
+
+	s.Equal(`g_av-u_c_av-u_c_av-u_\s+_av-u_1_av-u_0`, cmd.proc.lines[0])
+}
+
+func (s *cmdLineTestSuite) TestCmdLine_ProcessLineWithUnescapedMetaCharacter() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	for _, char := range []byte{'.', '+'} {
+		line := "gcc" + string(char) + "10"
+		err := cmd.ProcessLine(line)
+		s.ErrorContains(err, fmt.Sprintf("found unescaped meta character `%s` in %s", string(char), line))
+
+		line = "gcc10" + string(char)
+		err = cmd.ProcessLine(line)
+		s.ErrorContains(err, fmt.Sprintf("found unescaped meta character `%s` in %s", string(char), line))
+	}
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLineFooWindows() {
