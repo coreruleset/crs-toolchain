@@ -150,21 +150,28 @@ func (c *CmdLine) regexpStr(input string) string {
 	return result.String()
 }
 
-// regexpChar ensures that some special characters are escaped
+// regexpChar ensures that some special characters are escaped.
+// Note that we do this so we don't have to treat the entries in command
+// lists as regular expressions, i.e., entries like `c++` don't need to be
+// escaped.
 func (c *CmdLine) regexpChar(char byte) string {
 	logger.Trace().Msgf("regexpChar in: %v", char)
 
 	chars := ""
 	switch char {
 	case '.':
-		chars = "\\."
+		fallthrough
 	case '-':
-		chars = "\\-"
+		fallthrough
+	case '+':
+		chars = "\\" + string(char)
+	case ' ':
+		chars = "\\s+"
 	default:
 		chars = string(char)
 	}
 	logger.Trace().Msgf("regexpChar out: %s", chars)
-	return strings.ReplaceAll(chars, " ", "\\s+")
+	return chars
 }
 
 // Computes the evasion suffix based on the presence of `@` or `~` at
