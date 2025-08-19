@@ -12,6 +12,7 @@ import (
 
 	"github.com/coreruleset/crs-toolchain/v2/cmd/chore"
 	"github.com/coreruleset/crs-toolchain/v2/cmd/completion"
+	generate "github.com/coreruleset/crs-toolchain/v2/cmd/generate"
 	"github.com/coreruleset/crs-toolchain/v2/cmd/internal"
 	"github.com/coreruleset/crs-toolchain/v2/cmd/regex"
 	"github.com/coreruleset/crs-toolchain/v2/cmd/util"
@@ -50,6 +51,7 @@ func New() *cobra.Command {
 
 	buildFlags(rootCmd, cmdContext)
 	rootCmd.AddCommand(
+		generate.New(cmdContext),
 		chore.New(cmdContext),
 		completion.New(),
 		regex.New(cmdContext),
