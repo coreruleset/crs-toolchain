@@ -56,3 +56,4 @@ type Generator interface {
 ### Status
 
 This is an experimental feature. The interface and implementation may change based on feedback and requirements.
+

@@ -5,6 +5,9 @@ package seclang
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -17,21 +20,26 @@ func NewYAMLGenerator() *YAMLGenerator {
 	return &YAMLGenerator{}
 }
 
-// Generate creates YAML output for a single rule
+// Generate creates YAML output for a single rule (legacy, kept for backward compatibility)
 func (yg *YAMLGenerator) Generate(rule Rule) ([]byte, error) {
 	return yaml.Marshal(rule)
 }
 
 // GenerateFile creates YAML output for all rules in a file
 func (yg *YAMLGenerator) GenerateFile(filePath string) ([]byte, error) {
-	rules, err := ParseRuleFile(filePath)
+	directiveList, err := ParseRuleFileToDirectiveList(filePath)
 	if err != nil {
 		return nil, err
 	}
-	return yg.GenerateMultiple(rules)
+	return yg.GenerateDirectiveList(directiveList)
 }
 
-// GenerateMultiple creates YAML output for multiple rules
+// GenerateDirectiveList creates YAML output for a DirectiveList
+func (yg *YAMLGenerator) GenerateDirectiveList(directiveList *DirectiveList) ([]byte, error) {
+	return yaml.Marshal(directiveList)
+}
+
+// GenerateMultiple creates YAML output for multiple rules (legacy, kept for backward compatibility)
 func (yg *YAMLGenerator) GenerateMultiple(rules []Rule) ([]byte, error) {
 	// Follow the crslang pattern: create a ConfigurationList structure
 	if len(rules) == 0 {
@@ -48,15 +56,62 @@ func (yg *YAMLGenerator) GenerateMultiple(rules []Rule) ([]byte, error) {
 	// Create DirectiveList for each group
 	var directiveLists []DirectiveList
 	for prefix, groupRules := range ruleGroups {
+		// Convert legacy Rule to SeclangDirective (using a simple wrapper)
+		var directives []SeclangDirective
+		for _, rule := range groupRules {
+			// For legacy compatibility, we'll create a simple wrapper
+			// This is not ideal but maintains backward compatibility
+			directives = append(directives, &legacyRuleWrapper{rule})
+		}
+		
 		directiveList := DirectiveList{
 			ID:         prefix,
-			Directives: groupRules,
+			Directives: directives,
 		}
 		directiveLists = append(directiveLists, directiveList)
 	}
 
 	configList := ConfigurationList{
 		DirectiveList: directiveLists,
+	}
+
+	return yaml.Marshal(configList.DirectiveList)
+}
+
+// legacyRuleWrapper is a wrapper to make legacy Rule compatible with SeclangDirective interface
+type legacyRuleWrapper struct {
+	Rule Rule
+}
+
+func (lrw *legacyRuleWrapper) ToSeclang() string {
+	return lrw.Rule.RawRule
+}
+
+// GenerateFromDirectory creates YAML output for all .conf files in a directory
+func (yg *YAMLGenerator) GenerateFromDirectory(dirPath string) ([]byte, error) {
+	var allDirectiveLists []DirectiveList
+
+	// Walk through the directory to find .conf files
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".conf") {
+			directiveList, err := ParseRuleFileToDirectiveList(path)
+			if err != nil {
+				return err
+			}
+			allDirectiveLists = append(allDirectiveLists, *directiveList)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	configList := ConfigurationList{
+		DirectiveList: allDirectiveLists,
 	}
 
 	return yaml.Marshal(configList.DirectiveList)

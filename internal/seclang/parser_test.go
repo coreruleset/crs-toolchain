@@ -26,16 +26,30 @@ func (s *parserTestSuite) TestParseRuleFile() {
 	}
 
 	// Test parsing the rule file
-	rules, err := ParseRuleFile(testFile)
+	directives, err := ParseRuleFile(testFile)
 	s.Require().NoError(err, "Failed to parse rule file")
-	s.NotEmpty(rules, "Expected at least one rule")
+	s.NotEmpty(directives, "Expected at least one directive")
 
-	rule := rules[0]
-	s.Equal("942100", rule.ID, "Expected rule ID 942100")
-	s.Equal("2", rule.Phase, "Expected phase 2")
+	// Find the first rule directive
+	var ruleWithCondition *RuleWithCondition
+	for _, directive := range directives {
+		if rule, ok := directive.(*RuleWithCondition); ok {
+			ruleWithCondition = rule
+			break
+		}
+	}
+	s.NotNil(ruleWithCondition, "Expected to find a rule directive")
 
-	// Test YAML generation
-	yamlData, err := GenerateYAML(rule)
+	// Test rule metadata
+	s.Equal(942100, ruleWithCondition.Metadata.Id, "Expected rule ID 942100")
+	s.Equal("2", ruleWithCondition.Metadata.Phase, "Expected phase 2")
+
+	// Test YAML generation using the new generator
+	yamlGenerator := NewYAMLGenerator()
+	directiveList, err := ParseRuleFileToDirectiveList(testFile)
+	s.Require().NoError(err, "Failed to parse rule file to directive list")
+	
+	yamlData, err := yamlGenerator.GenerateDirectiveList(directiveList)
 	s.Require().NoError(err, "Failed to generate YAML")
 	s.NotEmpty(yamlData, "Generated YAML should not be empty")
 
@@ -67,4 +81,28 @@ func (s *parserTestSuite) TestParseRuleFileToYAML() {
 	s.T().Logf("Generated YAML: %s", yamlStr)
 	s.Contains(yamlStr, "942100", "Generated YAML should contain rule ID")
 	s.Contains(yamlStr, "phase", "Generated YAML should contain phase information")
+}
+
+func (s *parserTestSuite) TestParseRuleFileToDirectiveList() {
+	// Use testdata file
+	testFile := "../../testdata/test-rules/test-rule.conf"
+	if _, err := os.Stat(testFile); os.IsNotExist(err) {
+		s.T().Skipf("Test file %s does not exist, skipping test", testFile)
+	}
+
+	// Test parsing the rule file to directive list
+	directiveList, err := ParseRuleFileToDirectiveList(testFile)
+	s.Require().NoError(err, "Failed to parse rule file to directive list")
+	s.NotNil(directiveList, "Expected directive list to be created")
+	s.Equal("test-rule", directiveList.ID, "Expected directive list ID to match filename")
+	s.NotEmpty(directiveList.Directives, "Expected at least one directive")
+
+	// Verify we have rule directives
+	ruleCount := 0
+	for _, directive := range directiveList.Directives {
+		if _, ok := directive.(*RuleWithCondition); ok {
+			ruleCount++
+		}
+	}
+	s.Equal(2, ruleCount, "Expected 2 rule directives")
 }

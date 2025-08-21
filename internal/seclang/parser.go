@@ -14,8 +14,8 @@ import (
 	"github.com/coreruleset/seclang_parser/parser"
 )
 
-// ParseRuleFile parses a seclang rule file and returns a list of rules
-func ParseRuleFile(filePath string) ([]Rule, error) {
+// ParseRuleFile parses a seclang rule file and returns a list of directives
+func ParseRuleFile(filePath string) ([]SeclangDirective, error) {
 	input, err := antlr.NewFileStream(filePath)
 	if err != nil {
 		return nil, err
@@ -28,17 +28,33 @@ func ParseRuleFile(filePath string) ([]Rule, error) {
 	var seclangListener listener.ExtendedSeclangParserListener
 	antlr.ParseTreeWalkerDefault.Walk(&seclangListener, start)
 
-	var rules []Rule
+	var directives []SeclangDirective
 	for _, directiveList := range seclangListener.ConfigurationList.DirectiveList {
 		for _, directive := range directiveList.Directives {
-			if secRule, ok := directive.(*types.SecRule); ok {
-				rule := convertSecRuleToRule(secRule)
-				rules = append(rules, rule)
+			convertedDirective := convertDirective(directive)
+			if convertedDirective != nil {
+				directives = append(directives, convertedDirective)
 			}
 		}
 	}
 
-	return rules, nil
+	return directives, nil
+}
+
+// ParseRuleFileToDirectiveList parses a seclang rule file and returns a DirectiveList
+func ParseRuleFileToDirectiveList(filePath string) (*DirectiveList, error) {
+	directives, err := ParseRuleFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract filename without extension for ID
+	fileName := strings.TrimSuffix(filePath[strings.LastIndex(filePath, "/")+1:], ".conf")
+	
+	return &DirectiveList{
+		ID:         fileName,
+		Directives: directives,
+	}, nil
 }
 
 // GenerateYAML generates YAML data from a Rule (deprecated, use YAMLGenerator instead)
@@ -47,7 +63,208 @@ func GenerateYAML(rule Rule) ([]byte, error) {
 	return generator.Generate(rule)
 }
 
-// convertSecRuleToRule converts a crslang SecRule to our Rule type
+// convertDirective converts a crslang directive to our SeclangDirective type
+func convertDirective(directive interface{}) SeclangDirective {
+	switch d := directive.(type) {
+	case *types.SecRule:
+		return convertSecRuleToRuleWithCondition(d)
+	case *types.SecAction:
+		return convertSecActionToRuleWithCondition(d)
+	case *types.SecRuleScript:
+		return convertSecRuleScriptToRuleWithCondition(d)
+	case *types.CommentMetadata:
+		return CommentDirective{
+			Kind:     CommentKind,
+			Metadata: CommentMetadata{Comment: d.Comment},
+		}
+	case *types.ConfigurationDirective:
+		return ConfigurationDirective{
+			Kind:      ConfigurationKind,
+			Metadata:  &CommentMetadata{Comment: d.Metadata.Comment},
+			Name:      string(d.Name),
+			Parameter: d.Parameter,
+		}
+	default:
+		return nil
+	}
+}
+
+// convertSecRuleToRuleWithCondition converts a crslang SecRule to our RuleWithCondition type
+func convertSecRuleToRuleWithCondition(secRule *types.SecRule) *RuleWithCondition {
+	rule := &RuleWithCondition{
+		Kind: RuleKind,
+		Metadata: SecRuleMetadata{
+			Comment:  secRule.Metadata.Comment,
+			Phase:    secRule.Metadata.Phase,
+			Id:       secRule.Metadata.Id,
+			Message:  secRule.Metadata.Msg,
+			Severity: secRule.Metadata.Severity,
+			Tags:     secRule.Metadata.Tags,
+			Version:  secRule.Metadata.Ver,
+			Maturity: secRule.Metadata.Maturity,
+			Rev:      secRule.Metadata.Rev,
+		},
+		Conditions: []Condition{
+			SecRuleCondition{
+				Variables:   convertVariables(secRule.Variables),
+				Collections: convertCollections(secRule.Collections),
+				Operator:    convertOperator(secRule.Operator),
+				Transformations: Transformations{
+					Transformations: convertTransformations(secRule.Transformations.Transformations),
+				},
+			},
+		},
+		Actions: convertActions(secRule.Actions),
+	}
+
+	// Handle chained rule
+	if secRule.ChainedRule != nil {
+		if chainedSecRule, ok := secRule.ChainedRule.(*types.SecRule); ok {
+			rule.ChainedRule = convertSecRuleToRuleWithCondition(chainedSecRule)
+		}
+	}
+
+	return rule
+}
+
+// convertSecActionToRuleWithCondition converts a crslang SecAction to our RuleWithCondition type
+func convertSecActionToRuleWithCondition(secAction *types.SecAction) *RuleWithCondition {
+	return &RuleWithCondition{
+		Kind: RuleKind,
+		Metadata: SecRuleMetadata{
+			Comment:  secAction.Metadata.Comment,
+			Phase:    secAction.Metadata.Phase,
+			Id:       secAction.Metadata.Id,
+			Message:  secAction.Metadata.Msg,
+			Severity: secAction.Metadata.Severity,
+			Tags:     secAction.Metadata.Tags,
+			Version:  secAction.Metadata.Ver,
+			Maturity: secAction.Metadata.Maturity,
+			Rev:      secAction.Metadata.Rev,
+		},
+		Conditions: []Condition{
+			SecActionCondition{
+				AlwaysMatch: true,
+				Transformations: Transformations{
+					Transformations: convertTransformations(secAction.Transformations.Transformations),
+				},
+			},
+		},
+		Actions: convertActions(secAction.Actions),
+	}
+}
+
+// convertSecRuleScriptToRuleWithCondition converts a crslang SecRuleScript to our RuleWithCondition type
+func convertSecRuleScriptToRuleWithCondition(secRuleScript *types.SecRuleScript) *RuleWithCondition {
+	return &RuleWithCondition{
+		Kind: RuleKind,
+		Metadata: SecRuleMetadata{
+			Comment:  secRuleScript.Metadata.Comment,
+			Phase:    secRuleScript.Metadata.Phase,
+			Id:       secRuleScript.Metadata.Id,
+			Message:  secRuleScript.Metadata.Msg,
+			Severity: secRuleScript.Metadata.Severity,
+			Tags:     secRuleScript.Metadata.Tags,
+			Version:  secRuleScript.Metadata.Ver,
+			Maturity: secRuleScript.Metadata.Maturity,
+			Rev:      secRuleScript.Metadata.Rev,
+		},
+		Conditions: []Condition{
+			ScriptCondition{
+				Script: secRuleScript.ScriptPath,
+			},
+		},
+		Actions: convertActions(secRuleScript.Actions),
+	}
+}
+
+// convertVariables converts crslang variables to our Variable type
+func convertVariables(variables []types.Variable) []Variable {
+	var result []Variable
+	for _, v := range variables {
+		result = append(result, Variable{
+			Name:    string(v.Name),
+			Exclude: v.Excluded,
+		})
+	}
+	return result
+}
+
+// convertCollections converts crslang collections to our Collection type
+func convertCollections(collections []types.Collection) []Collection {
+	var result []Collection
+	for _, c := range collections {
+		result = append(result, Collection{
+			Name:      string(c.Name),
+			Arguments: c.Arguments,
+			Count:     c.Count,
+		})
+	}
+	return result
+}
+
+// convertOperator converts crslang operator to our Operator type
+func convertOperator(operator types.Operator) Operator {
+	return Operator{
+		Name:   string(operator.Name),
+		Value:  operator.Value,
+		Negate: operator.Negate,
+	}
+}
+
+// convertTransformations converts crslang transformations to our string slice
+func convertTransformations(transformations []types.Transformation) []string {
+	var result []string
+	for _, t := range transformations {
+		result = append(result, string(t))
+	}
+	return result
+}
+
+// convertActions converts crslang actions to our SeclangActions type
+func convertActions(actions *types.SeclangActions) SeclangActions {
+	if actions == nil {
+		return SeclangActions{}
+	}
+
+	result := SeclangActions{}
+
+	// Convert disruptive action
+	if actions.DisruptiveAction.Action != "" {
+		result.DisruptiveAction = &Action{
+			Action: string(actions.DisruptiveAction.Action),
+			Param:  actions.DisruptiveAction.Param,
+		}
+	}
+
+	// Convert non-disruptive actions
+	for _, action := range actions.NonDisruptiveActions {
+		result.NonDisruptiveActions = append(result.NonDisruptiveActions, Action{
+			Action: string(action.Action),
+			Param:  action.Param,
+		})
+	}
+
+	// Convert data actions
+	for _, action := range actions.DataActions {
+		result.DataActions = append(result.DataActions, Action{
+			Action: string(action.Action),
+			Param:  action.Param,
+		})
+	}
+
+	// Convert flow actions
+	for _, action := range actions.FlowActions {
+		result.FlowActions = append(result.FlowActions, Action{
+			Action: string(action.Action),
+			Param:  action.Param,
+		})
+	}
+
+	return result
+}
+
+// convertSecRuleToRule converts a crslang SecRule to our Rule type (legacy, kept for backward compatibility)
 func convertSecRuleToRule(secRule *types.SecRule) Rule {
 	rule := Rule{
 		RawRule: secRule.ToSeclang(),
