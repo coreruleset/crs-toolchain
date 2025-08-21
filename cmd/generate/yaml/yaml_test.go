@@ -332,9 +332,9 @@ func (s *yamlCommandTestSuite) TestProcessRuleFileWithInvalidFile() {
 	// Test processing non-existent rule file
 	processRuleFile("non-existent.conf", outputDir, buildCmdContext)
 
-	// Check that output directory was created
+	// Check that output directory was created (should be created even for invalid files)
 	_, err := os.Stat(outputDir)
-	s.True(os.IsNotExist(err), "Output directory should not be created for non-existent file")
+	s.False(os.IsNotExist(err), "Output directory should be created even for non-existent file")
 }
 
 func (s *yamlCommandTestSuite) TestProcessRuleFileWithEmptyFile() {

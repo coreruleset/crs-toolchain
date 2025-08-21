@@ -16,21 +16,26 @@ func NewJSONGenerator() *JSONGenerator {
 	return &JSONGenerator{}
 }
 
-// Generate creates JSON output for a single rule
+// Generate creates JSON output for a single rule (legacy, kept for backward compatibility)
 func (jg *JSONGenerator) Generate(rule Rule) ([]byte, error) {
 	return json.MarshalIndent(rule, "", "  ")
 }
 
 // GenerateFile creates JSON output for all rules in a file
 func (jg *JSONGenerator) GenerateFile(filePath string) ([]byte, error) {
-	rules, err := ParseRuleFile(filePath)
+	directiveList, err := ParseRuleFileToDirectiveList(filePath)
 	if err != nil {
 		return nil, err
 	}
-	return jg.GenerateMultiple(rules)
+	return jg.GenerateDirectiveList(directiveList)
 }
 
-// GenerateMultiple creates JSON output for multiple rules
+// GenerateDirectiveList creates JSON output for a DirectiveList
+func (jg *JSONGenerator) GenerateDirectiveList(directiveList *DirectiveList) ([]byte, error) {
+	return json.MarshalIndent(directiveList, "", "  ")
+}
+
+// GenerateMultiple creates JSON output for multiple rules (legacy, kept for backward compatibility)
 func (jg *JSONGenerator) GenerateMultiple(rules []Rule) ([]byte, error) {
 	// Create a wrapper structure for the JSON output
 	output := struct {

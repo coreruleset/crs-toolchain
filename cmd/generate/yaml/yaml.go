@@ -5,16 +5,14 @@ package yaml
 
 import (
 	"errors"
-	"io/fs"
 	"os"
 	"path"
-	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	buildInternal "github.com/coreruleset/crs-toolchain/v2/cmd/generate/internal"
-	"github.com/coreruleset/crs-toolchain/v2/experimental"
 	"github.com/coreruleset/crs-toolchain/v2/internal/seclang"
 )
 
@@ -81,20 +79,20 @@ func performYamlGeneration(processAll bool, cmdContext *buildInternal.CommandCon
 	}
 
 	if processAll {
-		err := filepath.WalkDir(cmdContext.RootContext().RulesDir(), func(filePath string, dirEntry fs.DirEntry, err error) error {
-			if errors.Is(err, fs.ErrNotExist) {
-				return err
-			}
-
-			if !dirEntry.IsDir() && path.Ext(dirEntry.Name()) == ".conf" {
-				processRuleFile(filePath, outputDir, cmdContext)
-				return nil
-			}
-			return nil
-		})
+		// Generate comprehensive YAML for all rules in the directory
+		yamlGenerator := seclang.NewYAMLGenerator()
+		yamlData, err := yamlGenerator.GenerateFromDirectory(cmdContext.RootContext().RulesDir())
 		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to perform YAML generation")
+			logger.Fatal().Err(err).Msg("Failed to generate comprehensive YAML")
 		}
+
+		// Write to a single comprehensive YAML file
+		outputFile := path.Join(outputDir, "crslang.yaml")
+		if err := os.WriteFile(outputFile, yamlData, 0644); err != nil {
+			logger.Fatal().Err(err).Msg("Failed to write comprehensive YAML file")
+		}
+
+		logger.Info().Msgf("Generated comprehensive YAML file: %s", outputFile)
 	} else {
 		ruleFilePath := path.Join(cmdContext.RootContext().RulesDir(), cmdContext.FileName)
 		processRuleFile(ruleFilePath, outputDir, cmdContext)
@@ -104,27 +102,30 @@ func performYamlGeneration(processAll bool, cmdContext *buildInternal.CommandCon
 func processRuleFile(ruleFilePath string, outputDir string, cmdContext *buildInternal.CommandContext) {
 	logger.Info().Msgf("Processing rule file: %s", ruleFilePath)
 
-	// Create generation context
-	generateContext := experimental.NewGenerateContext(outputDir)
-
-	// Parse the seclang rule file
-	rules, err := seclang.ParseRuleFile(ruleFilePath)
-	if err != nil {
-		logger.Error().Err(err).Msgf("Failed to parse rule file %s", ruleFilePath)
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		logger.Error().Err(err).Msgf("Failed to create output directory %s", outputDir)
 		return
 	}
 
-	// Add rules to generation context
-	for _, rule := range rules {
-		generateContext.AddRule(rule)
-	}
-
-	// Create YAML generator and generate all rules
+	// Create YAML generator and generate comprehensive YAML for the file
 	yamlGenerator := seclang.NewYAMLGenerator()
-	if err := generateContext.GenerateAll(yamlGenerator); err != nil {
-		logger.Error().Err(err).Msgf("Failed to generate YAML files for %s", ruleFilePath)
+	yamlData, err := yamlGenerator.GenerateFile(ruleFilePath)
+	if err != nil {
+		logger.Error().Err(err).Msgf("Failed to generate YAML for %s", ruleFilePath)
 		return
 	}
 
-	logger.Info().Msgf("Generated YAML files in: %s", outputDir)
+	// Extract filename without extension for output filename
+	fileName := path.Base(ruleFilePath)
+	fileNameWithoutExt := strings.TrimSuffix(fileName, path.Ext(fileName))
+	outputFile := path.Join(outputDir, fileNameWithoutExt+".yaml")
+
+	// Write YAML data to file
+	if err := os.WriteFile(outputFile, yamlData, 0644); err != nil {
+		logger.Error().Err(err).Msgf("Failed to write YAML file %s", outputFile)
+		return
+	}
+
+	logger.Info().Msgf("Generated YAML file: %s", outputFile)
 }

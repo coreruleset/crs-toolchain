@@ -19,7 +19,7 @@ func NewSeclangGenerator() *SeclangGenerator {
 	return &SeclangGenerator{}
 }
 
-// Generate creates seclang output for a single rule
+// Generate creates seclang output for a single rule (legacy, kept for backward compatibility)
 func (sg *SeclangGenerator) Generate(rule Rule) ([]byte, error) {
 	// Convert a single rule back to seclang format
 	seclangStr := rule.RawRule
@@ -39,14 +39,27 @@ func (sg *SeclangGenerator) GenerateFile(filePath string) ([]byte, error) {
 	}
 
 	// Parse .conf file (seclang format)
-	rules, err := ParseRuleFile(filePath)
+	directiveList, err := ParseRuleFileToDirectiveList(filePath)
 	if err != nil {
 		return nil, err
 	}
-	return sg.GenerateMultiple(rules)
+	return sg.GenerateDirectiveList(directiveList)
 }
 
-// GenerateMultiple creates seclang output for multiple rules
+// GenerateDirectiveList creates seclang output for a DirectiveList
+func (sg *SeclangGenerator) GenerateDirectiveList(directiveList *DirectiveList) ([]byte, error) {
+	var result strings.Builder
+
+	for _, directive := range directiveList.Directives {
+		seclangStr := directive.ToSeclang()
+		result.WriteString(seclangStr)
+		result.WriteString("\n")
+	}
+
+	return []byte(result.String()), nil
+}
+
+// GenerateMultiple creates seclang output for multiple rules (legacy, kept for backward compatibility)
 func (sg *SeclangGenerator) GenerateMultiple(rules []Rule) ([]byte, error) {
 	var result strings.Builder
 
