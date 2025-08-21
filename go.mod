@@ -34,6 +34,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/klauspost/compress v1.11.2 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
+	github.com/lloyd/wnram v0.0.0-20170126174755-5860846ee743 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.0.0 // indirect

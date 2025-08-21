@@ -26,7 +26,7 @@ func DownloadFile(filepath, url string) error {
 	request := &getter.Request{
 		Src:     url,
 		Dst:     filepath,
-		GetMode: getter.ModeFile,
+		GetMode: getter.ModeAny,
 	}
 	client := &getter.Client{
 		Getters: []getter.Getter{
