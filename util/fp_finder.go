@@ -13,13 +13,18 @@ import (
 	"strings"
 
 	"github.com/coreruleset/crs-toolchain/v2/utils"
+	"github.com/lloyd/wnram"
 )
 
 type FpFinderError struct{}
 
-const dictionaryURLFormat = "https://raw.githubusercontent.com/dwyl/english-words/%s/%s"
-const dictionaryBaseFileName = "words_alpha.txt"
+const dictionaryURLFormat = "https://wordnetcode.princeton.edu/%s"
+const dictionaryBaseFileName = "wn3.1.dict.tar.gz"
 const minSize = 3
+
+type WordNet interface {
+	Lookup(criteria wnram.Criteria) ([]wnram.Lookup, error)
+}
 
 func (t *FpFinderError) Error() string {
 	return "FpFinder error"
@@ -33,41 +38,35 @@ func NewFpFinder() *FpFinder {
 
 func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath string, englishDictionaryCommitRef string) error {
 	// Get the dictionary path in ~/.crs-toolchain
-	dictionaryFileName := fmt.Sprintf("%s-%s", englishDictionaryCommitRef, dictionaryBaseFileName)
-	dictionaryPath, err := utils.GetCacheFilePath(dictionaryFileName)
+	dictionaryPath, err := utils.GetCacheFilePath(dictionaryBaseFileName)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Error getting dictionary path")
 	}
 
 	// Check if the dictionary exists, if not, download it
 	if _, err := os.Stat(dictionaryPath); os.IsNotExist(err) {
-		logger.Debug().Msg("Dictionary file not found. Downloading...")
-		dictionaryURL := fmt.Sprintf(dictionaryURLFormat, englishDictionaryCommitRef, dictionaryBaseFileName)
-		if err := utils.DownloadFile(dictionaryPath, dictionaryURL); err != nil {
+		logger.Debug().Msg("Dictionary folder not found. Downloading...")
+		dictionaryArchivePath, err := utils.GetCacheFilePath(dictionaryBaseFileName)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Error getting dictionary path")
+		}
+
+		dictionaryURL := fmt.Sprintf(dictionaryURLFormat, dictionaryBaseFileName)
+		logger.Debug().Msgf("Downloading dictionary from %s to %s", dictionaryURL, dictionaryArchivePath)
+		if err := utils.DownloadFile(dictionaryArchivePath, dictionaryURL); err != nil {
 			logger.Fatal().Err(err).Msg("Failed to download dictionary")
 		}
 		logger.Debug().Msg("Download complete.")
 	} else {
-		logger.Debug().Msg("Dictionary file found, skipping download.")
+		logger.Debug().Msg("Dictionary folder found, skipping download.")
 	}
 
-	// Load dictionary into memory
-	englishDict, err := t.loadDictionary(dictionaryPath, minSize)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to load english dictionary")
-	}
-
-	var dict map[string]struct{}
+	var extendedDict map[string]struct{}
 	if extendedDictionaryFilePath != "" {
-		extendedDict, err := t.loadDictionary(extendedDictionaryFilePath, 0)
+		extendedDict, err = t.loadDictionary(extendedDictionaryFilePath, 0)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to load extended dictionary")
 		}
-
-		// Add words from extendedDictionary
-		dict = t.mergeDictionaries(englishDict, extendedDict)
-	} else {
-		dict = englishDict
 	}
 
 	// Load input file into memory
@@ -76,8 +75,14 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 		logger.Fatal().Err(err).Msg("Failed to load input file")
 	}
 
+	// Initialize WordNet
+	// Suppress stdout to avoid WordNet output cluttering the console
+	old, null := suppressStdout()
+	wn, _ := wnram.New(dictionaryPath)
+	restoreStdout(old, null)
+
 	// Process words from inputfile, sort the output and remove duplicates
-	filteredWords := t.processWords(inputFile, dict, minSize)
+	filteredWords := t.processWords(inputFile, wn, extendedDict, minSize)
 
 	for _, str := range filteredWords {
 		fmt.Println(str)
@@ -100,19 +105,6 @@ func (t *FpFinder) loadDictionary(path string, minWordLength int) (map[string]st
 	}
 
 	return content, nil
-}
-
-func (t *FpFinder) mergeDictionaries(a, b map[string]struct{}) map[string]struct{} {
-	merged := make(map[string]struct{})
-
-	for k := range a {
-		merged[k] = struct{}{}
-	}
-	for k := range b {
-		merged[k] = struct{}{}
-	}
-
-	return merged
 }
 
 func (t *FpFinder) loadInput(path string) ([]string, error) {
@@ -158,9 +150,9 @@ func (t *FpFinder) wordsFromInput(reader io.Reader) ([]string, error) {
 	return content, nil
 }
 
-func (t *FpFinder) processWords(inputFile []string, dict map[string]struct{}, minSize int) []string {
+func (t *FpFinder) processWords(inputFile []string, wn WordNet, extendedDict map[string]struct{}, minSize int) []string {
 	// Filter words not in the dictionary
-	filteredWords := t.filterContent(inputFile, dict, minSize)
+	filteredWords := t.filterContent(inputFile, wn, extendedDict, minSize)
 
 	// Sort words alphabetically (case-insensitive)
 	slices.SortFunc(filteredWords, func(a, b string) int {
@@ -173,7 +165,7 @@ func (t *FpFinder) processWords(inputFile []string, dict map[string]struct{}, mi
 	return filteredWords
 }
 
-func (t *FpFinder) filterContent(inputFile []string, dict map[string]struct{}, minSize int) []string {
+func (t *FpFinder) filterContent(inputFile []string, wn WordNet, extendedDict map[string]struct{}, minSize int) []string {
 	var commentPattern = regexp.MustCompile(`^\s*#`)
 	var filteredWords []string
 	for _, word := range inputFile {
@@ -184,12 +176,35 @@ func (t *FpFinder) filterContent(inputFile []string, dict map[string]struct{}, m
 		if word == "" || len(word) < minSize {
 			continue
 		}
+		// Check if the word exists in WordNet
+		found, err := wn.Lookup(wnram.Criteria{Matching: word})
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to lookup word in WordNet")
+		}
 
-		// If the word is not in the dictionary, add it to the filtered list
-		if _, found := dict[word]; !found {
-			filteredWords = append(filteredWords, word)
+		// If the word is not in the dictionary and extended dictionary, add it to the filtered list
+		if len(found) == 0 {
+			if _, found := extendedDict[word]; !found {
+				filteredWords = append(filteredWords, word)
+			} else {
+				logger.Debug().Msgf("Word '%s' found in extended dictionary", word)
+			}
+		} else {
+			logger.Debug().Msgf("Word '%s' found in WordNet", word)
 		}
 	}
 
 	return filteredWords
+}
+
+func suppressStdout() (*os.File, *os.File) {
+	nullFile, _ := os.Open(os.DevNull)
+	old := os.Stdout
+	os.Stdout = nullFile
+	return old, nullFile
+}
+
+func restoreStdout(old *os.File, nullFile *os.File) {
+	os.Stdout = old
+	nullFile.Close()
 }
