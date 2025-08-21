@@ -12,8 +12,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/coreruleset/crs-toolchain/v2/utils"
 	"github.com/lloyd/wnram"
+
+	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
 type FpFinderError struct{}
