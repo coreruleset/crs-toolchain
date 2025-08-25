@@ -6,12 +6,10 @@ package fpFinder
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/coreruleset/crs-toolchain/v2/cmd/internal"
-	"github.com/coreruleset/crs-toolchain/v2/configuration"
 	"github.com/coreruleset/crs-toolchain/v2/util"
 )
 
@@ -37,17 +35,6 @@ from stdin instead.`,
 				return fmt.Errorf("file %s doesn't exist", filenameArg)
 			}
 
-			// CLI parameter is prioritized, if not provided config file is looked up
-			// By default will be set to DefaultDictionaryCommitRef
-			if strings.TrimSpace(englishDictionaryCommitRef) == "" {
-				dictionaryContext := cmdContext.RootContext().Configuration().Sources.EnglishDictionary
-				if dictionaryContext.WasCommitRefSet {
-					englishDictionaryCommitRef = dictionaryContext.CommitRef
-				} else {
-					englishDictionaryCommitRef = configuration.DefaultDictionaryCommitRef
-				}
-			}
-
 			if extendedDictPath != "" && !checkFilePath(extendedDictPath) {
 				return fmt.Errorf("extended dictionary %s doesn't exist", extendedDictPath)
 			}
@@ -62,7 +49,6 @@ from stdin instead.`,
 
 func buildFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&extendedDictPath, "extended-dictionary", "e", "", "Absolute or relative path to the extended dictionary")
-	cmd.Flags().StringVarP(&englishDictionaryCommitRef, "english-dictionary-commit-ref", "c", "", "English dictionary commit ref from GitHub https://github.com/dwyl/english-words/blob/master/words_alpha.txt")
 }
 
 func checkFilePath(path string) bool {

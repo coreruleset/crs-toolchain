@@ -59,12 +59,6 @@ func (s *configurationTestSuite) TestReadingConfiguration() {
 
 func newTestConfiguration() *Configuration {
 	return &Configuration{
-		Sources: Sources{
-			EnglishDictionary: EnglishDictionary{
-				CommitRef:       "refs/heads/master",
-				WasCommitRefSet: true,
-			},
-		},
 		Patterns: Patterns{
 			AntiEvasion: Pattern{
 				Unix:    "_av-u_",
