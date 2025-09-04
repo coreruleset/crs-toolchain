@@ -6,7 +6,7 @@ package util
 import (
 	"testing"
 
-	"github.com/lloyd/wnram"
+	"github.com/coreruleset/wnram"
 	"github.com/stretchr/testify/suite"
 )
 

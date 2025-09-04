@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/lloyd/wnram"
+	"github.com/coreruleset/wnram"
 
 	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
@@ -76,11 +76,7 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 		logger.Fatal().Err(err).Msg("Failed to load input file")
 	}
 
-	// Initialize WordNet
-	// Suppress stdout to avoid WordNet output cluttering the console
-	old, null := suppressStdout()
 	wn, _ := wnram.New(dictionaryPath)
-	restoreStdout(old, null)
 
 	// Process words from inputfile, sort the output and remove duplicates
 	filteredWords := t.processWords(inputFile, wn, extendedDict, minSize)
@@ -196,16 +192,4 @@ func (t *FpFinder) filterContent(inputFile []string, wn WordNet, extendedDict ma
 	}
 
 	return filteredWords
-}
-
-func suppressStdout() (*os.File, *os.File) {
-	nullFile, _ := os.Open(os.DevNull)
-	old := os.Stdout
-	os.Stdout = nullFile
-	return old, nullFile
-}
-
-func restoreStdout(old *os.File, nullFile *os.File) {
-	os.Stdout = old
-	nullFile.Close()
 }
