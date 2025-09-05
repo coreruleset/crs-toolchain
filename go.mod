@@ -9,6 +9,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/coreruleset/wnram v0.1.0
 	github.com/creativeprojects/go-selfupdate v1.5.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-getter/v2 v2.2.3

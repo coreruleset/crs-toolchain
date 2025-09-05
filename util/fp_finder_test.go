@@ -6,8 +6,21 @@ package util
 import (
 	"testing"
 
+	"github.com/coreruleset/wnram"
 	"github.com/stretchr/testify/suite"
 )
+
+// mockWordNet is a fake implementation of WordNet
+type mockWordNet struct {
+	lookup map[string][]wnram.Lookup
+}
+
+func (m *mockWordNet) Lookup(criteria wnram.Criteria) ([]wnram.Lookup, error) {
+	if v, ok := m.lookup[criteria.Matching]; ok {
+		return v, nil
+	}
+	return nil, nil
+}
 
 type fpFinderTestSuite struct {
 	suite.Suite
@@ -27,53 +40,50 @@ func (s *fpFinderTestSuite) TestFpFinder_FilterContent() {
 		"apple", "banana", "apple", "",
 	}
 
-	dict := map[string]struct{}{
-		"apple": {},
-		"dog":   {},
+	extendedDict := map[string]struct{}{}
+	mockWN := &mockWordNet{
+		lookup: map[string][]wnram.Lookup{
+			"apple": {{}}, // fake lookup result
+		},
 	}
-
 	expected := []string{"banana"}
 
-	result := NewFpFinder().filterContent(input, dict, 3)
+	result := NewFpFinder().filterContent(input, mockWN, extendedDict, 3)
 	s.Equal(expected, result)
 }
 
 func (s *fpFinderTestSuite) TestFpFinder_ProcessWords() {
 	input := []string{"apple", "banana", "orange", "banana", "pear", "#comment", "banana"}
-	dict := map[string]struct{}{
-		"apple":  {},
+
+	extendedDict := map[string]struct{}{
 		"orange": {},
+	}
+	mockWN := &mockWordNet{
+		lookup: map[string][]wnram.Lookup{
+			"apple": {{}}, // fake lookup result
+		},
 	}
 
 	expected := []string{"banana", "pear"}
 
-	result := NewFpFinder().processWords(input, dict, 3)
+	result := NewFpFinder().processWords(input, mockWN, extendedDict, 3)
 
 	s.Equal(expected, result)
 }
 
 func (s *fpFinderTestSuite) TestFpFinder_ProcessWords_Sorting() {
 	input := []string{"pear", "Banana", ".hiddenfruit", "kiwi", "banana", "Apple", ".dotfruit"}
-	dict := map[string]struct{}{} // empty dictionary, so no filtering
+
+	extendedDict := map[string]struct{}{}
+	mockWN := &mockWordNet{
+		lookup: map[string][]wnram.Lookup{
+			"": {{}}, // fake lookup result
+		},
+	}
 
 	expected := []string{".dotfruit", ".hiddenfruit", "Apple", "Banana", "banana", "kiwi", "pear"}
 
-	result := NewFpFinder().processWords(input, dict, 3)
+	result := NewFpFinder().processWords(input, mockWN, extendedDict, 3)
 
-	s.Equal(expected, result)
-}
-
-func (s *fpFinderTestSuite) TestFpFinder_MergeDictionaries() {
-	a := map[string]struct{}{"apple": {}, "banana": {}}
-	b := map[string]struct{}{"cherry": {}, "date": {}}
-
-	expected := map[string]struct{}{
-		"apple":  {},
-		"banana": {},
-		"cherry": {},
-		"date":   {},
-	}
-
-	result := NewFpFinder().mergeDictionaries(a, b)
 	s.Equal(expected, result)
 }
