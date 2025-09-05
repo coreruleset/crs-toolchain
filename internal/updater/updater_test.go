@@ -28,3 +28,12 @@ func (s *updaterTestSuite) TestLatestVersion() {
 	s.Require().NoError(err)
 	s.NotEmpty(latestVersion)
 }
+
+func (s *updaterTestSuite) TestInvalidVersion() {
+	temp := s.T().TempDir()
+	_, err := Updater("dev", temp)
+	s.ErrorContains(err, "failed to parse version 'dev'")
+
+	_, err = Updater("000.x", temp)
+	s.ErrorContains(err, "failed to parse version '000.x'")
+}
