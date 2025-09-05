@@ -293,3 +293,7 @@ func (c *compositeGenerator) GetOutputFileName(rule seclang.Rule) string {
 	return c.base.GetOutputFileName(rule)
 }
 
+
+
+
+

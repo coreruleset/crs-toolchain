@@ -31,6 +31,8 @@ func (yg *YAMLGenerator) GenerateFile(filePath string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Filter out administrative rules
+	directiveList = yg.filterAdministrativeRules(directiveList)
 	return yg.GenerateDirectiveList(directiveList)
 }
 
@@ -101,6 +103,8 @@ func (yg *YAMLGenerator) GenerateFromDirectory(dirPath string) ([]byte, error) {
 			if err != nil {
 				return err
 			}
+			// Filter out administrative rules
+			directiveList = yg.filterAdministrativeRules(directiveList)
 			allDirectiveLists = append(allDirectiveLists, *directiveList)
 		}
 		return nil
@@ -125,4 +129,31 @@ func (yg *YAMLGenerator) GetFileExtension() string {
 // GetOutputFileName generates the output filename for a given rule
 func (yg *YAMLGenerator) GetOutputFileName(rule Rule) string {
 	return fmt.Sprintf("rule-%s.yaml", rule.ID)
+}
+
+// filterAdministrativeRules filters out administrative rules from a DirectiveList
+// Administrative rules are those with IDs ending in 1-8
+func (yg *YAMLGenerator) filterAdministrativeRules(directiveList *DirectiveList) *DirectiveList {
+	if directiveList == nil {
+		return directiveList
+	}
+
+	var filteredDirectives []SeclangDirective
+	for _, directive := range directiveList.Directives {
+		// Check if this directive is a rule with an ID
+		if ruleWithCondition, ok := directive.(*RuleWithCondition); ok {
+			// Skip administrative rules (IDs ending in 1-8)
+			if isAdministrativeRule(ruleWithCondition.Metadata.Id) {
+				continue
+			}
+		}
+		// Keep all other directives (comments, configuration, etc.)
+		filteredDirectives = append(filteredDirectives, directive)
+	}
+
+	return &DirectiveList{
+		ID:         directiveList.ID,
+		Directives: filteredDirectives,
+		Marker:     directiveList.Marker,
+	}
 }
