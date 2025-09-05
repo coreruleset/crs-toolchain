@@ -147,7 +147,7 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessLineWithSpace() {
 	err := cmd.ProcessLine(`gcc 10`)
 	s.Require().NoError(err)
 
-	s.Equal(`g_av-u_c_av-u_c_av-u_\s+_av-u_1_av-u_0`, cmd.proc.lines[0])
+	s.Equal(`g_av-u_c_av-u_c_av-u_ _av-u_1_av-u_0`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessLineWithUnescapedMetaCharacter() {
@@ -187,18 +187,22 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessTildeOnlyAtLineEnd() {
 	s.Equal(`f_av-u_~_av-u_o_av-u_o`, cmd.proc.lines[1])
 }
 
-func (s *cmdLineTestSuite) TestCmdLine_IgnoreEscapedTildeAtLineEnd() {
+func (s *cmdLineTestSuite) TestCmdLine_DontTreatTildeSpecialAtLineStart() {
 	cmd := NewCmdLine(s.ctx, CmdLineUnix)
 
 	err := cmd.ProcessLine(`\~foo`)
 	s.Require().NoError(err)
 
-	s.Equal(`\_av-u_~_av-u_f_av-u_o_av-u_o`, cmd.proc.lines[0])
+	s.Equal(`\~_av-u_f_av-u_o_av-u_o`, cmd.proc.lines[0])
+}
 
-	err = cmd.ProcessLine(`foo\~`)
+func (s *cmdLineTestSuite) TestCmdLine_IgnoreEscapedTildeAtLineEnd() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	err := cmd.ProcessLine(`foo\~`)
 	s.Require().NoError(err)
 
-	s.Equal(`f_av-u_o_av-u_o_av-u_~`, cmd.proc.lines[1])
+	s.Equal(`f_av-u_o_av-u_o_av-u_~`, cmd.proc.lines[0])
 }
 
 func (s *cmdLineTestSuite) TestCmdLine_ProcessAtOnlyAtLineEnd() {
@@ -215,16 +219,20 @@ func (s *cmdLineTestSuite) TestCmdLine_ProcessAtOnlyAtLineEnd() {
 	s.Equal(`f_av-u_@_av-u_o_av-u_o`, cmd.proc.lines[1])
 }
 
-func (s *cmdLineTestSuite) TestCmdLine_IgnoreEscapedAtAtLineEnd() {
+func (s *cmdLineTestSuite) TestCmdLine_DontTreatAtSpecialAtLineStart() {
 	cmd := NewCmdLine(s.ctx, CmdLineUnix)
 
 	err := cmd.ProcessLine(`\@foo`)
 	s.Require().NoError(err)
 
-	s.Equal(`\_av-u_@_av-u_f_av-u_o_av-u_o`, cmd.proc.lines[0])
+	s.Equal(`\@_av-u_f_av-u_o_av-u_o`, cmd.proc.lines[0])
+}
 
-	err = cmd.ProcessLine(`foo\@`)
+func (s *cmdLineTestSuite) TestCmdLine_IgnoreEscapedAtAtLineEnd() {
+	cmd := NewCmdLine(s.ctx, CmdLineUnix)
+
+	err := cmd.ProcessLine(`foo\@`)
 	s.Require().NoError(err)
 
-	s.Equal(`f_av-u_o_av-u_o_av-u_@`, cmd.proc.lines[1])
+	s.Equal(`f_av-u_o_av-u_o_av-u_@`, cmd.proc.lines[0])
 }
