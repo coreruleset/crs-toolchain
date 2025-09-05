@@ -230,34 +230,42 @@ func convertActions(actions *types.SeclangActions) SeclangActions {
 	result := SeclangActions{}
 
 	// Convert disruptive action
-	if actions.DisruptiveAction.Action != "" {
+	if len(actions.DisruptiveAction) > 0 {
+		actionKey := actions.DisruptiveAction.GetKey()
+		actionParam := actions.DisruptiveAction.GetParam()
 		result.DisruptiveAction = &Action{
-			Action: string(actions.DisruptiveAction.Action),
-			Param:  actions.DisruptiveAction.Param,
+			Action: actionKey,
+			Param:  actionParam,
 		}
 	}
 
 	// Convert non-disruptive actions
 	for _, action := range actions.NonDisruptiveActions {
+		actionKey := action.GetKey()
+		actionParam := action.GetParam()
 		result.NonDisruptiveActions = append(result.NonDisruptiveActions, Action{
-			Action: string(action.Action),
-			Param:  action.Param,
+			Action: actionKey,
+			Param:  actionParam,
 		})
 	}
 
 	// Convert data actions
 	for _, action := range actions.DataActions {
+		actionKey := action.GetKey()
+		actionParam := action.GetParam()
 		result.DataActions = append(result.DataActions, Action{
-			Action: string(action.Action),
-			Param:  action.Param,
+			Action: actionKey,
+			Param:  actionParam,
 		})
 	}
 
 	// Convert flow actions
 	for _, action := range actions.FlowActions {
+		actionKey := action.GetKey()
+		actionParam := action.GetParam()
 		result.FlowActions = append(result.FlowActions, Action{
-			Action: string(action.Action),
-			Param:  action.Param,
+			Action: actionKey,
+			Param:  actionParam,
 		})
 	}
 
