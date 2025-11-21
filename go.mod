@@ -4,13 +4,13 @@ go 1.23.0
 
 require (
 	dario.cat/mergo v1.0.2
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.1
 )
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/coreruleset/wnram v0.1.0
-	github.com/creativeprojects/go-selfupdate v1.5.0
+	github.com/creativeprojects/go-selfupdate v1.5.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-getter/v2 v2.2.3
 	github.com/itchyny/rassemble-go v0.1.2
@@ -54,5 +54,5 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 )
