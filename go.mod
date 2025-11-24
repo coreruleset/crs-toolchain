@@ -1,6 +1,6 @@
 module github.com/coreruleset/crs-toolchain/v2
 
-go 1.23.0
+go 1.24.9
 
 require (
 	dario.cat/mergo v1.0.2
@@ -43,9 +43,9 @@ require (
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/xanzy/go-gitlab v0.115.0 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/oauth2 v0.29.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
@@ -54,5 +54,5 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 )
