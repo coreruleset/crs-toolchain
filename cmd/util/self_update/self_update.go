@@ -23,8 +23,8 @@ func New() *cobra.Command {
 			currentCmd := cmd
 			for currentCmd.HasParent() {
 				currentCmd = currentCmd.Parent()
-				if cmd.Version != "" {
-					effectiveVersion = cmd.Version
+				if currentCmd.Version != "" {
+					effectiveVersion = currentCmd.Version
 					break
 				}
 			}
