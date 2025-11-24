@@ -25,6 +25,7 @@ var workingDirectoryFlag *internal.WorkingDirectoryFlag
 
 func Execute(version, commit, date, builtBy string) {
 	rootCmd := New()
+	// Setting `Version` generates a `--version` flag
 	rootCmd.Version = version
 	versionTemplate := fmt.Sprintf("{{with .Name}}"+
 		"{{printf \"%%s \" .}}{{end}}"+
