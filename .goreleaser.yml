@@ -1,5 +1,6 @@
 # This is an example .goreleaser.yml file with some sane defaults.
 # Make sure to check the documentation at http://goreleaser.com
+version: 2
 project_name: crs-toolchain
 before:
   hooks:
@@ -19,11 +20,11 @@ builds:
 archives:
   - format_overrides:
     - goos: windows
-      format: zip
+      formats: [zip]
 checksum:
   name_template: '{{ .ProjectName }}-checksums.txt'
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Tag }}-next"
 changelog:
   sort: asc
   use: github
@@ -42,31 +43,13 @@ changelog:
       - '^test'
 release:
   prerelease: auto
-dockers:
-    - image_templates:
-          - "ghcr.io/coreruleset/crs-toolchain:{{ .Version }}-amd64"
-      use: buildx
-      goarch: amd64
-      build_flag_templates:
-          - "--platform=linux/amd64"
-    - image_templates:
-          - "ghcr.io/coreruleset/crs-toolchain:{{ .Version }}-arm64"
-      use: buildx
-      goarch: arm64
-      build_flag_templates:
-          - "--platform=linux/arm64"
-docker_manifests:
-    - name_template: "ghcr.io/coreruleset/crs-toolchain:latest"
-      image_templates:
-          - "ghcr.io/coreruleset/crs-toolchain:{{ .Version }}-amd64"
-          - "ghcr.io/coreruleset/crs-toolchain:{{ .Version }}-arm64"
-    - name_template: "ghcr.io/coreruleset/crs-toolchain:{{ .Version }}"
-      image_templates:
-          - "ghcr.io/coreruleset/crs-toolchain:{{ .Version }}-amd64"
-          - "ghcr.io/coreruleset/crs-toolchain:{{ .Version }}-arm64"
+dockers_v2:
+  - images:
+    - "ghcr.io/coreruleset/crs-toolchain"
+    tags:
+      - "{{ .Version }}"
 nfpms:
-  - id: "crs-toolchain"
-    builds: ["crs-toolchain"]
+  - ids: ["crs-toolchain"]
     formats:
       - deb
       - rpm
