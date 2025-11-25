@@ -19,7 +19,7 @@ func New() *cobra.Command {
 		Long: "Checks GitHub releases for the latest version of this command. If a new version is available, " +
 			"it will get it and replace this binary.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			effectiveVersion := "dev"
+			effectiveVersion := "v0.0.0-dev"
 			currentCmd := cmd
 			for currentCmd.HasParent() {
 				currentCmd = currentCmd.Parent()
