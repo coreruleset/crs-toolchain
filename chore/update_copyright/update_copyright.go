@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/rs/zerolog/log"
 
 	"github.com/coreruleset/crs-toolchain/v2/context"
@@ -19,7 +20,7 @@ import (
 var logger = log.With().Str("component", "update-copyright").Logger()
 
 // UpdateCopyright updates the copyright portion of the rules files to the provided year and version.
-func UpdateCopyright(ctxt *context.Context, version string, year string) {
+func UpdateCopyright(ctxt *context.Context, version *semver.Version, year uint16, ignoredPaths []string) {
 	err := filepath.WalkDir(ctxt.RootDir(), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// abort
@@ -29,6 +30,13 @@ func UpdateCopyright(ctxt *context.Context, version string, year string) {
 			// continue
 			return nil
 		}
+		for _, ignoredPath := range ignoredPaths {
+			if strings.HasPrefix(path, ignoredPath) {
+				// continue
+				return nil
+			}
+		}
+
 		if strings.HasSuffix(d.Name(), ".conf") || strings.HasSuffix(d.Name(), ".example") {
 			if err := processFile(path, version, year); err != nil {
 				// abort
@@ -43,7 +51,7 @@ func UpdateCopyright(ctxt *context.Context, version string, year string) {
 	}
 }
 
-func processFile(filePath string, version string, year string) error {
+func processFile(filePath string, version *semver.Version, year uint16) error {
 	logger.Info().Msgf("Processing %s", filePath)
 
 	contents, err := os.ReadFile(filePath)
@@ -63,16 +71,16 @@ func processFile(filePath string, version string, year string) error {
 
 // Ideally we have support in the future for a proper parser file, so we can use that to change it
 // in a more elegant way. Right now we just match strings.
-func updateRules(version string, year string, contents []byte) ([]byte, error) {
+func updateRules(version *semver.Version, year uint16, contents []byte) ([]byte, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(contents))
 	scanner.Split(bufio.ScanLines)
 	output := new(bytes.Buffer)
 	writer := bufio.NewWriter(output)
 	replaceVersion := fmt.Sprintf("${1}%s", version)
 	// only keep numbers from the version
-	onlyNumbersVersion := strings.Join(regexp.MustCompile(`\d+`).FindAllString(version, -1), "")
+	onlyNumbersVersion := strings.Join(regexp.MustCompile(`\d+`).FindAllString(version.String(), -1), "")
 	replaceShortVersion := fmt.Sprintf("${1}%s", onlyNumbersVersion)
-	replaceYear := fmt.Sprintf("${1}%s${3}", year)
+	replaceYear := fmt.Sprintf("${1}%d${3}", year)
 	replaceSecRuleVersion := fmt.Sprintf("${1}%s", version)
 	replaceSecComponentSignature := fmt.Sprintf("${1}%s", version)
 	for scanner.Scan() {
