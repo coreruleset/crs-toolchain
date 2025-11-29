@@ -84,7 +84,11 @@ func performUpdate(processAll bool, ctx *processors.Context, cmdContext *regexIn
 				return err
 			}
 
-			if !dirEntry.IsDir() && path.Ext(dirEntry.Name()) == ".ra" {
+			if dirEntry.IsDir() && filePath != ctx.RootContext().AssemblyDir() {
+				return filepath.SkipDir
+			}
+
+			if path.Ext(dirEntry.Name()) == ".ra" {
 				subs := regex.RuleIdFileNameRegex.FindAllStringSubmatch(dirEntry.Name(), -1)
 				if subs == nil {
 					// continue
