@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	dario.cat/mergo v1.0.2
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 )
 
 require (
