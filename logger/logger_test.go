@@ -79,6 +79,24 @@ var testGithub = []struct {
 		logType: zerolog.DebugLevel,
 		want:    "::debug ::this is a debug message",
 	},
+	{
+		name:    "TestGithubErrorOutput",
+		text:    "this is an error message",
+		logType: zerolog.ErrorLevel,
+		want:    "::error  ::this is an error message",
+	},
+	{
+		name:    "TestGithubFatalOutput",
+		text:    "this is a fatal message",
+		logType: zerolog.FatalLevel,
+		want:    "::error  ::this is a fatal message",
+	},
+	{
+		name:    "TestGithubPanicOutput",
+		text:    "this is a panic message",
+		logType: zerolog.PanicLevel,
+		want:    "::error  ::this is a panic message",
+	},
 }
 
 func (s *loggerTestSuite) SetupTest() {
