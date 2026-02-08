@@ -121,8 +121,9 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		logger.Fatal().Err(err).Msg("Final pass failed")
 	}
 
-	// Note: Prefix/suffix application is now handled by individual Assemble processors (block-scoped)
-	// Parser.Prefixes and Parser.Suffixes are kept for backward compatibility but are no longer used
+	// Note: Prefix/suffix application is now handled by individual Assemble processors (block-scoped).
+	// Parser.Prefixes and Parser.Suffixes are no longer populated or used here; any previous
+	// backward-compatibility behavior relying on them has been removed from this path.
 
 	if len(result) > 0 {
 		logger.Trace().Msgf("Applying last cleanups to %s\n", result)

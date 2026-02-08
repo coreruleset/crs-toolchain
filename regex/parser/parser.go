@@ -155,9 +155,13 @@ func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
 		case prefix:
 			// Pass through prefix directive for processor to handle (block-scoped)
 			text = line + "\n"
+			// Also collect for include file merging
+			p.Prefixes = append(p.Prefixes, parsedLine.prefix)
 		case suffix:
 			// Pass through suffix directive for processor to handle (block-scoped)
 			text = line + "\n"
+			// Also collect for include file merging
+			p.Suffixes = append(p.Suffixes, parsedLine.suffix)
 		}
 		if formatOnly {
 			text = line + "\n"
@@ -297,43 +301,11 @@ func mergePrefixesSuffixes(source *Parser, out *bytes.Buffer) (*bytes.Buffer, er
 	if len(source.Flags) > 0 {
 		return new(bytes.Buffer), errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/v2/issues/71")
 	}
-	// IMPORTANT: don't write the assemble block at all if there are no flags, prefixes, or
-	// suffixes. Enclosing the output in an assemble block can change the semantics, for example,
-	// when the included content is processed by the cmdline processor in the including file.
-	if len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
-		return out, nil
-	}
-
-	newOut := new(bytes.Buffer)
-	newOut.WriteString("##!> assemble\n")
-
-	for _, prefix := range source.Prefixes {
-		newOut.WriteString(prefix)
-		newOut.WriteString("\n##!=>\n")
-	}
-	if _, err := out.WriteTo(newOut); err != nil {
-		logger.Fatal().Err(err).Msg("failed to copy output to new buffer")
-	}
-
-	sawNewLine := false
-	if err := out.UnreadByte(); err == nil {
-		lastByte, err := out.ReadByte()
-		if err == nil {
-			sawNewLine = lastByte == 13
-		}
-	}
-	if sawNewLine {
-		newOut.WriteString("\n")
-	}
-	if len(source.Suffixes) > 0 {
-		newOut.WriteString("##!=>\n")
-	}
-	for _, suffix := range source.Suffixes {
-		newOut.WriteString(suffix)
-		newOut.WriteString("\n##!=>\n")
-	}
-	newOut.WriteString("##!<\n")
-	return newOut, nil
+	// With block-scoped prefixes/suffixes, the directives are already in the content
+	// as raw lines, so we don't need to wrap them in an assemble block.
+	// We still collect them in Parser.Prefixes/Suffixes for compatibility but don't
+	// need to do anything special with them here.
+	return out, nil
 }
 
 func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {

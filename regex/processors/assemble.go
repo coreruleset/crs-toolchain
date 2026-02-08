@@ -137,6 +137,18 @@ func (a *Assemble) store(identifier string) error {
 	// the value we just stored
 	a.output.Reset()
 
+	// Apply block-scoped prefixes and suffixes to stored expressions
+	if len(a.prefixes) > 0 || len(a.suffixes) > 0 {
+		prefixes := strings.Join(a.prefixes, "")
+		suffixes := strings.Join(a.suffixes, "")
+		outputString = prefixes + outputString + suffixes
+		logger.Trace().Msgf("Applied block-scoped prefixes/suffixes to stored expression: %s", outputString)
+		// Clear prefixes/suffixes after applying to stored expression
+		// so they won't be applied again in Complete()
+		a.prefixes = nil
+		a.suffixes = nil
+	}
+
 	logger.Debug().Msgf("Storing expression at %s: %s", identifier, outputString)
 	a.proc.ctx.stash[identifier] = outputString
 	return nil
