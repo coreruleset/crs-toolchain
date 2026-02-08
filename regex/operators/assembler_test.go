@@ -819,6 +819,7 @@ d
 
 }
 func (s *assemblerTestSuite) TestAssemble_ConcatenationWithPrefixAndSuffix() {
+	// Test that top-level prefix/suffix apply to the implicit top-level block
 	contents := `##!^ prefix
 ##!$ suffix
   ##!> assemble
@@ -1067,4 +1068,71 @@ func (s *assemblerTestSuite) TestAssemble_RemoveOutermostNonMatchingGroup_Dont()
 
 	s.Require().NoError(err)
 	s.Equal(contents, output)
+}
+
+// Test block-scoped prefix/suffix behavior
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_InsideBlock() {
+	// Test that prefix/suffix inside an assemble block are block-scoped
+	contents := `##!> assemble
+##!^ prefix
+##!$ suffix
+a
+b
+##!<`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// wrapCompletedAssembly already wraps in (?:...)
+	s.Equal(`prefix[ab]suffix`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_TopLevel() {
+	// Verify top-level directives still work (implicit top-level block)
+	contents := `##!^ prefix
+##!$ suffix
+a
+b`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	s.Equal(`prefix[ab]suffix`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_MultipleBlocks() {
+	// Test multiple assemble blocks with different prefix/suffix in each
+	contents := `##!> assemble
+##!^ prefix1
+a
+b
+##!<
+##!=>
+##!> assemble
+##!$ suffix2
+c
+d
+##!<`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// Each block applies its own prefix/suffix independently
+	s.Equal(`prefix1[ab][cd]suffix2`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_NestedPattern() {
+	// Test the pattern from 934160.ra - prefix/suffix at start of assemble block
+	contents := `##!> assemble
+##!^ while\s*\([\s(]*
+##!$ .*\)
+true
+false
+##!<`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// Note: assembler applies various transformations like \s -> [\s\x0b]
+	// We just check that prefix/suffix are applied
+	s.Contains(output, `while`)
+	s.Contains(output, `.*\)`)
+	s.Contains(output, `tru`)
+	s.Contains(output, `fals`)
 }
