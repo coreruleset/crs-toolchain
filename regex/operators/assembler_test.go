@@ -1225,4 +1225,3 @@ b
 	// Only suffix should be applied
 	s.Equal(`[ab]suffix`, output)
 }
-
