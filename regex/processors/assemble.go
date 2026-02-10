@@ -19,8 +19,10 @@ const (
 )
 
 type Assemble struct {
-	proc   *Processor
-	output strings.Builder
+	proc     *Processor
+	output   strings.Builder
+	prefixes []string // Block-scoped prefixes
+	suffixes []string // Block-scoped suffixes
 }
 
 // NewAssemble creates a new assemble processor
@@ -32,7 +34,23 @@ func NewAssemble(ctx *Context) *Assemble {
 
 // ProcessLine applies the processors logic to a single line
 func (a *Assemble) ProcessLine(line string) error {
-	match := regex.AssembleInputRegex.FindStringSubmatch(line)
+	// Check for prefix directive
+	match := regex.PrefixRegex.FindStringSubmatch(line)
+	if len(match) > 0 {
+		a.prefixes = append(a.prefixes, match[1])
+		logger.Trace().Msgf("Added block-scoped prefix: %s", match[1])
+		return nil
+	}
+
+	// Check for suffix directive
+	match = regex.SuffixRegex.FindStringSubmatch(line)
+	if len(match) > 0 {
+		a.suffixes = append(a.suffixes, match[1])
+		logger.Trace().Msgf("Added block-scoped suffix: %s", match[1])
+		return nil
+	}
+
+	match = regex.AssembleInputRegex.FindStringSubmatch(line)
 	if len(match) > 0 {
 		if err := a.store(match[1]); err != nil {
 			logger.Error().Err(err).Msgf("Failed to store input: %s", line)
@@ -69,6 +87,23 @@ func (a *Assemble) Complete() ([]string, error) {
 	}
 
 	result := a.wrapCompletedAssembly(regex)
+
+	// Apply block-scoped prefixes and suffixes
+	if len(a.prefixes) > 0 || len(a.suffixes) > 0 {
+		prefixes := strings.Join(a.prefixes, "")
+		suffixes := strings.Join(a.suffixes, "")
+
+		// If we have content, apply prefixes/suffixes around it
+		if len(result) > 0 {
+			result = prefixes + result + suffixes
+			logger.Trace().Msgf("Applied block-scoped prefixes/suffixes: %s", result)
+		} else if len(prefixes) > 0 || len(suffixes) > 0 {
+			// If no content but we have prefixes/suffixes, just concatenate them
+			result = prefixes + suffixes
+			logger.Trace().Msgf("Applied block-scoped prefixes/suffixes with no content: %s", result)
+		}
+	}
+
 	logger.Trace().Msgf("Completed assembly: %s", result)
 
 	if result == "" {
@@ -101,6 +136,18 @@ func (a *Assemble) store(identifier string) error {
 	// reset output, the next call to `Complete` should not print
 	// the value we just stored
 	a.output.Reset()
+
+	// Apply block-scoped prefixes and suffixes to stored expressions
+	if len(a.prefixes) > 0 || len(a.suffixes) > 0 {
+		prefixes := strings.Join(a.prefixes, "")
+		suffixes := strings.Join(a.suffixes, "")
+		outputString = prefixes + outputString + suffixes
+		logger.Trace().Msgf("Applied block-scoped prefixes/suffixes to stored expression: %s", outputString)
+		// Clear prefixes/suffixes after applying to stored expression
+		// so they won't be applied again in Complete()
+		a.prefixes = nil
+		a.suffixes = nil
+	}
 
 	logger.Debug().Msgf("Storing expression at %s: %s", identifier, outputString)
 	a.proc.ctx.stash[identifier] = outputString

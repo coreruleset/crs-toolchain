@@ -73,13 +73,10 @@ func (s *parserIncludeTestSuite) TestParserInclude_Prefixes() {
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
 	actual, _ := parser.Parse(false)
-	expected := bytes.NewBufferString(`##!> assemble
-prefix1
-##!=>
-prefix2
-##!=>
+	// With block-scoped prefixes, directives are passed through as-is
+	expected := bytes.NewBufferString(`##!^ prefix1
+##!^ prefix2
 included regex
-##!<
 data regex
 `)
 	s.Equal(expected.String(), actual.String())
@@ -91,14 +88,10 @@ func (s *parserIncludeTestSuite) TestParserInclude_Suffixes() {
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
 	actual, _ := parser.Parse(false)
-	expected := bytes.NewBufferString(`##!> assemble
+	// With block-scoped suffixes, directives are passed through as-is
+	expected := bytes.NewBufferString(`##!$ suffix1
+##!$ suffix2
 included regex
-##!=>
-suffix1
-##!=>
-suffix2
-##!=>
-##!<
 data regex
 `)
 
@@ -113,18 +106,12 @@ func (s *parserIncludeTestSuite) TestParserInclude_FlagsPrefixesSuffixes() {
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
 	actual, _ := parser.Parse(false)
-	expected := bytes.NewBufferString(`##!> assemble
-prefix1
-##!=>
-prefix2
-##!=>
+	// With block-scoped prefixes/suffixes, directives are passed through as-is
+	expected := bytes.NewBufferString(`##!$ suffix1
+##!$ suffix2
+##!^ prefix1
+##!^ prefix2
 included regex
-##!=>
-suffix1
-##!=>
-suffix2
-##!=>
-##!<
 data regex
 `)
 
