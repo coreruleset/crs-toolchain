@@ -12,7 +12,7 @@ require (
 	github.com/cli/go-gh/v2 v2.13.0
 	github.com/coreruleset/wnram v0.1.0
 	github.com/creativeprojects/go-selfupdate v1.5.2
-	github.com/go-git/go-git/v5 v5.16.4
+	github.com/go-git/go-git/v5 v5.16.5
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-getter/v2 v2.2.3
 	github.com/itchyny/rassemble-go v0.1.2
