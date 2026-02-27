@@ -29,6 +29,8 @@ github.com/cli/shurcooL-graphql v0.0.4 h1:6MogPnQJLjKkaXPyGqPRXOI2qCsQdqNfUY1QSJ
 github.com/cli/shurcooL-graphql v0.0.4/go.mod h1:3waN4u02FiZivIV+p1y4d0Jo1jc6BViMA73C+sZo2fk=
 github.com/cloudflare/circl v1.6.1 h1:zqIqSPIndyBh1bjLVVDHMPpVKqp8Su/V+6MeDzzQBQ0=
 github.com/cloudflare/circl v1.6.1/go.mod h1:uddAzsPgqdMAYatqJ0lsjX1oECcQLIlRpzZh3pJrofs=
+github.com/cloudflare/circl v1.6.3 h1:9GPOhQGF9MCYUeXyMYlqTR6a5gTrgR/fBLXvUgtVcg8=
+github.com/cloudflare/circl v1.6.3/go.mod h1:2eXP6Qfat4O/Yhh8BznvKnJ+uzEoTQ6jVKJRn81BiS4=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/coreruleset/wnram v0.1.0 h1:9tNgUX67h8E1WorbiU9OOlgKUJClYjunjBfb7cXPUas=
 github.com/coreruleset/wnram v0.1.0/go.mod h1:EeNpPR2NxOfy4x4yQtEQR+Tenn0Qpqcld+kZAzwc5dc=
