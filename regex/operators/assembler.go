@@ -265,7 +265,7 @@ func (a *Operator) useHexEscapes(input string) string {
 	for _, char := range input {
 		if char < 32 {
 			// For control characters (ASCII < 32), use the shorthand hex notation (\xHH).
-			fmt.Fprintf(&sb, "\\x%x", char)
+			fmt.Fprintf(&sb, "\\x%02x", char)
 		} else if char > 126 {
 			fmt.Fprintf(&sb, "\\x{%x}", char)
 		} else {
