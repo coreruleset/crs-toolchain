@@ -121,12 +121,10 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		logger.Fatal().Err(err).Msg("Final pass failed")
 	}
 
-	if len(assembleParser.Prefixes) > 0 && len(assembleParser.Suffixes) > 0 && len(result) > 0 {
-		result = "(?:" + result + ")"
-	}
-	prefixes := strings.Join(assembleParser.Prefixes, "")
-	suffixes := strings.Join(assembleParser.Suffixes, "")
-	result = prefixes + result + suffixes
+	// Note: Prefix/suffix application is now handled by individual Assemble processors (block-scoped).
+	// While Parser.Prefixes and Parser.Suffixes are still populated by the parser for include file
+	// merging compatibility, they are not used in the operator path as prefix/suffix directives are
+	// passed through as raw lines and processed by each Assemble instance.
 
 	if len(result) > 0 {
 		logger.Trace().Msgf("Applying last cleanups to %s\n", result)
