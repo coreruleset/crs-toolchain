@@ -372,6 +372,37 @@ func (s *specialCasesTestSuite) TestBackslashSReplacesPerlEquivalentCharacterCla
 	s.Equal(`[\s\x0b]`, output)
 }
 
+func (s *specialCasesTestSuite) TestPreservesAnyCharacterClassWithQuantifier() {
+	// rassemble-go expands [\s\S]+ to [\x00-\x{10ffff}]+, which is invalid
+	// in PCRE non-UTF mode (ModSecurity v2/Apache). The assembler should
+	// replace it with the PCRE-compatible [\s\S] idiom.
+	contents := `[\s\S]+`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	s.Equal(`[\s\S]+`, output)
+}
+
+func (s *specialCasesTestSuite) TestPreservesAnyCharacterClassStandalone() {
+	// rassemble-go converts a standalone [\s\S] to (?s:.), which after flag
+	// removal becomes `.` and no longer matches newlines. The assembler should
+	// replace it with the PCRE-compatible [\s\S] idiom.
+	contents := `[\s\S]`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	s.Equal(`[\s\S]`, output)
+}
+
+func (s *specialCasesTestSuite) TestPreservesAnyCharacterClassInPattern() {
+	// [\s\S]+ embedded in a larger pattern should also be preserved.
+	contents := `prefix[\s\S]+suffix`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	s.Equal(`prefix[\s\S]+suffix`, output)
+}
+
 func (s *preprocessorsTestSuite) TestSequentialPreprocessors() {
 	contents := `##!> cmdline unix
 foo
@@ -1029,7 +1060,7 @@ func (s *assemblerTestSuite) TestAssemble_FlagGroupReplacementWithEscapedParenth
 // relevant, which is the case when the flag group wraps an alternation.
 func (s *assemblerTestSuite) TestAssemble_ReplaceFlagGroupsWithAlternations() {
 	contents := `(?-s:(?s:.)(?i:A|B .))`
-	expected := `.(?:A|B .)`
+	expected := `[\s\S](?:A|B .)`
 	assembler := NewAssembler(s.ctx)
 
 	output, err := assembler.Run(contents)

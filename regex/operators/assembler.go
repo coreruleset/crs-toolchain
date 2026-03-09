@@ -140,6 +140,8 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		logger.Trace().Msgf("After replacing plain backslashes with hex escapes: %s\n", result)
 		result = a.includeVerticalTabInSpaceClass(result)
 		logger.Trace().Msgf("After including vertical tabs: %s\n", result)
+		result = a.replaceAnyCharClass(result)
+		logger.Trace().Msgf("After replacing any-char class with [\\s\\S]: %s\n", result)
 		result = a.dontUseFlagsForMetaCharacters(result)
 		logger.Trace().Msgf("After removing meta character flags: %s\n", result)
 		result = a.removeOutermostNonCapturingGroup(result)
@@ -226,6 +228,21 @@ func (a *Operator) includeVerticalTabInSpaceClass(input string) string {
 	return strings.ReplaceAll(input, `\t\n\f\r `, `\s\x0b`)
 }
 
+// replaceAnyCharClass replaces regex patterns that match any character
+// (including newlines) with the PCRE-compatible [\s\S] idiom.
+// The Go regexp/syntax library, via rassemble-go, may produce either
+// [\x00-\x{10ffff}] (for quantified any-char matches such as [\s\S]+) or
+// (?s:.) (for single any-char matches such as a standalone [\s\S]), both of
+// which are invalid or incorrect in PCRE non-UTF mode as used by ModSecurity
+// v2/Apache. [\s\S] is valid in both PCRE and RE2 and preserves the
+// "match any character including newlines" semantics.
+func (a *Operator) replaceAnyCharClass(input string) string {
+	logger.Trace().Msg("Replacing any-char class variants with [\\s\\S]")
+	result := strings.ReplaceAll(input, `[\x00-\x{10ffff}]`, `[\s\S]`)
+	result = strings.ReplaceAll(result, `(?s:.)`, `[\s\S]`)
+	return result
+}
+
 // rassemble-go doesn't provide an option to specify literals.
 // Go itself would, via the `Literal` flag to `syntax.Parse`.
 // As it is, escapes that are printable runes will be returned as such,
@@ -248,9 +265,9 @@ func (a *Operator) useHexEscapes(input string) string {
 	for _, char := range input {
 		if char < 32 {
 			// For control characters (ASCII < 32), use the shorthand hex notation (\xHH).
-			sb.WriteString(fmt.Sprintf("\\x%x", char))
+			fmt.Fprintf(&sb, "\\x%02x", char)
 		} else if char > 126 {
-			sb.WriteString(fmt.Sprintf("\\x{%x}", char))
+			fmt.Fprintf(&sb, "\\x{%x}", char)
 		} else {
 			sb.WriteRune(char)
 		}
