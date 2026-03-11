@@ -47,3 +47,25 @@ func (s *parserDefinitionTestSuite) TestParserDefinition_BasicTest() {
 	s.Equal(parser.variables["this-is-another-text"], "[0-9](pine|apple)", "failed to found definition variables in map")
 	s.Equal(expected.String(), actual.String())
 }
+
+func (s *parserDefinitionTestSuite) TestParserDefinition_ValueWithSpaces() {
+	reader := strings.NewReader("##!> define comparison-prefix [>< ]\n" +
+		"{{comparison-prefix}}something\n")
+	parser := NewParser(s.ctx, reader)
+	actual, _ := parser.Parse(false)
+	expected := bytes.NewBufferString("[>< ]something\n")
+
+	s.Equal("[>< ]", parser.variables["comparison-prefix"], "definition value with space in character class should be preserved")
+	s.Equal(expected.String(), actual.String())
+}
+
+func (s *parserDefinitionTestSuite) TestParserDefinition_ValueWithEscapedSpace() {
+	reader := strings.NewReader("##!> define space-pattern [><\\ ]\n" +
+		"{{space-pattern}}test\n")
+	parser := NewParser(s.ctx, reader)
+	actual, _ := parser.Parse(false)
+	expected := bytes.NewBufferString("[><\\ ]test\n")
+
+	s.Equal("[><\\ ]", parser.variables["space-pattern"], "definition value with escaped space should be preserved")
+	s.Equal(expected.String(), actual.String())
+}
