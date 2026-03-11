@@ -16,7 +16,7 @@ var IncludeExceptRegex = regexp.MustCompile(`^##!>\s*include-except\s+(\S+)\s*(.
 // DefinitionRegex matches a definition processor line (##! define <name> <value>)
 // Everything up to the value of the definition is captured in group 1.
 // The name is captured in group 2, the value in group 3.
-var DefinitionRegex = regexp.MustCompile(`^(##!>\s*define\s+([a-zA-Z0-9-_]+)\s+)(\S+)\s*$`)
+var DefinitionRegex = regexp.MustCompile(`^(##!>\s*define\s+([a-zA-Z0-9-_]+)\s+)(\S(?:.*\S)?)\s*$`)
 
 // CommentRegex matches a comment line (##!, no other directives)
 var CommentRegex = regexp.MustCompile(`^\s*##!(?:[^^$+><=]|$)`)
