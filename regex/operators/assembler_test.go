@@ -354,12 +354,25 @@ func (s *specialCasesTestSuite) TestDoesNotConvertHexEscapesOfNonPrintableCharac
 	s.Equal(`H\x{e2}\x93\x{ab}`, output)
 }
 
-func (s *specialCasesTestSuite) TestHexConversionOfNonAsciiCharacters() {
+func (s *assemblerTestSuite) TestHexConversionOfMultiByteCharacters() {
+	contents := "[\\x7f-\\x{ff}]"
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	s.Equal(`[\x7f-\x{ff}]`, output)
+}
+
+// Test that multi-byt sequence is not encoded erroneously as a two digit hex escape (`\xab“),
+// as `\xabcd` would be interpreted as `\xab` followed by `cd`.
+// In this particular case, the correct escape sequence would be `\x{2019}` but PCRE 8-bit
+// without UTF-8t suport can only handle escapes up to `\x{ff}`. Hence, this must be encoded
+// as a literal multi-byte character.
+func (s *specialCasesTestSuite) TestHexConversionOfLiteralMultiByteCharacters() {
 	contents := `(?:’)`
 	assembler := NewAssembler(s.ctx)
 	output, err := assembler.Run(contents)
 	s.Require().NoError(err)
-	s.Equal(`\x{2019}`, output)
+	s.Equal(`’`, output)
 }
 
 func (s *specialCasesTestSuite) TestBackslashSReplacesPerlEquivalentCharacterClass() {
@@ -1067,4 +1080,44 @@ func (s *assemblerTestSuite) TestAssemble_RemoveOutermostNonMatchingGroup_Dont()
 
 	s.Require().NoError(err)
 	s.Equal(contents, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_UnsupportedUnicodeHexEscape() {
+	contents := "\\x{10ffff}"
+	assembler := NewAssembler(s.ctx)
+
+	_, err := assembler.Run(contents)
+
+	s.ErrorContains(err, "Unicode hex escape codepoint too big: 1114111 > 255")
+}
+
+func (s *assemblerTestSuite) TestAssemble_UnsupportedOctalEscape() {
+	contents := "\\o777"
+	assembler := NewAssembler(s.ctx)
+
+	_, err := assembler.Run(contents)
+
+	// parsing the regex will already fail
+	s.ErrorContains(err, "error parsing regexp: invalid escape sequence: `\\o")
+}
+
+func (s *assemblerTestSuite) TestAssemble_ValidateMultipleUnicodeHexEscapes() {
+	contents := "a\\x12b\\x{12}\\x{10ffff}\\x34"
+	assembler := NewAssembler(s.ctx)
+
+	_, err := assembler.Run(contents)
+
+	s.ErrorContains(err, "Unicode hex escape codepoint too big: 1114111 > 255")
+}
+
+func (s *assemblerTestSuite) TestAssemble_ValidateCharacterClass() {
+	// [\s\S]+ will be converted into the range of all unicode characters,
+	// using unicode hex escape notation. This regex will, thus, pass pre
+	// validation but fail post validation.
+	contents := "[\\s\\S]+"
+	assembler := NewAssembler(s.ctx)
+
+	_, err := assembler.Run(contents)
+
+	s.ErrorContains(err, "Unicode hex escape codepoint too big: 1114111 > 255")
 }

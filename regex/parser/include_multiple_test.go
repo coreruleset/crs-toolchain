@@ -67,7 +67,7 @@ func (s *parserMultiIncludeTestSuite) TearDownSuite() {
 
 func (s *parserMultiIncludeTestSuite) TestParserMultiInclude_FromMultiFile() {
 	parser := NewParser(s.ctx, s.reader)
-	actual, n := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(
 		"This is comment 3.\n" +
 			"This is comment 2.\n" +
@@ -75,5 +75,4 @@ func (s *parserMultiIncludeTestSuite) TestParserMultiInclude_FromMultiFile() {
 			"This is comment 0.\n")
 
 	s.Equal(expected.String(), actual.String())
-	s.Equal(expected.Len(), n)
 }

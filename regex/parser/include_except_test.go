@@ -81,7 +81,7 @@ a*b|include3`, s.excludeDir)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 
 	s.Equal("leave me alone\n", actual.String())
 }
@@ -103,7 +103,7 @@ leave me alone
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 
 	s.Equal(`\s*include1
 leave me alone
@@ -127,7 +127,7 @@ a*b|include3`, s.excludeDir)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 
 	s.Equal(`\s*include1`+"\n", actual.String())
 }
@@ -148,7 +148,7 @@ include3{{homer}}`, s.excludeDir)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 
 	s.Equal("leave me alone\n", actual.String())
 }
@@ -163,7 +163,7 @@ func (s *parserIncludeExceptTestSuite) TestIncludeExcept_DontPanicWhenInclusions
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 
 	s.Empty(actual)
 }
@@ -178,7 +178,7 @@ func (s *parserIncludeExceptTestSuite) TestIncludeExcept_DontPanicWhenExclusions
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 
 	s.Equal("include1\n", actual.String())
 }
@@ -202,7 +202,7 @@ no suffix 2`,
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := `suffix with[\s><]
 suffix with[^\s]
 no suffix 2
@@ -230,7 +230,7 @@ no suffix 2`,
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := `suffix with
 suffix with
 no suffix 2
@@ -253,7 +253,7 @@ a*b|include3`, s.excludeDir)
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 
 	s.Equal("leave me alone\n", actual.String())
 }
@@ -278,7 +278,7 @@ no suffix 2`,
 	defer assemblyFile.Close()
 
 	parser := NewParser(s.ctx, assemblyFile)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := `suffix with[\s><]
 suffix with[^\s]
 `

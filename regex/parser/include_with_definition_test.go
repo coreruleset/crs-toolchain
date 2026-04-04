@@ -36,7 +36,7 @@ func TestRunParserIncludeWithDefinitionsTestSuite(t *testing.T) {
 
 func (s *parserIncludeWithDefinitions) TestParser_IncludeWithDefinitions() {
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(
 		"This is comment 3.\n" +
 			"[a-zA-J]+8 to see if definitions work when included\n" +
@@ -63,7 +63,7 @@ func (s *parserIncludeWithDefinitions) TestParser_DanglingDefinitions() {
 	rootContext := context.New(os.TempDir(), "toolchain.yaml")
 	parser := NewParser(processors.NewContext(rootContext), reader)
 
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString("world\n{{hallo}}\n")
 	s.Equal(expected.String(), actual.String())
 

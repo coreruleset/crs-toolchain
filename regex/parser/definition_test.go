@@ -39,7 +39,7 @@ func (s *parserDefinitionTestSuite) SetupSuite() {
 
 func (s *parserDefinitionTestSuite) TestParserDefinition_BasicTest() {
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString("[a-zA-J]+8 to see if definitions work.\nSecond text for [0-9](pine|apple).\n")
 
 	s.Greater(len(parser.variables), 0)

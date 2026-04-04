@@ -57,11 +57,10 @@ func (s *parserTestSuite) TestParser_ParseTwoComments() {
 	rootContext := context.New(os.TempDir(), "toolchain.yaml")
 	parser := NewParser(processors.NewContext(rootContext), reader)
 
-	actual, n := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString("")
 
 	s.Equal(expected.String(), actual.String())
-	s.Len(expected.String(), n)
 }
 
 func (s *parserTestSuite) TestIgnoresEmptyLines() {
@@ -69,11 +68,10 @@ func (s *parserTestSuite) TestIgnoresEmptyLines() {
 	reader := strings.NewReader(contents)
 	rootContext := context.New(os.TempDir(), "toolchain.yaml")
 	parser := NewParser(processors.NewContext(rootContext), reader)
-	actual, n := parser.Parse(false)
+	actual := parser.Parse(false)
 
 	expected := "some line\nanother line\n"
 	s.Equal(expected, actual.String())
-	s.Len(expected, n)
 }
 
 func (s *parserTestSuite) TestPanicsOnUnrecognizedFlag() {
