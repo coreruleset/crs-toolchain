@@ -42,19 +42,19 @@ func (s *regexValidationTestSuite) TestMaxValidCodePoint() {
 func (s *regexValidationTestSuite) TestMinInvalidCodePoint() {
 	regex := "\\x{100}"
 	err := ValidateCodePoints(strings.NewReader(regex))
-	s.ErrorContains(err, "Unicode hex escape codepoint too big: 256 > 255")
+	s.ErrorContains(err, "unicode hex escape codepoint too big: 256 > 255")
 }
 
 func (s *regexValidationTestSuite) TestMaxInvalidCodePoint() {
 	regex := "\\x{10FFFF}"
 	err := ValidateCodePoints(strings.NewReader(regex))
-	s.ErrorContains(err, "Unicode hex escape codepoint too big: 1114111 > 255")
+	s.ErrorContains(err, "unicode hex escape codepoint too big: 1114111 > 255")
 }
 
 func (s *regexValidationTestSuite) TestFindMultiByteCharacterInCharacterClass() {
 	regex := "[🐉]"
 	err := ValidateCharacterClasses(strings.NewReader(regex))
-	s.ErrorContains(err, "Found multi-byte character in character class: 🐉")
+	s.ErrorContains(err, "found multi-byte character in character class: 🐉")
 }
 
 func (s *regexValidationTestSuite) TestDontMatchSimpleByteSequences() {
@@ -72,5 +72,5 @@ func (s *regexValidationTestSuite) TestSkipEscapedCharacterClass() {
 func (s *regexValidationTestSuite) TestSkipEscapedBackSlash() {
 	regex := "\\\\[🐉]"
 	err := ValidateCharacterClasses(strings.NewReader(regex))
-	s.ErrorContains(err, "Found multi-byte character in character class: 🐉")
+	s.ErrorContains(err, "found multi-byte character in character class: 🐉")
 }

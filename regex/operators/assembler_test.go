@@ -362,10 +362,10 @@ func (s *assemblerTestSuite) TestHexConversionOfMultiByteCharacters() {
 	s.Equal(`[\x7f-\x{ff}]`, output)
 }
 
-// Test that multi-byt sequence is not encoded erroneously as a two digit hex escape (`\xab“),
+// Test that multi-byte sequence is not encoded erroneously as a two digit hex escape (`\xab“),
 // as `\xabcd` would be interpreted as `\xab` followed by `cd`.
 // In this particular case, the correct escape sequence would be `\x{2019}` but PCRE 8-bit
-// without UTF-8t suport can only handle escapes up to `\x{ff}`. Hence, this must be encoded
+// without UTF-8 support can only handle escapes up to `\x{ff}`. Hence, this must be encoded
 // as a literal multi-byte character.
 func (s *specialCasesTestSuite) TestHexConversionOfLiteralMultiByteCharacters() {
 	contents := `(?:’)`
@@ -1088,7 +1088,7 @@ func (s *assemblerTestSuite) TestAssemble_UnsupportedUnicodeHexEscape() {
 
 	_, err := assembler.Run(contents)
 
-	s.ErrorContains(err, "Unicode hex escape codepoint too big: 1114111 > 255")
+	s.ErrorContains(err, "unicode hex escape codepoint too big: 1114111 > 255")
 }
 
 func (s *assemblerTestSuite) TestAssemble_UnsupportedOctalEscape() {
@@ -1107,7 +1107,7 @@ func (s *assemblerTestSuite) TestAssemble_ValidateMultipleUnicodeHexEscapes() {
 
 	_, err := assembler.Run(contents)
 
-	s.ErrorContains(err, "Unicode hex escape codepoint too big: 1114111 > 255")
+	s.ErrorContains(err, "unicode hex escape codepoint too big: 1114111 > 255")
 }
 
 func (s *assemblerTestSuite) TestAssemble_ValidateCharacterClass() {
@@ -1119,5 +1119,5 @@ func (s *assemblerTestSuite) TestAssemble_ValidateCharacterClass() {
 
 	_, err := assembler.Run(contents)
 
-	s.ErrorContains(err, "Unicode hex escape codepoint too big: 1114111 > 255")
+	s.ErrorContains(err, "unicode hex escape codepoint too big: 1114111 > 255")
 }
