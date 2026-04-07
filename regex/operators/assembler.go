@@ -11,12 +11,14 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/itchyny/rassemble-go"
 
 	"github.com/coreruleset/crs-toolchain/v2/regex"
 	"github.com/coreruleset/crs-toolchain/v2/regex/parser"
 	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/regex/validation"
 	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
@@ -40,8 +42,14 @@ func (a *Operator) Run(input string) (string, error) {
 	processorStack = NewProcessorStack()
 	logger.Trace().Msg("Starting assembler")
 	assembleParser := parser.NewParser(a.ctx, strings.NewReader(input))
-	lines, _ := assembleParser.Parse(false)
+	lines := assembleParser.Parse(false)
 	logger.Trace().Msgf("Parsed lines: %v", lines)
+	logger.Trace().Msg("Validating input")
+	if err := validation.ValidateAll(bytes.NewReader(lines.Bytes())); err != nil {
+		return "", err
+	}
+	logger.Trace().Msg("Successfully validated input")
+
 	assembled, err := a.assemble(assembleParser, lines)
 	if err != nil {
 		return "", err
@@ -54,7 +62,6 @@ func (a *Operator) Run(input string) (string, error) {
 
 func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) (string, error) {
 	fileScanner := bufio.NewScanner(bytes.NewReader(input.Bytes()))
-	fileScanner.Split(bufio.ScanLines)
 	processor = processors.NewAssemble(a.ctx)
 	processorStack.push(processor)
 
@@ -100,10 +107,10 @@ func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 		logger.Error().Err(err).Msg("Failed to remove assembler processor.")
 		return "", err
 	}
-	return a.complete(assembleParser), nil
+	return a.complete(assembleParser)
 }
 
-func (a *Operator) complete(assembleParser *parser.Parser) string {
+func (a *Operator) complete(assembleParser *parser.Parser) (string, error) {
 	logger.Trace().Msgf("** completing using: %v\n", a.lines)
 	flagsPrefix := ""
 	if len(assembleParser.Flags) > 0 {
@@ -118,7 +125,8 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 	logger.Trace().Msg("Final alternation pass")
 	result, err := a.runFinalPass()
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Final pass failed")
+		logger.Error().Err(err).Msg("Final pass failed")
+		return "", err
 	}
 
 	if len(assembleParser.Prefixes) > 0 && len(assembleParser.Suffixes) > 0 && len(result) > 0 {
@@ -144,13 +152,20 @@ func (a *Operator) complete(assembleParser *parser.Parser) string {
 		logger.Trace().Msgf("After removing meta character flags: %s\n", result)
 		result = a.removeOutermostNonCapturingGroup(result)
 		logger.Trace().Msgf("After removing outermost non-capturing group: %s\n", result)
+		logger.Trace().Msg("Running validation")
+		err := validation.ValidateAll(strings.NewReader(result))
+		if err != nil {
+			logger.Error().Err(err).Msg("Validation failed")
+			return "", err
+		}
+		logger.Trace().Msg("Validation successful")
 	}
 
 	if len(flagsPrefix) > 0 && len(result) > 0 {
 		result = flagsPrefix + result
 	}
 
-	return result
+	return result, nil
 }
 
 func (a *Operator) runFinalPass() (string, error) {
@@ -245,14 +260,33 @@ func (a *Operator) includeVerticalTabInSpaceClass(input string) string {
 // `\v\n\r` and space (`\x32`).
 func (a *Operator) useHexEscapes(input string) string {
 	var sb strings.Builder
-	for _, char := range input {
-		if char < 32 {
-			// For control characters (ASCII < 32), use the shorthand hex notation (\xHH).
-			sb.WriteString(fmt.Sprintf("\\x%x", char))
-		} else if char > 126 {
-			sb.WriteString(fmt.Sprintf("\\x{%x}", char))
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanRunes)
+	for scanner.Scan() {
+		nextBytes := scanner.Bytes()
+		if len(nextBytes) == 1 {
+			char := nextBytes[0]
+			if char < 32 {
+				// For control characters (ASCII < 32), use the shorthand hex notation (\xHH).
+				fmt.Fprintf(&sb, "\\x%x", char)
+			} else if char > 126 {
+				fmt.Fprintf(&sb, "\\x{%x}", char)
+			} else {
+				sb.WriteByte(char)
+			}
 		} else {
-			sb.WriteRune(char)
+			// multi-byte character
+			r, _ := utf8.DecodeRune(nextBytes)
+			value := int(r)
+			// value := 0
+			// for _, oneByte := range nextBytes {
+			// 	value = value*16 + int(oneByte)
+			// }
+			if value <= 255 {
+				fmt.Fprintf(&sb, "\\x{%x}", value)
+			} else {
+				sb.WriteRune(rune(value))
+			}
 		}
 	}
 	return sb.String()

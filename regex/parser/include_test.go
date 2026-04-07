@@ -60,11 +60,10 @@ func (s *parserIncludeTestSuite) TearDownTest() {
 func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
 	s.writeDataFile("This data comes from the include file.\n", "##!This is a comment\n")
 	parser := NewParser(s.ctx, s.reader)
-	actual, n := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString("This data comes from the include file.\n")
 
 	s.Equal(expected.String(), actual.String())
-	s.Equal(expected.Len(), n)
 }
 
 func (s *parserIncludeTestSuite) TestParserInclude_Prefixes() {
@@ -72,7 +71,7 @@ func (s *parserIncludeTestSuite) TestParserInclude_Prefixes() {
 ##!^ prefix2
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`##!> assemble
 prefix1
 ##!=>
@@ -90,7 +89,7 @@ func (s *parserIncludeTestSuite) TestParserInclude_Suffixes() {
 ##!$ suffix2
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`##!> assemble
 included regex
 ##!=>
@@ -112,7 +111,7 @@ func (s *parserIncludeTestSuite) TestParserInclude_FlagsPrefixesSuffixes() {
 ##!^ prefix2
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`##!> assemble
 prefix1
 ##!=>
@@ -143,7 +142,7 @@ no suffix 2`)
 		"@", `[\s><]`,
 		"~", `[^\s]`))
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`no suffix1
 suffix with[\s><]
 suffix with[^\s]
@@ -165,7 +164,7 @@ no suffix 2`)
 		"  @", `[\s><]  `,
 		"~   ", `   [^\s]`))
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`no suffix1
 suffix with[\s><]
 suffix with[^\s]
@@ -187,7 +186,7 @@ no suffix 2`)
 		"@", `""`,
 		"~", `""`))
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`no suffix1
 suffix with
 suffix with

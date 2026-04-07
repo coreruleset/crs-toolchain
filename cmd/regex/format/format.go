@@ -23,12 +23,12 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/regex"
 	"github.com/coreruleset/crs-toolchain/v2/regex/parser"
 	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
+	"github.com/coreruleset/crs-toolchain/v2/regex/validation"
 	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
 const (
 	RegexAssemblyStandardHeader = "##! Please refer to the documentation at\n##! https://coreruleset.org/docs/development/regex_assembly/.\n"
-	showCharsAround             = 20
 )
 
 var logger = log.With().Str("component", "cmd.regex.format").Logger()
@@ -162,14 +162,19 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool, cmdC
 	}
 
 	raParser := parser.NewParser(ctxt, file)
-	parsedBytes, _ := raParser.Parse(true)
+	parsedBytesBuffer := raParser.Parse(true)
 	if err = file.Close(); err != nil {
 		logger.Error().Err(err).Msgf("file already closed %s", filePath)
 		return err
 	}
 
-	scanner := bufio.NewScanner(parsedBytes)
-	scanner.Split(bufio.ScanLines)
+	logger.Trace().Msg("Validating input")
+	if err := validation.ValidateAll(bytes.NewReader(parsedBytesBuffer.Bytes())); err != nil {
+		return err
+	}
+	logger.Trace().Msg("Successfully validated input")
+
+	scanner := bufio.NewScanner(parsedBytesBuffer)
 	lines := []string{}
 
 	indent := 0

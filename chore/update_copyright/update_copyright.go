@@ -73,7 +73,6 @@ func processFile(filePath string, version *semver.Version, year uint16) error {
 // in a more elegant way. Right now we just match strings.
 func updateRules(version *semver.Version, year uint16, contents []byte) ([]byte, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(contents))
-	scanner.Split(bufio.ScanLines)
 	output := new(bytes.Buffer)
 	writer := bufio.NewWriter(output)
 	replaceVersion := fmt.Sprintf("${1}%s", version)
