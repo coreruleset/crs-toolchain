@@ -61,7 +61,7 @@ nfpms:
     description:
       CRS ToolChain helper
 
-    license: APL2
+    license: Apache-2.0
 
 homebrew_casks:
   - name: crs-toolchain
