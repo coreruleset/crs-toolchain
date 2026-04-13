@@ -63,13 +63,13 @@ nfpms:
 
     license: Apache-2.0
 
-homebrew_casks:
+brews:
   - name: crs-toolchain
     repository:
       owner: coreruleset
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
-    directory: Casks
+    directory: Formula
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
