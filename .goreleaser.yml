@@ -73,7 +73,7 @@ brews:
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    commit_msg_template: "chore: cask update for {{ .ProjectName }} version {{ .Tag }}"
+    commit_msg_template: "chore: formula update for {{ .ProjectName }} version {{ .Tag }}"
     homepage: "https://github.com/coreruleset/crs-toolchain"
     description: "CRS developer's utility belt"
     license: "Apache-2.0"
