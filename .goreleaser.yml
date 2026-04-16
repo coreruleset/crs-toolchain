@@ -61,7 +61,23 @@ nfpms:
     description:
       CRS ToolChain helper
 
-    license: APL2
+    license: Apache-2.0
+
+brews:
+  - name: crs-toolchain
+    repository:
+      owner: coreruleset
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "chore: formula update for {{ .ProjectName }} version {{ .Tag }}"
+    homepage: "https://github.com/coreruleset/crs-toolchain"
+    description: "CRS developer's utility belt"
+    license: "Apache-2.0"
+    skip_upload: auto
 
 announce:
   slack:
