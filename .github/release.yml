@@ -12,6 +12,9 @@ changelog:
     - title: 🛠 Fixes
       labels:
         - bug
+    - title: 🛡️ Security fixes
+      labels:
+        - security
     - title: ⚙️ Dependency updates
       labels:
         - dependencies
