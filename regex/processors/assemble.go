@@ -90,18 +90,8 @@ func (a *Assemble) Complete() ([]string, error) {
 
 	// Apply block-scoped prefixes and suffixes
 	if len(a.prefixes) > 0 || len(a.suffixes) > 0 {
-		prefixes := strings.Join(a.prefixes, "")
-		suffixes := strings.Join(a.suffixes, "")
-
-		// If we have content, apply prefixes/suffixes around it
-		if len(result) > 0 {
-			result = prefixes + result + suffixes
-			logger.Trace().Msgf("Applied block-scoped prefixes/suffixes: %s", result)
-		} else if len(prefixes) > 0 || len(suffixes) > 0 {
-			// If no content but we have prefixes/suffixes, just concatenate them
-			result = prefixes + suffixes
-			logger.Trace().Msgf("Applied block-scoped prefixes/suffixes with no content: %s", result)
-		}
+		result = strings.Join(a.prefixes, "") + result + strings.Join(a.suffixes, "")
+		logger.Trace().Msgf("Applied block-scoped prefixes/suffixes: %s", result)
 	}
 
 	logger.Trace().Msgf("Completed assembly: %s", result)

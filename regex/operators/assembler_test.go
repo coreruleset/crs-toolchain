@@ -1263,6 +1263,26 @@ b
 	s.Equal(`prefix[ab]`, output)
 }
 
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_MultipleNestingLevels() {
+	// Test that prefix/suffix is correctly scoped when blocks are nested multiple levels deep.
+	// The outer block's prefix/suffix wraps the inner block's output, while the inner block's
+	// prefix/suffix only applies to the inner block's content.
+	contents := `##!> assemble
+##!^ outer_prefix
+##!$ outer_suffix
+##!> assemble
+##!^ inner_prefix
+##!$ inner_suffix
+a
+b
+##!<
+##!<`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	s.Equal(`outer_prefixinner_prefix[ab]inner_suffixouter_suffix`, output)
+}
+
 func (s *assemblerTestSuite) TestAssemble_PrefixSuffixWithStashing_OnlySuffix() {
 	// Test stashing with only suffix
 	contents := `##!> assemble
