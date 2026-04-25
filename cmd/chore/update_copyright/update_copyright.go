@@ -11,7 +11,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 
-	"github.com/coreruleset/crs-toolchain/v2/chore"
+	updateCopyright "github.com/coreruleset/crs-toolchain/v2/chore/update_copyright"
 	"github.com/coreruleset/crs-toolchain/v2/cmd/internal"
 )
 
@@ -35,7 +35,15 @@ func New(cmdContext *internal.CommandContext) *cobra.Command {
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			chore.UpdateCopyright(cmdContext.RootContext(), copyrightVariables.Version, copyrightVariables.Year)
+			year, err := strconv.ParseUint(copyrightVariables.Year, 0, 16)
+			if err != nil {
+				panic("Failed to parse year")
+			}
+			version, err := semver.NewVersion(copyrightVariables.Version)
+			if err != nil {
+				panic("Failed to parse version as semver")
+			}
+			updateCopyright.UpdateCopyright(cmdContext.RootContext(), version, uint16(year), []string{})
 		},
 	}
 

@@ -107,7 +107,6 @@ func (t *TestRenumberer) processFile(filePath string, checkOnly bool, gitHubOutp
 
 func (t *TestRenumberer) processYaml(ruleId string, contents []byte) ([]byte, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(contents))
-	scanner.Split(bufio.ScanLines)
 	output := new(bytes.Buffer)
 	writer := bufio.NewWriter(output)
 	index := 0

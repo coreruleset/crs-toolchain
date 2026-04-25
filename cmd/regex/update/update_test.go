@@ -46,7 +46,7 @@ func TestRunUpdateTestSuite(t *testing.T) {
 }
 
 func (s *updateTestSuite) TestUpdate_NormalRuleId() {
-	s.writeDataFile("123456.ra", "")
+	s.writeDataFile("123456.ra", "", "")
 	s.writeRuleFile("123456", `SecRule "@rx regex" \\`+"\nid:123456")
 	s.cmd.SetArgs([]string{"123456"})
 	cmd, _ := s.cmd.ExecuteC()
@@ -100,8 +100,8 @@ func (s *updateTestSuite) TestUpdate_DashReturnsError() {
 }
 
 func (s *updateTestSuite) TestUpdate_UpdatesAllWithAllFlag() {
-	s.writeDataFile("123456.ra", "homer")
-	s.writeDataFile("123457.ra", "simpson")
+	s.writeDataFile("123456.ra", "", "homer")
+	s.writeDataFile("123457.ra", "", "simpson")
 	s.writeRuleFile("123456", `SecRule ARGS "@rx regex1" \
 	"id:123456"
 SecRule ARGS "@rx regex2" \
@@ -122,8 +122,31 @@ SecRule ARGS '@rx regex3" \
 	s.Equal(expected, actual)
 }
 
+func (s *updateTestSuite) TestUpdate_UpdateAllSkippingSubDirectories() {
+	s.writeDataFile("123456.ra", "", "homer")
+	s.writeDataFile("123457.ra", "include", "simpson")
+	s.writeRuleFile("123456", `SecRule ARGS "@rx regex1" \
+	"id:123456"
+SecRule ARGS "@rx regex2" \
+	"id:123457"
+SecRule ARGS '@rx regex3" \
+	"id:123458"`)
+	s.cmd.SetArgs([]string{"--all"})
+	_, err := s.cmd.ExecuteC()
+	s.Require().NoError(err)
+
+	expected := `SecRule ARGS "@rx homer" \
+	"id:123456"
+SecRule ARGS "@rx regex2" \
+	"id:123457"
+SecRule ARGS '@rx regex3" \
+	"id:123458"`
+	actual := s.readRuleFile("123456")
+	s.Equal(expected, actual)
+}
+
 func (s *updateTestSuite) TestUpdate_UpdatesInverseRx() {
-	s.writeDataFile("123456.ra", "homer")
+	s.writeDataFile("123456.ra", "", "homer")
 	s.writeRuleFile("123456", `SecRule ARGS "!@rx regex1" \
 	"id:123456"`)
 	s.cmd.SetArgs([]string{"--all"})
@@ -137,7 +160,7 @@ func (s *updateTestSuite) TestUpdate_UpdatesInverseRx() {
 }
 
 func (s *updateTestSuite) TestUpdate_UpdatesChainedRule() {
-	s.writeDataFile("123456-chain1.ra", "homer")
+	s.writeDataFile("123456-chain1.ra", "", "homer")
 	s.writeRuleFile("123456", `SecRule ARGS "@rx regex1" \
 	"id:123456, \
 	chain"
@@ -154,8 +177,16 @@ func (s *updateTestSuite) TestUpdate_UpdatesChainedRule() {
 	s.Equal(expected, actual)
 }
 
-func (s *updateTestSuite) writeDataFile(filename string, contents string) {
-	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
+func (s *updateTestSuite) writeDataFile(filename string, directory string, contents string) {
+	parentDirectory := s.dataDir
+	if directory != "" {
+		parentDirectory = path.Join(parentDirectory, directory)
+		err := os.Mkdir(parentDirectory, fs.ModePerm)
+		s.Require().NoError(err)
+
+	}
+	filePath := path.Join(parentDirectory, filename)
+	err := os.WriteFile(filePath, []byte(contents), fs.ModePerm)
 	s.Require().NoError(err)
 }
 
