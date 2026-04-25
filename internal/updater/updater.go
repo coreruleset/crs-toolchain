@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/creativeprojects/go-selfupdate"
 	"github.com/rs/zerolog/log"
 )
@@ -50,6 +51,10 @@ func LatestVersion() (string, error) {
 // Updater checks the latest version on GitHub and self-updates if there is a newer release.
 // Returns the version string of the updated release, or an error if something went wrong.
 func Updater(version string, executablePath string) (string, error) {
+	if _, err := semver.NewVersion(version); err != nil {
+		return "", fmt.Errorf("failed to parse version '%s'", version)
+	}
+
 	emptyVersion := ""
 	latest, err := getLatestVersionFromGitHub()
 	if err != nil {

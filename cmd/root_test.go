@@ -7,36 +7,28 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/coreruleset/crs-toolchain/v2/cmd/internal"
 	loggerConfig "github.com/coreruleset/crs-toolchain/v2/logger"
 )
 
 type rootTestSuite struct {
 	suite.Suite
-	tempDir string
+	rootDir string
 	dataDir string
 }
 
 func (s *rootTestSuite) SetupTest() {
-	rebuildRootCommand()
-	rebuildRegexCommand()
-	zerolog.SetGlobalLevel(defaultLogLevel)
+	zerolog.SetGlobalLevel(loggerConfig.DefaultLogLevel)
 
-	tempDir, err := os.MkdirTemp("", "root-tests")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
-
-	s.dataDir = path.Join(s.tempDir, "regex-assembly")
-	err = os.MkdirAll(s.dataDir, fs.ModePerm)
-	s.Require().NoError(err)
-}
-
-func (s *rootTestSuite) TearDownTest() {
-	err := os.RemoveAll(s.tempDir)
+	s.rootDir = s.T().TempDir()
+	s.dataDir = path.Join(s.rootDir, "regex-assembly")
+	err := os.MkdirAll(s.dataDir, fs.ModePerm)
 	s.Require().NoError(err)
 }
 
@@ -45,6 +37,7 @@ func TestRunRootTestSuite(t *testing.T) {
 }
 
 func (s *rootTestSuite) TestRoot_NoArguments() {
+	rootCmd := New()
 	rootCmd.SetArgs([]string{})
 	cmd, err := rootCmd.ExecuteC()
 
@@ -53,6 +46,7 @@ func (s *rootTestSuite) TestRoot_NoArguments() {
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelDefault() {
+	rootCmd := New()
 	rootCmd.SetArgs([]string{})
 	cmd, _ := rootCmd.ExecuteC()
 
@@ -65,7 +59,8 @@ func (s *rootTestSuite) TestRoot_LogLevelDefault() {
 
 func (s *rootTestSuite) TestRoot_LogLevelChanged() {
 	s.writeDataFile("123456.ra", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "--log-level", "debug", "regex", "generate", "123456"})
+	rootCmd := New()
+	rootCmd.SetArgs([]string{"-d", s.rootDir, "--log-level", "debug", "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
@@ -77,19 +72,22 @@ func (s *rootTestSuite) TestRoot_LogLevelChanged() {
 
 func (s *rootTestSuite) TestRoot_LogLevelInvalidShouldBeDefault() {
 	s.writeDataFile("123456.ra", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "--log-level", "bizarre", "regex", "generate", "123456"})
+	rootCmd := New()
+	rootCmd.SetArgs([]string{"-d", s.rootDir, "--log-level", "bizarre", "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
 	s.NotNil(logLevelFlag)
-	s.True(logLevelFlag.Changed)
+	// Will not be set if invalid
+	s.False(logLevelFlag.Changed)
 
 	s.Equal(zerolog.GlobalLevel(), loggerConfig.DefaultLogLevel)
 }
 
 func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
 	s.writeDataFile("123456.ra", "")
-	rootCmd.SetArgs([]string{"-d", s.tempDir, "regex", "generate", "--log-level", "debug", "123456"})
+	rootCmd := New()
+	rootCmd.SetArgs([]string{"-d", s.rootDir, "regex", "generate", "--log-level", "debug", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	logLevelFlag := cmd.Flags().Lookup("log-level")
@@ -101,17 +99,19 @@ func (s *rootTestSuite) TestRoot_LogLevelAllowedAnywhere() {
 
 func (s *rootTestSuite) TestRoot_AbsoluteWorkingDirectory() {
 	s.writeDataFile("123456.ra", "")
-	rootCmd.SetArgs([]string{"--directory", s.tempDir, "regex", "generate", "123456"})
+	rootCmd := New()
+	rootCmd.SetArgs([]string{"--directory", s.rootDir, "regex", "generate", "123456"})
 	cmd, _ := rootCmd.ExecuteC()
 
 	workingDirectoryFlag := cmd.Flags().Lookup("directory")
 	s.NotNil(workingDirectoryFlag)
 	s.True(workingDirectoryFlag.Changed)
 
-	s.Equal(path.Clean(s.tempDir), workingDirectoryFlag.Value.String())
+	s.Equal(path.Clean(s.rootDir), workingDirectoryFlag.Value.String())
 }
 
 func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
+	rootCmd := New()
 	rootCmd.SetArgs([]string{"-d", "../testDir", "regex", "generate", "-"})
 	cwd, err := os.Getwd()
 	s.Require().NoError(err)
@@ -132,43 +132,57 @@ func (s *rootTestSuite) TestRoot_RelativeWorkingDirectory() {
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInRoot() {
-	root, err := findRootDirectory(s.tempDir)
+	cmdContext := internal.NewCommandContext(s.rootDir)
+	flag := &internal.WorkingDirectoryFlag{Context: cmdContext, Logger: &logger}
+	err := flag.Set(s.rootDir)
 	s.Require().NoError(err)
-	s.Equal(s.tempDir, root)
+	s.Equal(s.rootDir, cmdContext.WorkingDirectory)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInUtil() {
-	root, err := findRootDirectory(path.Join(s.tempDir, "util"))
+	cmdContext := internal.NewCommandContext(s.rootDir)
+	flag := &internal.WorkingDirectoryFlag{Context: cmdContext, Logger: &logger}
+	err := flag.Set(path.Join(s.rootDir, "util"))
 	s.Require().NoError(err)
-	s.Equal(s.tempDir, root)
+	s.Equal(s.rootDir, cmdContext.WorkingDirectory)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInData() {
-	root, err := findRootDirectory(s.dataDir)
+	cmdContext := internal.NewCommandContext(s.rootDir)
+	flag := &internal.WorkingDirectoryFlag{Context: cmdContext, Logger: &logger}
+	err := flag.Set(s.dataDir)
 	s.Require().NoError(err)
-	s.Equal(s.tempDir, root)
+	s.Equal(s.rootDir, cmdContext.WorkingDirectory)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInInclude() {
 	includeDir := path.Join(s.dataDir, "include")
 	err := os.Mkdir(includeDir, fs.ModePerm)
 	s.Require().NoError(err)
-	root, err := findRootDirectory(includeDir)
+
+	cmdContext := internal.NewCommandContext(s.rootDir)
+	flag := &internal.WorkingDirectoryFlag{Context: cmdContext, Logger: &logger}
+	err = flag.Set(includeDir)
 	s.Require().NoError(err)
-	s.Equal(s.tempDir, root)
+	s.Equal(s.rootDir, cmdContext.WorkingDirectory)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryInRules() {
-	err := os.Mkdir(path.Join(s.tempDir, "rules"), fs.ModePerm)
+	rulesDir := path.Join(s.rootDir, "rules")
+	err := os.Mkdir(rulesDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	root, err := findRootDirectory(path.Join(s.tempDir, "rules"))
+	cmdContext := internal.NewCommandContext(s.rootDir)
+	flag := &internal.WorkingDirectoryFlag{Context: cmdContext, Logger: &logger}
+	err = flag.Set(rulesDir)
 	s.Require().NoError(err)
-	s.Equal(s.tempDir, root)
+	s.Equal(s.rootDir, cmdContext.WorkingDirectory)
 }
 
 func (s *rootTestSuite) TestFindRootDirectoryFails() {
-	_, err := findRootDirectory(os.TempDir())
+	cmdContext := internal.NewCommandContext(s.rootDir)
+	flag := &internal.WorkingDirectoryFlag{Context: cmdContext, Logger: &logger}
+	err := flag.Set(filepath.Dir(s.rootDir))
 	s.Error(err)
 }
 

@@ -98,12 +98,9 @@ func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 	return p
 }
 
-// Parse does the parsing and returns a buffer with all the bytes to process or an error if the reader
-// could not be parsed.
-func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
+// Parse does the parsing and returns a buffer with all the bytes to process.
+func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 	fileScanner := bufio.NewScanner(p.src)
-	fileScanner.Split(bufio.ScanLines)
-	wrote := 0
 	var text string
 
 	for fileScanner.Scan() {
@@ -165,15 +162,15 @@ func (p *Parser) Parse(formatOnly bool) (*bytes.Buffer, int) {
 
 		logger.Trace().Msgf("** ADDING text: %q", text)
 		// err is always nil
-		n, _ := p.dest.WriteString(text)
-		wrote += n
+		p.dest.WriteString(text)
+
 	}
 
 	// now that the file was parsed, we replace all definitions
 	if len(p.variables) > 0 {
 		p.dest = expandDefinitions(p.dest, p.variables)
 	}
-	return p.dest, wrote
+	return p.dest
 }
 
 // parseLine iterates over the pattern list and if found, creates the ParsedLine object with the results.
@@ -277,8 +274,8 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 	if definitions != nil {
 		newP.variables = definitions
 	}
-	out, _ := newP.Parse(false)
-	newOut, err := mergePrefixesSuffixes(rootParser, newP, out)
+	out := newP.Parse(false)
+	newOut, err := mergePrefixesSuffixes(newP, out)
 	if err != nil {
 		logger.Fatal().Msgf("error parsing file: %v", err.Error())
 	}
@@ -288,8 +285,8 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 
 // Merge prefixes, and suffixes from include files into another parser.
 // All of these need to be treated as local to the source parser.
-// We removed flag merging because of https://github.com/coreruleset/crs-toolchain/v2/issues/72
-func mergePrefixesSuffixes(target *Parser, source *Parser, out *bytes.Buffer) (*bytes.Buffer, error) {
+// We removed flag merging because of https://github.com/coreruleset/crs-toolchain/issues/72
+func mergePrefixesSuffixes(source *Parser, out *bytes.Buffer) (*bytes.Buffer, error) {
 	logger.Trace().Msg("merging prefixes, suffixes from included file")
 	// If the included file has flags, this is an error
 	if len(source.Flags) > 0 {

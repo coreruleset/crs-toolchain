@@ -21,6 +21,7 @@ import (
 
 type parserIncludeTestSuite struct {
 	suite.Suite
+	rootDir     string
 	ctx         *processors.Context
 	reader      io.Reader
 	tempDir     string
@@ -40,15 +41,12 @@ func TestRunParserIncludeTestSuite(t *testing.T) {
 }
 
 func (s *parserIncludeTestSuite) SetupTest() {
-	var err error
-	s.tempDir, err = os.MkdirTemp("", "include-tests")
+	s.rootDir = s.T().TempDir()
+	s.includeDir = path.Join(s.rootDir, "regex-assembly", "include")
+	err := os.MkdirAll(s.includeDir, fs.ModePerm)
 	s.Require().NoError(err)
 
-	s.includeDir = path.Join(s.tempDir, "regex-assembly", "include")
-	err = os.MkdirAll(s.includeDir, fs.ModePerm)
-	s.Require().NoError(err)
-
-	rootContext := context.New(s.tempDir, "toolchain.yaml")
+	rootContext := context.New(s.rootDir, "toolchain.yaml")
 	s.ctx = processors.NewContext(rootContext)
 	s.includeFile, err = os.Create(path.Join(s.includeDir, "test.ra"))
 	s.Require().NoError(err, "couldn't create %s file", s.includeFile.Name())
@@ -62,11 +60,10 @@ func (s *parserIncludeTestSuite) TearDownTest() {
 func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
 	s.writeDataFile("This data comes from the include file.\n", "##!This is a comment\n")
 	parser := NewParser(s.ctx, s.reader)
-	actual, n := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString("This data comes from the include file.\n")
 
 	s.Equal(expected.String(), actual.String())
-	s.Equal(expected.Len(), n)
 }
 
 func (s *parserIncludeTestSuite) TestParserInclude_Prefixes() {
@@ -74,7 +71,7 @@ func (s *parserIncludeTestSuite) TestParserInclude_Prefixes() {
 ##!^ prefix2
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`##!> assemble
 prefix1
 ##!=>
@@ -92,7 +89,7 @@ func (s *parserIncludeTestSuite) TestParserInclude_Suffixes() {
 ##!$ suffix2
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`##!> assemble
 included regex
 ##!=>
@@ -114,7 +111,7 @@ func (s *parserIncludeTestSuite) TestParserInclude_FlagsPrefixesSuffixes() {
 ##!^ prefix2
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`##!> assemble
 prefix1
 ##!=>
@@ -145,7 +142,7 @@ no suffix 2`)
 		"@", `[\s><]`,
 		"~", `[^\s]`))
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`no suffix1
 suffix with[\s><]
 suffix with[^\s]
@@ -167,7 +164,7 @@ no suffix 2`)
 		"  @", `[\s><]  `,
 		"~   ", `   [^\s]`))
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`no suffix1
 suffix with[\s><]
 suffix with[^\s]
@@ -189,7 +186,7 @@ no suffix 2`)
 		"@", `""`,
 		"~", `""`))
 	parser := NewParser(s.ctx, s.reader)
-	actual, _ := parser.Parse(false)
+	actual := parser.Parse(false)
 	expected := bytes.NewBufferString(`no suffix1
 suffix with
 suffix with

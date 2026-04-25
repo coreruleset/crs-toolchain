@@ -62,7 +62,6 @@ func replaceSuffixes(inputLines *bytes.Buffer, suffixReplacements map[string]str
 
 	var sb strings.Builder
 	scanner := bufio.NewScanner(inputLines)
-	scanner.Split(bufio.ScanLines)
 	skipRegex := regexp.MustCompile(`^(?:##!|\s*$)`)
 	for scanner.Scan() {
 		entry := scanner.Text()
@@ -86,7 +85,6 @@ func removeExclusions(parser *Parser, excludeFileNames []string, includeMap map[
 		logger.Debug().Msgf("Processing exclusions from %s", fileName)
 		excludeContent, _ := parseFile(parser, fileName, definitions)
 		scanner := bufio.NewScanner(excludeContent)
-		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
 			exclusion := scanner.Text()
 			delete(includeMap, exclusion)
@@ -98,7 +96,6 @@ func removeExclusions(parser *Parser, excludeFileNames []string, includeMap map[
 func buildinclusionLineMap(parser *Parser, includeFileName string) (inclusionLineMap, map[string]string) {
 	includeContent, definitions := parseFile(parser, includeFileName, nil)
 	includeScanner := bufio.NewScanner(includeContent)
-	includeScanner.Split(bufio.ScanLines)
 	includeMap := make(inclusionLineMap, 100)
 	index := 0
 	for includeScanner.Scan() {
