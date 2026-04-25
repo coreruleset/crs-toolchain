@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -29,7 +28,6 @@ type parsedRuleValues struct {
 	id          string
 	fileName    string
 	chainOffset uint8
-	filePath    string // The actual path to the file (either relative or in assembly dir)
 }
 
 // updateCmd represents the update command
@@ -50,7 +48,6 @@ files and update the associated rule.
 
 RULE_ID is the ID of the rule, e.g., 932100.
 FILENAME is the name of a regex-assembly file (e.g., 932100.ra, 932100-chain1.ra). The file extension is optional.
-Relative paths are also supported (e.g., regex-assembly/932100.ra) for pre-commit scenarios.
 Multiple RULE_IDs and filenames can be specified in any order, separated by spaces.
 If the rule is a chained rule, RULE_ID must be specified with the
 offset of the chain from the chain starter rule. For example, to
@@ -68,11 +65,8 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 			if len(args) == 0 {
 				return nil
 			}
-			// Validate all provided arguments
 			for _, arg := range args {
-				// Handle relative paths by extracting the basename for validation
 				baseName := extractBasename(arg)
-				
 				err := parseRuleIdValidation(baseName)
 				if err != nil {
 					cmd.PrintErrf("failed to parse the rule ID/filename from the input '%s'\n", arg)
@@ -88,21 +82,19 @@ generate a second level chained rule, RULE_ID would be 932100-chain2.`,
 			if err != nil {
 				return fmt.Errorf("failed to read value for 'all' flag: %w", err)
 			}
-			
+
 			if processAll {
 				return performUpdateAll(ctxt)
-			} else {
-				// Parse all arguments
-				var parsedRules []parsedRuleValues
-				for _, arg := range args {
-					parsedRule, err := parseAndValidateArgument(arg, ctxt)
-					if err != nil {
-						return fmt.Errorf("failed to parse argument '%s': %w", arg, err)
-					}
-					parsedRules = append(parsedRules, parsedRule)
-				}
-				return performUpdateMultiple(parsedRules, ctxt)
 			}
+			var parsedRules []parsedRuleValues
+			for _, arg := range args {
+				parsedRule, err := parseAndValidateArgument(arg, ctxt)
+				if err != nil {
+					return fmt.Errorf("failed to parse argument '%s': %w", arg, err)
+				}
+				parsedRules = append(parsedRules, parsedRule)
+			}
+			return performUpdateMultiple(parsedRules, ctxt)
 		},
 	}
 }
@@ -122,58 +114,32 @@ func rebuildUpdateCommand() {
 	buildUpdateCommand()
 }
 
-// isPath returns true if the argument contains path separators
-func isPath(arg string) bool {
-	// More reliable than checking for specific separators - works cross-platform
-	return filepath.Dir(arg) != "."
-}
-
-// extractBasename extracts the basename from a path argument
+// extractBasename extracts the basename from a path or filename argument
 func extractBasename(arg string) string {
-	if isPath(arg) {
-		basename := filepath.Base(arg)
-		logger.Debug().Msgf("Extracted basename '%s' from path '%s'", basename, arg)
-		return basename
-	}
-	return arg
+	return filepath.Base(filepath.Clean(arg))
 }
 
 // parseAndValidateArgument parses an argument and validates that the corresponding file exists
 func parseAndValidateArgument(arg string, ctxt *processors.Context) (parsedRuleValues, error) {
-	// Handle relative paths by extracting the basename
-	// This supports pre-commit scenarios where files are passed as relative paths
 	baseName := extractBasename(arg)
-	
-	// Parse the basename using the existing rule ID logic (handles both RULE_IDs and filenames)
 	parsedRule, err := parseRuleIdToStruct(baseName)
 	if err != nil {
 		return parsedRuleValues{}, fmt.Errorf("failed to parse argument '%s': %s", arg, err.Error())
 	}
-	
-	// For relative paths, check if the file exists at the given path first
-	// This supports pre-commit scenarios where the file path is provided directly
-	if isPath(arg) {
-		// Check if the file exists at the relative path
-		if _, err := os.Stat(arg); err == nil {
-			// File exists at the relative path, we can proceed
-			logger.Debug().Msgf("Found file at relative path: %s", arg)
-			parsedRule.filePath = arg
-			return parsedRule, nil
-		} else {
-			// Some other error occurred
-			return parsedRuleValues{}, fmt.Errorf("error checking file '%s': %w", arg, err)
-		}
-		// File doesn't exist at relative path, fall through to check in assembly directory
-	}
-	
-	// Check if the file exists in the assembly directory (existing logic)
 	filePath := path.Join(ctxt.RootContext().AssemblyDir(), parsedRule.fileName)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return parsedRuleValues{}, fmt.Errorf("file '%s' not found in assembly directory", parsedRule.fileName)
 	}
-	
-	parsedRule.filePath = filePath
 	return parsedRule, nil
+}
+
+// parseChainOffset parses and validates a chain offset string
+func parseChainOffset(chainOffsetString string) (uint8, error) {
+	chainOffset, err := strconv.ParseUint(chainOffsetString, 10, 8)
+	if err != nil && len(chainOffsetString) > 0 {
+		return 0, errors.New("failed to match chain offset. Value must not be larger than 255")
+	}
+	return uint8(chainOffset), nil
 }
 
 // parseRuleIdValidation validates a rule ID without storing state (for PreRunE)
@@ -182,14 +148,8 @@ func parseRuleIdValidation(idAndChainOffset string) error {
 	if subs == nil {
 		return errors.New("failed to match rule ID")
 	}
-
-	chainOffsetString := subs[0][2]
-	_, err := strconv.ParseUint(chainOffsetString, 10, 8)
-	if err != nil && len(chainOffsetString) > 0 {
-		return errors.New("failed to match chain offset. Value must not be larger than 255")
-	}
-
-	return nil
+	_, err := parseChainOffset(subs[0][2])
+	return err
 }
 
 // parseRuleIdToStruct parses a rule ID and returns a parsedRuleValues struct
@@ -201,11 +161,10 @@ func parseRuleIdToStruct(idAndChainOffset string) (parsedRuleValues, error) {
 
 	fileName := subs[0][0]
 	id := subs[0][1]
-	chainOffsetString := subs[0][2]
 
-	chainOffset, err := strconv.ParseUint(chainOffsetString, 10, 8)
-	if err != nil && len(chainOffsetString) > 0 {
-		return parsedRuleValues{}, errors.New("failed to match chain offset. Value must not be larger than 255")
+	chainOffset, err := parseChainOffset(subs[0][2])
+	if err != nil {
+		return parsedRuleValues{}, err
 	}
 
 	if filepath.Ext(fileName) == "" {
@@ -216,7 +175,6 @@ func parseRuleIdToStruct(idAndChainOffset string) (parsedRuleValues, error) {
 		id:          id,
 		fileName:    fileName,
 		chainOffset: uint8(chainOffset),
-		filePath:    "", // Will be set by the calling function
 	}, nil
 }
 
@@ -235,14 +193,11 @@ func performUpdateAll(ctx *processors.Context) error {
 			}
 
 			id := subs[0][1]
-			chainOffsetString := subs[0][2]
-
-			chainOffset, err := strconv.ParseUint(chainOffsetString, 10, 8)
-			if err != nil && len(chainOffsetString) > 0 {
-				return errors.New("failed to match chain offset. Value must not be larger than 255")
+			chainOffset, err := parseChainOffset(subs[0][2])
+			if err != nil {
+				return err
 			}
-
-			err = processRule(id, uint8(chainOffset), filePath, ctx)
+			err = processRule(id, chainOffset, filePath, ctx)
 			if err != nil {
 				return err
 			}
@@ -258,8 +213,8 @@ func performUpdateAll(ctx *processors.Context) error {
 
 func performUpdateMultiple(parsedRules []parsedRuleValues, ctx *processors.Context) error {
 	for _, rule := range parsedRules {
-		err := processRule(rule.id, rule.chainOffset, rule.filePath, ctx)
-		if err != nil {
+		filePath := path.Join(ctx.RootContext().AssemblyDir(), rule.fileName)
+		if err := processRule(rule.id, rule.chainOffset, filePath, ctx); err != nil {
 			return err
 		}
 	}

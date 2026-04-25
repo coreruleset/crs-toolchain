@@ -379,8 +379,7 @@ func (s *updateTestSuite) TestUpdate_NonExistentRelativePath() {
 	_, err := rootCmd.ExecuteC()
 
 	s.Error(err)
-	s.Contains(err.Error(), "error checking file")
-	s.Contains(err.Error(), "no such file or directory")
+	s.Contains(err.Error(), "not found in assembly directory")
 }
 
 func (s *updateTestSuite) TestUpdate_AllFlag() {
