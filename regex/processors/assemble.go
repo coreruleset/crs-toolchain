@@ -21,8 +21,8 @@ const (
 type Assemble struct {
 	proc     *Processor
 	output   strings.Builder
-	prefixes []string // Block-scoped prefixes
-	suffixes []string // Block-scoped suffixes
+	prefixes []string
+	suffixes []string
 }
 
 // NewAssemble creates a new assemble processor
