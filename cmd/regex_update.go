@@ -49,7 +49,7 @@ This command will generate regular expressions from the data
 files and update the associated rule.
 
 RULE_ID is the ID of the rule, e.g., 932100.
-FILENAME is the name of a regex-assembly file (e.g., 932100.ra, 932100-chain1.ra).
+FILENAME is the name of a regex-assembly file (e.g., 932100.ra, 932100-chain1.ra). The file extension is optional.
 Relative paths are also supported (e.g., regex-assembly/932100.ra) for pre-commit scenarios.
 Multiple RULE_IDs and filenames can be specified in any order, separated by spaces.
 If the rule is a chained rule, RULE_ID must be specified with the
@@ -169,7 +169,7 @@ func parseAndValidateArgument(arg string, ctxt *processors.Context) (parsedRuleV
 	// Check if the file exists in the assembly directory (existing logic)
 	filePath := path.Join(ctxt.RootContext().AssemblyDir(), parsedRule.fileName)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return parsedRuleValues{}, fmt.Errorf("file '%s' not found in assembly directory or at relative path", parsedRule.fileName)
+		return parsedRuleValues{}, fmt.Errorf("file '%s' not found in assembly directory", parsedRule.fileName)
 	}
 	
 	parsedRule.filePath = filePath
@@ -208,7 +208,7 @@ func parseRuleIdToStruct(idAndChainOffset string) (parsedRuleValues, error) {
 		return parsedRuleValues{}, errors.New("failed to match chain offset. Value must not be larger than 255")
 	}
 
-	if !strings.HasSuffix(fileName, ".ra") {
+	if filepath.Ext(fileName) == "" {
 		fileName += ".ra"
 	}
 
