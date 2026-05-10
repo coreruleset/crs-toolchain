@@ -20,9 +20,8 @@ var version *semver.Version
 
 func New(cmdContext *internal.CommandContext) *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "release",
-		// FIXME
-		Short: "tbd",
+		Use:   "release",
+		Short: "Create new release of CRS",
 		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
 		ValidArgs: []string{
 			"version",

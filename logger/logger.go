@@ -21,7 +21,7 @@ func init() {
 
 func SetGithubOutput(w io.Writer) zerolog.Logger {
 	ghOutput := zerolog.ConsoleWriter{Out: w, TimeFormat: "03:04:05"}
-	ghOutput.FormatLevel = func(i interface{}) string {
+	ghOutput.FormatLevel = func(i any) string {
 		var l string
 		if ll, ok := i.(string); ok {
 			switch ll {
@@ -43,7 +43,7 @@ func SetGithubOutput(w io.Writer) zerolog.Logger {
 		}
 		return fmt.Sprintf("::%s", l)
 	}
-	ghOutput.FormatMessage = func(i interface{}) string {
+	ghOutput.FormatMessage = func(i any) string {
 		return fmt.Sprintf("::%s\n", i)
 	}
 	ghOutput.PartsExclude = []string{zerolog.TimestampFieldName, zerolog.CallerFieldName}

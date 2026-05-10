@@ -6,6 +6,7 @@ package chore
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/coreruleset/crs-toolchain/v2/cmd/chore/agenda"
 	release "github.com/coreruleset/crs-toolchain/v2/cmd/chore/release"
 	updateCopyright "github.com/coreruleset/crs-toolchain/v2/cmd/chore/update_copyright"
 	"github.com/coreruleset/crs-toolchain/v2/cmd/internal"
@@ -21,6 +22,7 @@ func New(cmdContext *internal.CommandContext) *cobra.Command {
 	cmd.AddCommand(
 		updateCopyright.New(cmdContext),
 		release.New(cmdContext),
+		agenda.New(cmdContext),
 	)
 
 	return cmd

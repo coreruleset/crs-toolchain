@@ -14,6 +14,7 @@ import (
 
 	"github.com/coreruleset/crs-toolchain/v2/configuration"
 	"github.com/coreruleset/crs-toolchain/v2/context"
+	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
 type choreReleaseTestSuite struct {
@@ -24,16 +25,16 @@ type choreReleaseTestSuite struct {
 func (s *choreReleaseTestSuite) SetupTest() {
 	s.repoDir = s.T().TempDir()
 
-	out, err := runGit(s.repoDir, "init", "-b", "main")
+	out, err := utils.RunGit(s.repoDir, "init", "-b", "main")
 	s.Require().NoError(err, string(out))
 
-	out, err = runGit(s.repoDir, "config", "user.email", "dummy@dummy.com")
+	out, err = utils.RunGit(s.repoDir, "config", "user.email", "dummy@dummy.com")
 	s.Require().NoError(err, string(out))
 
-	out, err = runGit(s.repoDir, "config", "user.name", "dummy")
+	out, err = utils.RunGit(s.repoDir, "config", "user.name", "dummy")
 	s.Require().NoError(err, string(out))
 
-	out, err = runGit(s.repoDir, "commit", "--allow-empty", "-m", "dummy")
+	out, err = utils.RunGit(s.repoDir, "commit", "--allow-empty", "-m", "dummy")
 	s.Require().NoError(err, string(out))
 }
 
