@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 	"time"
@@ -20,6 +19,7 @@ import (
 
 	copyright "github.com/coreruleset/crs-toolchain/v2/chore/update_copyright"
 	"github.com/coreruleset/crs-toolchain/v2/context"
+	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
 const (
@@ -33,17 +33,17 @@ const (
 var logger = log.With().Str("component", "release").Logger()
 
 func Release(context *context.Context, repositoryPath string, version *semver.Version, sourceRef string) {
-	remoteName := findRemoteName()
+	remoteName := findRemoteName(context.RootDir())
 	if remoteName == "" {
 		logger.Fatal().Msg("failed to find remote for coreruleset/coreruleset")
 	}
-	fetchSourceRef(remoteName, sourceRef)
+	fetchSourceRef(context.RootDir(), remoteName, sourceRef)
 	branchName := fmt.Sprintf(branchNameTemplate, version.Major(), version.Minor(), version.Patch())
 	createAndCheckOutBranch(context, branchName, sourceRef)
 	copyright.UpdateCopyright(context, version, uint16(time.Now().Year()), []string{examplesPath})
 	updateSecurityReadme(context, version)
 	createCommit(context, branchName)
-	pushBranch(remoteName, branchName)
+	pushBranch(context.RootDir(), remoteName, branchName)
 	createPullRequest(version, branchName, sourceRef)
 }
 
@@ -53,14 +53,14 @@ func createAndCheckOutBranch(context *context.Context, branchName string, source
 		panic(err)
 	}
 
-	out, err := runGit(context.RootDir(), "switch", "-c", branchName, sourceRef)
+	out, err := utils.RunGit(context.RootDir(), "switch", "-c", branchName, sourceRef)
 	if err != nil {
 		logger.Fatal().Err(err).Bytes("command-output", out).Msg("failed to create commit for release")
 	}
 }
 
 func createCommit(context *context.Context, branchName string) {
-	out, err := runGit(context.RootDir(), "commit", "-am", "chore: release "+branchName)
+	out, err := utils.RunGit(context.RootDir(), "commit", "-am", "chore: release "+branchName)
 	if err != nil {
 		logger.Fatal().Err(err).Bytes("command-output", out).Msg("failed to create commit for release")
 	}
@@ -96,7 +96,7 @@ func createPullRequest(version *semver.Version, branchName string, targetBranchN
 	}
 	client, err := api.NewRESTClient(opts)
 	if err != nil {
-		log.Fatal().Err(err).Send()
+		logger.Fatal().Err(err).Send()
 	}
 
 	type prBody struct {
@@ -114,38 +114,32 @@ func createPullRequest(version *semver.Version, branchName string, targetBranchN
 		Reviewer: "coreruleset/core-developers",
 	})
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to serialize body of GH REST request")
+		logger.Fatal().Err(err).Msg("failed to serialize body of GH REST request")
 	}
 
 	response, err := client.Request(http.MethodPost, "repos/coreruleset/coreruleset/pulls", bytes.NewReader(bodyJson))
 	if err != nil {
-		log.Fatal().Err(err).Msg("creating PR failed")
+		logger.Fatal().Err(err).Msg("creating PR failed")
 	}
 	defer response.Body.Close()
 }
 
-func pushBranch(remoteName string, branchName string) {
-	out, err := runGit("push", remoteName, branchName)
+func pushBranch(repositoryDir string, remoteName string, branchName string) {
+	out, err := utils.RunGit(repositoryDir, "push", remoteName, branchName)
 	if err != nil {
 		logger.Fatal().Err(err).Bytes("command-output", out)
 	}
 }
 
-func fetchSourceRef(remoteName string, sourceRef string) {
-	out, err := runGit("fetch", remoteName, sourceRef)
+func fetchSourceRef(repositoryDir string, remoteName string, sourceRef string) {
+	out, err := utils.RunGit(repositoryDir, "fetch", remoteName, sourceRef)
 	if err != nil {
 		logger.Fatal().Err(err).Bytes("command-output", out)
 	}
 }
 
-func runGit(repositoryPath string, args ...string) ([]byte, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = repositoryPath
-	return cmd.CombinedOutput()
-}
-
-func findRemoteName() string {
-	out, err := runGit("remote", "-v")
+func findRemoteName(repositoryDir string) string {
+	out, err := utils.RunGit(repositoryDir, "remote", "-v")
 	if err != nil {
 		logger.Fatal().Err(err).Bytes("command-output", out)
 	}

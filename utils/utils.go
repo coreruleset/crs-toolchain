@@ -6,6 +6,7 @@ package utils
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/hashicorp/go-getter/v2"
@@ -54,4 +55,10 @@ func GetCacheFilePath(fileName string) (string, error) {
 	}
 
 	return filepath.Join(crsToolchainDir, fileName), nil
+}
+
+func RunGit(repositoryPath string, args ...string) ([]byte, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = repositoryPath
+	return cmd.CombinedOutput()
 }
