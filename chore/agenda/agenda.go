@@ -27,6 +27,7 @@ var agendaNextTemplate []byte
 func Agenda() {
 	opts := api.ClientOptions{
 		Headers: map[string]string{"Accept": "application/vnd.github+json"},
+		Timeout: 30 * time.Second,
 	}
 	client, err := api.NewRESTClient(opts)
 	if err != nil {
@@ -38,8 +39,9 @@ func Agenda() {
 		Body   string   `json:"body"`
 		Labels []string `json:"labels"`
 	}
-	nextDate := computeNextDate(time.Now())
-	previousDate := computePreviousDate(time.Now())
+	now := time.Now()
+	nextDate := computeNextDate(now)
+	previousDate := computePreviousDate(now)
 	month := nextDate.Month().String()
 	year := nextDate.Year()
 	dateString := nextDate.Format(time.DateOnly)
