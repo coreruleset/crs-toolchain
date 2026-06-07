@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreruleset/crs-toolchain/v2/cmd/internal"
 	fpFinder "github.com/coreruleset/crs-toolchain/v2/cmd/util/fp_finder"
+	phpDictionaryGen "github.com/coreruleset/crs-toolchain/v2/cmd/util/php_dictionary_gen"
 	renumberTests "github.com/coreruleset/crs-toolchain/v2/cmd/util/renumber_tests"
 	selfUpdate "github.com/coreruleset/crs-toolchain/v2/cmd/util/self_update"
 )
@@ -21,6 +22,7 @@ func New(cmdContext *internal.CommandContext) *cobra.Command {
 
 	cmd.AddCommand(
 		fpFinder.New(cmdContext),
+		phpDictionaryGen.New(cmdContext),
 		renumberTests.New(cmdContext),
 		selfUpdate.New())
 
