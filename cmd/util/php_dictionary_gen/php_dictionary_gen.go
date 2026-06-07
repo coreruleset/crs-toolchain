@@ -51,6 +51,13 @@ If --php-repo is not provided, the PHP source repository is cloned from
 https://github.com/php/php-src (requires git to be available).`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Validate --php-repo path if provided
+			if phpRepoPath != "" {
+				if _, err := os.Stat(phpRepoPath); err != nil {
+					return fmt.Errorf("--php-repo path does not exist: %s", phpRepoPath)
+				}
+			}
+
 			// Read GitHub token from env if not set via flag
 			githubToken := os.Getenv("GITHUB_TOKEN")
 
@@ -76,7 +83,7 @@ https://github.com/php/php-src (requires git to be available).`,
 
 			logger.Info().Msg("Starting PHP dictionary generation")
 			// wn is passed as nil; Generate will create it automatically when needed
-			if err := gen.Generate(ctxt, opts, nil, searcher); err != nil {
+			if err := gen.Generate(cmd.Context(), ctxt, opts, nil, searcher); err != nil {
 				return fmt.Errorf("php-dictionary-gen failed: %w", err)
 			}
 			logger.Info().Msg("PHP dictionary generation complete")
@@ -105,10 +112,8 @@ Default: all three rules.`)
 func normalizeRules(input []string) []string {
 	var result []string
 	for _, r := range input {
-		for _, part := range strings.Split(r, ",") {
-			if trimmed := strings.TrimSpace(part); trimmed != "" {
-				result = append(result, trimmed)
-			}
+		if trimmed := strings.TrimSpace(r); trimmed != "" {
+			result = append(result, trimmed)
 		}
 	}
 	return result
