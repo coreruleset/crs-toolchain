@@ -277,28 +277,22 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 		newP.variables = definitions
 	}
 	out := newP.Parse(false)
-	newOut, err := mergePrefixesSuffixes(newP, out)
+	err = validateIncludedFileDirectives(newP)
 	if err != nil {
 		logger.Fatal().Msgf("error parsing file: %v", err.Error())
 	}
-	logger.Trace().Msg(newOut.String())
-	return newOut, newP.variables
+	logger.Trace().Msg(out.String())
+	return out, newP.variables
 }
 
-// Merge prefixes, and suffixes from include files into another parser.
-// All of these need to be treated as local to the source parser.
-// We removed flag merging because of https://github.com/coreruleset/crs-toolchain/issues/72
-func mergePrefixesSuffixes(source *Parser, out *bytes.Buffer) (*bytes.Buffer, error) {
-	logger.Trace().Msg("merging prefixes, suffixes from included file")
+// validateIncludedFileDirectives validates directives that are not allowed in include files.
+func validateIncludedFileDirectives(source *Parser) error {
+	logger.Trace().Msg("validating directives from included file")
 	// If the included file has flags, this is an error
 	if len(source.Flags) > 0 {
-		return new(bytes.Buffer), errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/v2/issues/71")
+		return errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/v2/issues/71")
 	}
-	// With block-scoped prefixes/suffixes, the directives are already in the content
-	// as raw lines, so we don't need to wrap them in an assemble block.
-	// We still collect them in Parser.Prefixes/Suffixes for compatibility but don't
-	// need to do anything special with them here.
-	return out, nil
+	return nil
 }
 
 func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
