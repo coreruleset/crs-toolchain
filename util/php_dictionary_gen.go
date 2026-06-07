@@ -5,6 +5,7 @@ package util
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,7 +23,7 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/coreruleset/wnram"
 
-	"github.com/coreruleset/crs-toolchain/v2/context"
+	crsctx "github.com/coreruleset/crs-toolchain/v2/context"
 	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
@@ -42,7 +43,7 @@ var zendFunctionRegex = regexp.MustCompile(`ZEND_FUNCTION\(([^$)]+)\)`)
 
 // GitHubSearcher defines the interface for checking PHP function frequency on GitHub.
 type GitHubSearcher interface {
-	SearchCodeCount(functionName string) (int, error)
+	SearchCodeCount(ctx context.Context, functionName string) (int, error)
 }
 
 // PhpDictionaryGenOptions contains options for PHP dictionary generation.
@@ -120,11 +121,11 @@ func NewGitHubSearchClient(token string) *gitHubSearchClient {
 }
 
 // SearchCodeCount returns the number of GitHub code search results for the given PHP function name.
-func (c *gitHubSearchClient) SearchCodeCount(functionName string) (int, error) {
+func (c *gitHubSearchClient) SearchCodeCount(ctx context.Context, functionName string) (int, error) {
 	escapedName := url.QueryEscape(functionName)
 	apiURL := fmt.Sprintf(gitHubSearchAPIFormat, escapedName)
 
-	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return 0, fmt.Errorf("creating request for %s: %w", functionName, err)
 	}
@@ -141,6 +142,19 @@ func (c *gitHubSearchClient) SearchCodeCount(functionName string) (int, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+		// Try to honour the Retry-After header so the caller knows when to retry.
+		if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+			if secs, err := strconv.Atoi(retryAfter); err == nil {
+				logger.Warn().Msgf("GitHub API rate limit hit for %s; retry after %d seconds", functionName, secs)
+			}
+		} else if resetHeader := resp.Header.Get("X-RateLimit-Reset"); resetHeader != "" {
+			if resetUnix, err := strconv.ParseInt(resetHeader, 10, 64); err == nil {
+				resetTime := time.Unix(resetUnix, 0)
+				logger.Warn().Msgf("GitHub API rate limit hit for %s; resets at %v", functionName, resetTime)
+			}
+		} else {
+			logger.Warn().Msgf("GitHub API rate limit hit for %s (status %d)", functionName, resp.StatusCode)
+		}
 		return 0, fmt.Errorf("GitHub API rate limit exceeded for %s (status %d)", functionName, resp.StatusCode)
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -163,7 +177,7 @@ func (c *gitHubSearchClient) SearchCodeCount(functionName string) (int, error) {
 // appropriate CRS directories.
 // If wn is nil, a WordNet instance is created automatically (downloading the
 // dictionary if needed).
-func (p *PhpDictionaryGen) Generate(ctxt *context.Context, opts PhpDictionaryGenOptions, wn WordNet, searcher GitHubSearcher) error {
+func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, opts PhpDictionaryGenOptions, wn WordNet, searcher GitHubSearcher) error {
 	if opts.FrequencyLimit <= 0 {
 		opts.FrequencyLimit = DefaultFrequencyLimit
 	}
@@ -180,8 +194,10 @@ func (p *PhpDictionaryGen) Generate(ctxt *context.Context, opts PhpDictionaryGen
 	doRule933151 := slices.Contains(rules, "933151")
 	doRule933161 := slices.Contains(rules, "933161")
 
-	// Initialize WordNet if not provided and 933161 will be generated
-	if wn == nil && doRule933161 {
+	// Initialize WordNet if not provided; it is needed for all rule combinations
+	// because classifyFunctions (which separates English/non-English names) is
+	// called whenever any rule is being generated.
+	if wn == nil && (doRule933161 || doRule933150 || doRule933151) {
 		var err error
 		wn, err = NewWordNet()
 		if err != nil {
@@ -252,7 +268,7 @@ func (p *PhpDictionaryGen) Generate(ctxt *context.Context, opts PhpDictionaryGen
 		ageLimitDuration := time.Duration(opts.AgeLimitDays) * 24 * time.Hour
 
 		for _, fn := range nonEnglishWords {
-			count, err := p.getOrUpdateFrequency(fn, frequencyCache, searcher, ageLimitDuration, today)
+			count, err := p.getOrUpdateFrequency(ctx, fn, frequencyCache, searcher, ageLimitDuration, today)
 			if err != nil {
 				logger.Warn().Err(err).Msgf("Failed to get frequency for %s, skipping", fn)
 				continue
@@ -282,7 +298,7 @@ func (p *PhpDictionaryGen) Generate(ctxt *context.Context, opts PhpDictionaryGen
 	if doRule933150 {
 		outPath := filepath.Join(ctxt.RulesDir(), Rule933150FileName)
 		logger.Info().Msgf("Writing rule 933150 data to %s", outPath)
-		if err := p.writeDataFile(outPath, frequentFunctions, opts.FrequencyLimit); err != nil {
+		if err := p.writeDataFile(outPath, frequentFunctions, opts.FrequencyLimit, opts.AgeLimitDays); err != nil {
 			return fmt.Errorf("writing 933150 data file: %w", err)
 		}
 	}
@@ -290,7 +306,7 @@ func (p *PhpDictionaryGen) Generate(ctxt *context.Context, opts PhpDictionaryGen
 	if doRule933151 {
 		outPath := filepath.Join(ctxt.RulesDir(), Rule933151FileName)
 		logger.Info().Msgf("Writing rule 933151 data to %s", outPath)
-		if err := p.writeDataFile(outPath, rareFunctions, opts.FrequencyLimit); err != nil {
+		if err := p.writeDataFile(outPath, rareFunctions, opts.FrequencyLimit, opts.AgeLimitDays); err != nil {
 			return fmt.Errorf("writing 933151 data file: %w", err)
 		}
 	}
@@ -387,7 +403,7 @@ func (p *PhpDictionaryGen) classifyFunctions(functions []string, wn WordNet) (en
 
 // getOrUpdateFrequency returns the GitHub code frequency for the given function name,
 // updating the cache if the entry is missing or stale.
-func (p *PhpDictionaryGen) getOrUpdateFrequency(functionName string, cache map[string]frequencyEntry, searcher GitHubSearcher, ageLimit time.Duration, today string) (int, error) {
+func (p *PhpDictionaryGen) getOrUpdateFrequency(ctx context.Context, functionName string, cache map[string]frequencyEntry, searcher GitHubSearcher, ageLimit time.Duration, today string) (int, error) {
 	if entry, ok := cache[functionName]; ok {
 		age := time.Since(entry.updatedAt)
 		if age <= ageLimit {
@@ -397,7 +413,7 @@ func (p *PhpDictionaryGen) getOrUpdateFrequency(functionName string, cache map[s
 		logger.Debug().Msgf("Cache entry for %s is stale (age: %v), refreshing", functionName, age)
 	}
 
-	count, err := searcher.SearchCodeCount(functionName)
+	count, err := searcher.SearchCodeCount(ctx, functionName)
 	if err != nil {
 		return 0, err
 	}
@@ -472,7 +488,7 @@ func (p *PhpDictionaryGen) saveFrequencyList(path string, cache map[string]frequ
 }
 
 // writeDataFile writes a list of function names to a .data file.
-func (p *PhpDictionaryGen) writeDataFile(path string, functions []string, frequencyLimit int) error {
+func (p *PhpDictionaryGen) writeDataFile(path string, functions []string, frequencyLimit, ageLimitDays int) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -480,7 +496,7 @@ func (p *PhpDictionaryGen) writeDataFile(path string, functions []string, freque
 	defer file.Close()
 
 	writer := bufio.NewWriter(file)
-	if err := p.writeDataFileHeader(writer, frequencyLimit); err != nil {
+	if err := p.writeDataFileHeader(writer, frequencyLimit, ageLimitDays); err != nil {
 		return err
 	}
 
@@ -513,9 +529,9 @@ func (p *PhpDictionaryGen) writeAssemblyFile(path string, functions []string, fr
 	return writer.Flush()
 }
 
-func (p *PhpDictionaryGen) writeDataFileHeader(w io.Writer, frequencyLimit int) error {
+func (p *PhpDictionaryGen) writeDataFileHeader(w io.Writer, frequencyLimit, ageLimitDays int) error {
 	_, err := fmt.Fprintf(w, "##! File autogenerated by util/php-dictionary-gen with: -a %d -F %d\n",
-		DefaultAgeLimitDays, frequencyLimit)
+		ageLimitDays, frequencyLimit)
 	return err
 }
 

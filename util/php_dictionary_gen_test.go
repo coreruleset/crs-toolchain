@@ -4,6 +4,7 @@
 package util
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -32,7 +33,7 @@ type mockSearcher struct {
 	counts map[string]int
 }
 
-func (m *mockSearcher) SearchCodeCount(functionName string) (int, error) {
+func (m *mockSearcher) SearchCodeCount(_ context.Context, functionName string) (int, error) {
 	if count, ok := m.counts[functionName]; ok {
 		return count, nil
 	}
@@ -42,7 +43,8 @@ func (m *mockSearcher) SearchCodeCount(functionName string) (int, error) {
 func (s *phpDictionaryGenTestSuite) TestExtractFunctions_BasicCase() {
 	tmpDir := s.T().TempDir()
 
-	// Create a fake PHP source file with ZEND_FUNCTION macros
+	// Create a fake PHP source file with ZEND_FUNCTION macros.
+	// PHP_FUNCTION lines are intentionally included to verify they are NOT matched.
 	src := `
 PHP_FUNCTION(array_map)
 PHP_FUNCTION(preg_match)
@@ -59,7 +61,9 @@ ZEND_FUNCTION(array_map)
 	// Should contain the ZEND_FUNCTION names, deduplicated and sorted
 	s.Contains(functions, "array_filter")
 	s.Contains(functions, "strpos")
-	// array_map appears twice but should only be in the result once
+	// PHP_FUNCTION macros should not be matched
+	s.NotContains(functions, "preg_match", "PHP_FUNCTION should not be matched")
+	// array_map appears twice in ZEND_FUNCTION but should only be in the result once
 	count := 0
 	for _, f := range functions {
 		if f == "array_map" {
@@ -144,7 +148,7 @@ func (s *phpDictionaryGenTestSuite) TestWriteDataFile() {
 	outPath := filepath.Join(tmpDir, "test.data")
 
 	functions := []string{"array_map", "preg_match", "strpos"}
-	err := s.gen.writeDataFile(outPath, functions, DefaultFrequencyLimit)
+	err := s.gen.writeDataFile(outPath, functions, DefaultFrequencyLimit, DefaultAgeLimitDays)
 	s.Require().NoError(err)
 
 	content, err := os.ReadFile(outPath)
@@ -210,7 +214,7 @@ func (s *phpDictionaryGenTestSuite) TestGetOrUpdateFrequency_UsesCache() {
 	}
 	searcher := &mockSearcher{counts: map[string]int{"array_map": 999}}
 
-	count, err := s.gen.getOrUpdateFrequency("array_map", cache, searcher, 30*24*3600*1000000000, "2099-01-02")
+	count, err := s.gen.getOrUpdateFrequency(context.Background(), "array_map", cache, searcher, 30*24*time.Hour, "2099-01-02")
 	s.Require().NoError(err)
 
 	// Should use cached value, not call searcher
@@ -221,7 +225,7 @@ func (s *phpDictionaryGenTestSuite) TestGetOrUpdateFrequency_FetchesWhenMissing(
 	cache := map[string]frequencyEntry{}
 	searcher := &mockSearcher{counts: map[string]int{"array_map": 150000}}
 
-	count, err := s.gen.getOrUpdateFrequency("array_map", cache, searcher, 30*24*3600*1000000000, "2024-01-15")
+	count, err := s.gen.getOrUpdateFrequency(context.Background(), "array_map", cache, searcher, 30*24*time.Hour, "2024-01-15")
 	s.Require().NoError(err)
 
 	s.Equal(150000, count)

@@ -63,7 +63,9 @@ func (s *phpDictionaryGenCmdTestSuite) TestCommandHasRulesFlag() {
 }
 
 func (s *phpDictionaryGenCmdTestSuite) TestNormalizeRules_CommaSeparated() {
-	result := normalizeRules([]string{"933150,933151"})
+	// cobra's StringSliceVarP already handles comma-splitting before normalizeRules is called.
+	// normalizeRules only needs to trim whitespace from each pre-split element.
+	result := normalizeRules([]string{"933150", "933151"})
 	s.Equal([]string{"933150", "933151"}, result)
 }
 
