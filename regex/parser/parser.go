@@ -152,13 +152,9 @@ func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 		case prefix:
 			// Pass through prefix directive for processor to handle (block-scoped)
 			text = line + "\n"
-			// Also collect for include file merging
-			p.Prefixes = append(p.Prefixes, parsedLine.prefix)
 		case suffix:
 			// Pass through suffix directive for processor to handle (block-scoped)
 			text = line + "\n"
-			// Also collect for include file merging
-			p.Suffixes = append(p.Suffixes, parsedLine.suffix)
 		}
 		if formatOnly {
 			text = line + "\n"
