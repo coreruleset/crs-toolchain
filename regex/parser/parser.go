@@ -150,9 +150,11 @@ func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 				}
 			}
 		case prefix:
-			p.Prefixes = append(p.Prefixes, parsedLine.prefix)
+			// Pass through prefix directive for processor to handle (block-scoped)
+			text = line + "\n"
 		case suffix:
-			p.Suffixes = append(p.Suffixes, parsedLine.suffix)
+			// Pass through suffix directive for processor to handle (block-scoped)
+			text = line + "\n"
 		}
 		if formatOnly {
 			text = line + "\n"
@@ -275,60 +277,22 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 		newP.variables = definitions
 	}
 	out := newP.Parse(false)
-	newOut, err := mergePrefixesSuffixes(newP, out)
+	err = validateIncludedFileDirectives(newP)
 	if err != nil {
 		logger.Fatal().Msgf("error parsing file: %v", err.Error())
 	}
-	logger.Trace().Msg(newOut.String())
-	return newOut, newP.variables
+	logger.Trace().Msg(out.String())
+	return out, newP.variables
 }
 
-// Merge prefixes, and suffixes from include files into another parser.
-// All of these need to be treated as local to the source parser.
-// We removed flag merging because of https://github.com/coreruleset/crs-toolchain/issues/72
-func mergePrefixesSuffixes(source *Parser, out *bytes.Buffer) (*bytes.Buffer, error) {
-	logger.Trace().Msg("merging prefixes, suffixes from included file")
+// validateIncludedFileDirectives validates directives that are not allowed in include files.
+func validateIncludedFileDirectives(source *Parser) error {
+	logger.Trace().Msg("validating directives from included file")
 	// If the included file has flags, this is an error
 	if len(source.Flags) > 0 {
-		return new(bytes.Buffer), errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/v2/issues/71")
+		return errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/v2/issues/71")
 	}
-	// IMPORTANT: don't write the assemble block at all if there are no flags, prefixes, or
-	// suffixes. Enclosing the output in an assemble block can change the semantics, for example,
-	// when the included content is processed by the cmdline processor in the including file.
-	if len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
-		return out, nil
-	}
-
-	newOut := new(bytes.Buffer)
-	newOut.WriteString("##!> assemble\n")
-
-	for _, prefix := range source.Prefixes {
-		newOut.WriteString(prefix)
-		newOut.WriteString("\n##!=>\n")
-	}
-	if _, err := out.WriteTo(newOut); err != nil {
-		logger.Fatal().Err(err).Msg("failed to copy output to new buffer")
-	}
-
-	sawNewLine := false
-	if err := out.UnreadByte(); err == nil {
-		lastByte, err := out.ReadByte()
-		if err == nil {
-			sawNewLine = lastByte == 13
-		}
-	}
-	if sawNewLine {
-		newOut.WriteString("\n")
-	}
-	if len(source.Suffixes) > 0 {
-		newOut.WriteString("##!=>\n")
-	}
-	for _, suffix := range source.Suffixes {
-		newOut.WriteString(suffix)
-		newOut.WriteString("\n##!=>\n")
-	}
-	newOut.WriteString("##!<\n")
-	return newOut, nil
+	return nil
 }
 
 func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Buffer {
