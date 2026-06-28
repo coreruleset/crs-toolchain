@@ -1,0 +1,6 @@
+rules:
+  github-app:
+    ignore:
+      # actions/create-github-app-token does not need workflow permissions;
+      # the token's permissions are governed by the GitHub App installation.
+      - release.yml:44
