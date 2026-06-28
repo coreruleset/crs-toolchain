@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	git "github.com/go-git/go-git/v5"
 	"github.com/coreruleset/wnram"
+	git "github.com/go-git/go-git/v5"
 
 	crsctx "github.com/coreruleset/crs-toolchain/v2/context"
 	"github.com/coreruleset/crs-toolchain/v2/utils"
