@@ -10,7 +10,7 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/cli/go-gh/v2 v2.13.0
-	github.com/coreruleset/wnram v0.1.0
+	github.com/coreruleset/wnram v0.2.0
 	github.com/creativeprojects/go-selfupdate v1.5.2
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/google/uuid v1.6.0
