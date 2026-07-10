@@ -27,8 +27,8 @@ github.com/cli/shurcooL-graphql v0.0.4 h1:6MogPnQJLjKkaXPyGqPRXOI2qCsQdqNfUY1QSJ
 github.com/cli/shurcooL-graphql v0.0.4/go.mod h1:3waN4u02FiZivIV+p1y4d0Jo1jc6BViMA73C+sZo2fk=
 github.com/cloudflare/circl v1.6.3 h1:9GPOhQGF9MCYUeXyMYlqTR6a5gTrgR/fBLXvUgtVcg8=
 github.com/cloudflare/circl v1.6.3/go.mod h1:2eXP6Qfat4O/Yhh8BznvKnJ+uzEoTQ6jVKJRn81BiS4=
-github.com/coreruleset/wnram v0.1.0 h1:9tNgUX67h8E1WorbiU9OOlgKUJClYjunjBfb7cXPUas=
-github.com/coreruleset/wnram v0.1.0/go.mod h1:EeNpPR2NxOfy4x4yQtEQR+Tenn0Qpqcld+kZAzwc5dc=
+github.com/coreruleset/wnram v0.2.0 h1:VeSgLl6efQa7CjCAKKDNFGKbe4y7OQtGtdz+L9+sSGU=
+github.com/coreruleset/wnram v0.2.0/go.mod h1:VfC+bI+arG7ZqygdUnqtS/ogbsEsI1N+3Al6ytmj6so=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/creativeprojects/go-selfupdate v1.5.2 h1:3KR3JLrq70oplb9yZzbmJ89qRP78D1AN/9u+l3k0LJ4=
 github.com/creativeprojects/go-selfupdate v1.5.2/go.mod h1:BCOuwIl1dRRCmPNRPH0amULeZqayhKyY2mH/h4va7Dk=
