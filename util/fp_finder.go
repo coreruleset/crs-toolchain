@@ -19,8 +19,8 @@ import (
 
 type FpFinderError struct{}
 
-const dictionaryURLFormat = "https://wordnetcode.princeton.edu/%s"
-const dictionaryBaseFileName = "wn3.1.dict.tar.gz"
+const wordNetOwner = "globalwordnet"
+const wordNetRepo = "english-wordnet"
 const minSize = 3
 
 type WordNet interface {
@@ -37,29 +37,45 @@ func NewFpFinder() *FpFinder {
 	return &FpFinder{}
 }
 
+// dictionaryCacheKey builds the cache directory name for a downloaded
+// WordNet release. It combines the release tag with the matched asset name
+// so that a release gaining, losing, or renaming assets without a tag change
+// results in a new cache entry rather than silently reusing a stale,
+// differently-formatted dictionary cached under the tag alone.
+func dictionaryCacheKey(tag, assetName string) string {
+	return fmt.Sprintf("%s-%s", tag, assetName)
+}
+
 func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath string, englishDictionaryCommitRef string) error {
-	// Get the dictionary path in ~/.crs-toolchain
-	dictionaryPath, err := utils.GetCacheFilePath(dictionaryBaseFileName)
+	// Fetch the latest English WordNet release from GitHub
+	tag, assetName, downloadURL, err := utils.GetLatestGitHubRelease(wordNetOwner, wordNetRepo, func(name string) bool {
+		return strings.HasSuffix(name, ".zip") &&
+			strings.HasPrefix(name, "english-wordnet-") &&
+			!strings.Contains(name, "-plus")
+	})
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to get latest English WordNet release")
+	}
+
+	// Get the dictionary path in ~/.crs-toolchain, named after the release tag and
+	// asset. The asset name is included because a release can gain, lose, or
+	// rename assets without its tag changing; keying the cache on the tag alone
+	// would silently keep serving a stale, differently-formatted dictionary in
+	// that case.
+	dictionaryPath, err := utils.GetCacheFilePath(dictionaryCacheKey(tag, assetName))
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Error getting dictionary path")
 	}
 
 	// Check if the dictionary exists, if not, download it
 	if _, err := os.Stat(dictionaryPath); os.IsNotExist(err) {
-		logger.Debug().Msg("Dictionary folder not found. Downloading...")
-		dictionaryArchivePath, err := utils.GetCacheFilePath(dictionaryBaseFileName)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Error getting dictionary path")
-		}
-
-		dictionaryURL := fmt.Sprintf(dictionaryURLFormat, dictionaryBaseFileName)
-		logger.Debug().Msgf("Downloading dictionary from %s to %s", dictionaryURL, dictionaryArchivePath)
-		if err := utils.DownloadFile(dictionaryArchivePath, dictionaryURL); err != nil {
+		logger.Debug().Msgf("Downloading English WordNet %s (%s) from %s to %s", tag, assetName, downloadURL, dictionaryPath)
+		if err := utils.DownloadFile(dictionaryPath, downloadURL); err != nil {
 			logger.Fatal().Err(err).Msg("Failed to download dictionary")
 		}
 		logger.Debug().Msg("Download complete.")
 	} else {
-		logger.Debug().Msg("Dictionary folder found, skipping download.")
+		logger.Debug().Msgf("Dictionary for %s (%s) found, skipping download.", tag, assetName)
 	}
 
 	var extendedDict map[string]struct{}
@@ -76,7 +92,10 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 		logger.Fatal().Err(err).Msg("Failed to load input file")
 	}
 
-	wn, _ := wnram.New(dictionaryPath)
+	wn, err := wnram.New(dictionaryPath)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to load WordNet")
+	}
 
 	// Process words from inputfile, sort the output and remove duplicates
 	filteredWords := t.processWords(inputFile, wn, extendedDict, minSize)

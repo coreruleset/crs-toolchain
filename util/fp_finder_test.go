@@ -87,3 +87,21 @@ func (s *fpFinderTestSuite) TestFpFinder_ProcessWords_Sorting() {
 
 	s.Equal(expected, result)
 }
+
+func (s *fpFinderTestSuite) TestDictionaryCacheKey_DiffersByAssetName() {
+	// Regression test: a release can gain, lose, or rename assets without its
+	// tag changing. The cache key must depend on the asset name too, or a
+	// stale, differently-formatted dictionary cached under an older matching
+	// asset would silently keep being reused for the same tag.
+	same := dictionaryCacheKey("2025-edition", "english-wordnet-2025.zip")
+	different := dictionaryCacheKey("2025-edition", "english-wordnet-2025-index.sense-fixed.zip")
+
+	s.NotEqual(same, different)
+}
+
+func (s *fpFinderTestSuite) TestDictionaryCacheKey_Stable() {
+	first := dictionaryCacheKey("2025-edition", "english-wordnet-2025.zip")
+	second := dictionaryCacheKey("2025-edition", "english-wordnet-2025.zip")
+
+	s.Equal(first, second)
+}
