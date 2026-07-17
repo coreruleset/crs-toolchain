@@ -40,16 +40,46 @@ func (m *mockSearcher) SearchCodeCount(_ context.Context, functionName string) (
 	return 0, nil
 }
 
+// rateLimitThenSuccessSearcher returns a rate-limit error on the first call
+// and succeeds on every call after, to test getOrUpdateFrequency's retry.
+type rateLimitThenSuccessSearcher struct {
+	calls      int
+	retryAfter time.Duration
+	finalCount int
+}
+
+func (s *rateLimitThenSuccessSearcher) SearchCodeCount(_ context.Context, functionName string) (int, error) {
+	s.calls++
+	if s.calls == 1 {
+		return 0, &rateLimitError{functionName: functionName, statusCode: 429, retryAfter: s.retryAfter, hasRetryAfter: true}
+	}
+	return s.finalCount, nil
+}
+
+// rateLimitNoWaitSearcher always returns a rate-limit error with no usable
+// wait hint, to verify getOrUpdateFrequency does not retry blindly.
+type rateLimitNoWaitSearcher struct {
+	calls int
+}
+
+func (s *rateLimitNoWaitSearcher) SearchCodeCount(_ context.Context, functionName string) (int, error) {
+	s.calls++
+	return 0, &rateLimitError{functionName: functionName, statusCode: 403}
+}
+
 func (s *phpDictionaryGenTestSuite) TestExtractFunctions_BasicCase() {
 	tmpDir := s.T().TempDir()
 
 	// Create a fake PHP source file with ZEND_FUNCTION macros.
 	// PHP_FUNCTION lines are intentionally included to verify they are NOT matched.
+	// array_map is declared via ZEND_FUNCTION twice (as php-src does across
+	// multiple source files) to exercise deduplication.
 	src := `
 PHP_FUNCTION(array_map)
 PHP_FUNCTION(preg_match)
 ZEND_FUNCTION(array_filter)
 ZEND_FUNCTION(strpos)
+ZEND_FUNCTION(array_map)
 ZEND_FUNCTION(array_map)
 `
 	err := os.WriteFile(filepath.Join(tmpDir, "test.c"), []byte(src), fs.ModePerm)
@@ -71,6 +101,23 @@ ZEND_FUNCTION(array_map)
 		}
 	}
 	s.Equal(1, count, "array_map should appear exactly once (deduplicated)")
+}
+
+func (s *phpDictionaryGenTestSuite) TestExtractFunctions_SkipsMacroDefinition() {
+	tmpDir := s.T().TempDir()
+
+	// Zend/zend_API.h defines ZEND_FUNCTION as a macro; this line must not be
+	// mistaken for a real function declaration (which would otherwise extract
+	// the bogus function name "name").
+	src := "#define ZEND_FUNCTION(name) ZEND_NAMED_FUNCTION(zif_##name)\nZEND_FUNCTION(array_filter)\n"
+	err := os.WriteFile(filepath.Join(tmpDir, "test.h"), []byte(src), fs.ModePerm)
+	s.Require().NoError(err)
+
+	functions, err := s.gen.ExtractFunctions(tmpDir)
+	s.Require().NoError(err)
+
+	s.Contains(functions, "array_filter")
+	s.NotContains(functions, "name", "macro definition should not be treated as a function declaration")
 }
 
 func (s *phpDictionaryGenTestSuite) TestExtractFunctions_SkipsDollarSign() {
@@ -275,6 +322,40 @@ func (s *phpDictionaryGenTestSuite) TestGetOrUpdateFrequency_FetchesWhenMissing(
 
 	s.Equal(150000, count)
 	s.Equal(150000, cache["array_map"].count)
+}
+
+func (s *phpDictionaryGenTestSuite) TestGetOrUpdateFrequency_RetriesOnRateLimit() {
+	cache := map[string]frequencyEntry{}
+	searcher := &rateLimitThenSuccessSearcher{retryAfter: time.Millisecond, finalCount: 42}
+
+	count, err := s.gen.getOrUpdateFrequency(context.Background(), "array_map", cache, searcher, 30*24*time.Hour, "2024-01-15")
+	s.Require().NoError(err)
+
+	s.Equal(42, count)
+	s.Equal(2, searcher.calls, "should retry once after a rate-limit error with a wait hint")
+}
+
+func (s *phpDictionaryGenTestSuite) TestGetOrUpdateFrequency_RateLimitWithoutWaitHint_DoesNotRetry() {
+	cache := map[string]frequencyEntry{}
+	searcher := &rateLimitNoWaitSearcher{}
+
+	_, err := s.gen.getOrUpdateFrequency(context.Background(), "array_map", cache, searcher, 30*24*time.Hour, "2024-01-15")
+
+	s.Error(err)
+	s.Equal(1, searcher.calls, "should not retry blindly when no wait hint is available")
+}
+
+func (s *phpDictionaryGenTestSuite) TestGetOrUpdateFrequency_ContextCancelledDuringRateLimitWait() {
+	cache := map[string]frequencyEntry{}
+	searcher := &rateLimitThenSuccessSearcher{retryAfter: time.Hour, finalCount: 42}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := s.gen.getOrUpdateFrequency(ctx, "array_map", cache, searcher, 30*24*time.Hour, "2024-01-15")
+
+	s.ErrorIs(err, context.Canceled)
+	s.Equal(1, searcher.calls, "should not retry once the context is cancelled")
 }
 
 func mustParseDate(s string) time.Time {

@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -40,7 +41,25 @@ const (
 	gitHubAPIVersion        = "2022-11-28"
 	frequencyListDateFormat = "2006-01-02"
 	generatorName           = "crs-toolchain util php-dictionary-gen"
+	// maxRateLimitWait caps how long getOrUpdateFrequency will sleep before
+	// retrying a rate-limited request, in case the server-reported wait time
+	// (e.g. X-RateLimit-Reset far in the future) is unexpectedly large.
+	maxRateLimitWait = 2 * time.Minute
 )
+
+// rateLimitError indicates the GitHub API rate limit was hit while looking up
+// functionName. RetryAfter is how long the caller should wait before retrying;
+// HasRetryAfter is false when the response didn't include a usable wait hint.
+type rateLimitError struct {
+	functionName  string
+	statusCode    int
+	retryAfter    time.Duration
+	hasRetryAfter bool
+}
+
+func (e *rateLimitError) Error() string {
+	return fmt.Sprintf("GitHub API rate limit exceeded for %s (status %d)", e.functionName, e.statusCode)
+}
 
 // rareWordRange describes one of the three alphabetical partitions that rule
 // 933151 was split into (933151/933152/933153) to work around regex size
@@ -198,20 +217,27 @@ func (c *gitHubSearchClient) SearchCodeCount(ctx context.Context, functionName s
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+		rlErr := &rateLimitError{functionName: functionName, statusCode: resp.StatusCode}
 		// Try to honour the Retry-After header so the caller knows when to retry.
 		if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
 			if secs, err := strconv.Atoi(retryAfter); err == nil {
+				rlErr.retryAfter = time.Duration(secs) * time.Second
+				rlErr.hasRetryAfter = true
 				logger.Warn().Msgf("GitHub API rate limit hit for %s; retry after %d seconds", functionName, secs)
 			}
 		} else if resetHeader := resp.Header.Get("X-RateLimit-Reset"); resetHeader != "" {
 			if resetUnix, err := strconv.ParseInt(resetHeader, 10, 64); err == nil {
 				resetTime := time.Unix(resetUnix, 0)
+				if wait := time.Until(resetTime); wait > 0 {
+					rlErr.retryAfter = wait
+					rlErr.hasRetryAfter = true
+				}
 				logger.Warn().Msgf("GitHub API rate limit hit for %s; resets at %v", functionName, resetTime)
 			}
 		} else {
 			logger.Warn().Msgf("GitHub API rate limit hit for %s (status %d)", functionName, resp.StatusCode)
 		}
-		return 0, fmt.Errorf("GitHub API rate limit exceeded for %s (status %d)", functionName, resp.StatusCode)
+		return 0, rlErr
 	}
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("unexpected GitHub API status %d for %s", resp.StatusCode, functionName)
@@ -276,7 +302,7 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 		}
 		cleanupTmpDir = tmpDir
 		logger.Info().Msgf("Cloning PHP repository from %s", phpRepoURL)
-		_, err = git.PlainClone(tmpDir, false, &git.CloneOptions{
+		_, err = git.PlainCloneContext(ctx, tmpDir, false, &git.CloneOptions{
 			URL:   phpRepoURL,
 			Depth: 1,
 		})
@@ -331,6 +357,9 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 		for _, fn := range nonEnglishWords {
 			count, err := p.getOrUpdateFrequency(ctx, fn, frequencyCache, searcher, ageLimitDuration, today)
 			if err != nil {
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					return fmt.Errorf("frequency lookup for %s interrupted: %w", fn, err)
+				}
 				logger.Warn().Err(err).Msgf("Failed to get frequency for %s, skipping", fn)
 				continue
 			}
@@ -422,6 +451,13 @@ func (p *PhpDictionaryGen) ExtractFunctions(phpRepoPath string) ([]string, error
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			line := scanner.Text()
+			// Skip macro definitions themselves, e.g.
+			// `#define ZEND_FUNCTION(name) ZEND_NAMED_FUNCTION(zif_##name)` in
+			// Zend/zend_API.h, which would otherwise match ZEND_FUNCTION(...)
+			// and capture the bogus macro parameter "name" as a function.
+			if strings.HasPrefix(strings.TrimSpace(line), "#define") {
+				continue
+			}
 			// Skip lines with $ (template variables)
 			if strings.Contains(line, "$") {
 				continue
@@ -485,6 +521,20 @@ func (p *PhpDictionaryGen) getOrUpdateFrequency(ctx context.Context, functionNam
 	}
 
 	count, err := searcher.SearchCodeCount(ctx, functionName)
+	var rlErr *rateLimitError
+	if errors.As(err, &rlErr) && rlErr.hasRetryAfter {
+		wait := rlErr.retryAfter
+		if wait > maxRateLimitWait {
+			wait = maxRateLimitWait
+		}
+		logger.Warn().Msgf("Waiting %v before retrying rate-limited lookup for %s", wait, functionName)
+		select {
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		case <-time.After(wait):
+		}
+		count, err = searcher.SearchCodeCount(ctx, functionName)
+	}
 	if err != nil {
 		return 0, err
 	}

@@ -57,12 +57,16 @@ https://github.com/php/php-src (requires git to be available).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Validate --php-repo path if provided
 			if phpRepoPath != "" {
-				if _, err := os.Stat(phpRepoPath); err != nil {
-					return fmt.Errorf("--php-repo path does not exist: %s", phpRepoPath)
+				info, err := os.Stat(phpRepoPath)
+				if err != nil {
+					return fmt.Errorf("--php-repo path does not exist: %s: %w", phpRepoPath, err)
+				}
+				if !info.IsDir() {
+					return fmt.Errorf("--php-repo path is not a directory: %s", phpRepoPath)
 				}
 			}
 
-			// Read GitHub token from env if not set via flag
+			// Read the GitHub token from the GITHUB_TOKEN environment variable.
 			githubToken := os.Getenv("GITHUB_TOKEN")
 
 			ctxt := cmdContext.RootContext()

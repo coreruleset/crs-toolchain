@@ -4,12 +4,14 @@
 package phpDictionaryGen
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/coreruleset/crs-toolchain/v2/cmd/internal"
+	"github.com/coreruleset/crs-toolchain/v2/util"
 )
 
 type phpDictionaryGenCmdTestSuite struct {
@@ -36,13 +38,13 @@ func (s *phpDictionaryGenCmdTestSuite) TestCommandName() {
 func (s *phpDictionaryGenCmdTestSuite) TestCommandHasFrequencyLimitFlag() {
 	flag := s.cmd.Flags().Lookup("frequency-limit")
 	s.Require().NotNil(flag)
-	s.Equal("90000", flag.DefValue)
+	s.Equal(strconv.Itoa(util.DefaultFrequencyLimit), flag.DefValue)
 }
 
 func (s *phpDictionaryGenCmdTestSuite) TestCommandHasAgeLimitFlag() {
 	flag := s.cmd.Flags().Lookup("age-limit")
 	s.Require().NotNil(flag)
-	s.Equal("30", flag.DefValue)
+	s.Equal(strconv.Itoa(util.DefaultAgeLimitDays), flag.DefValue)
 }
 
 func (s *phpDictionaryGenCmdTestSuite) TestCommandHasPhpRepoFlag() {
@@ -69,8 +71,11 @@ func (s *phpDictionaryGenCmdTestSuite) TestNormalizeRules_CommaSeparated() {
 	s.Equal([]string{"933150", "933151"}, result)
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestNormalizeRules_SpaceSeparated() {
-	result := normalizeRules([]string{"933150", "933151"})
+func (s *phpDictionaryGenCmdTestSuite) TestNormalizeRules_TrimsWhitespace() {
+	// cobra's StringSliceVarP splits "933150, 933151" into ["933150", " 933151"];
+	// normalizeRules must trim the leading space cobra leaves behind, and drop
+	// entries that are blank after trimming.
+	result := normalizeRules([]string{" 933150", "933151 ", "  "})
 	s.Equal([]string{"933150", "933151"}, result)
 }
 
