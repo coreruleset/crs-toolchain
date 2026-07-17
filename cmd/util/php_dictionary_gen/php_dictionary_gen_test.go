@@ -77,8 +77,10 @@ func (s *phpDictionaryGenCmdTestSuite) TestNormalizeRules_SpaceSeparated() {
 func (s *phpDictionaryGenCmdTestSuite) TestValidateRules_ValidRules() {
 	s.NoError(validateRules([]string{"933150"}))
 	s.NoError(validateRules([]string{"933151"}))
+	s.NoError(validateRules([]string{"933152"}))
+	s.NoError(validateRules([]string{"933153"}))
 	s.NoError(validateRules([]string{"933161"}))
-	s.NoError(validateRules([]string{"933150", "933151", "933161"}))
+	s.NoError(validateRules([]string{"933150", "933151", "933152", "933153", "933161"}))
 }
 
 func (s *phpDictionaryGenCmdTestSuite) TestValidateRules_InvalidRule() {

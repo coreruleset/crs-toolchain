@@ -32,12 +32,68 @@ const (
 	DefaultFrequencyLimit   = 90000
 	DefaultAgeLimitDays     = 30
 	Rule933150FileName      = "php-function-names-933150.data"
-	Rule933151FileName      = "php-function-names-933151.data"
+	Rule933151FileName      = "php-function-names-933151.ra"
+	Rule933152FileName      = "php-function-names-933152.ra"
+	Rule933153FileName      = "php-function-names-933153.ra"
 	Rule933161FileName      = "933161.ra"
 	gitHubSearchAPIFormat   = "https://api.github.com/search/code?q=%s+language:php&type=Code&per_page=1"
 	gitHubAPIVersion        = "2022-11-28"
 	frequencyListDateFormat = "2006-01-02"
+	generatorName           = "crs-toolchain util php-dictionary-gen"
 )
+
+// rareWordRange describes one of the three alphabetical partitions that rule
+// 933151 was split into (933151/933152/933153) to work around regex size
+// limitations. Bucketing is based on the lowercased first letter of the
+// function name.
+type rareWordRange struct {
+	fileName string
+	label    string
+	seeAlso  string
+	from, to byte
+}
+
+var rareWordRanges = []rareWordRange{
+	{fileName: Rule933151FileName, label: "a-j", seeAlso: "php-function-names-933152.ra and php-function-names-933153.ra", from: 'a', to: 'j'},
+	{fileName: Rule933152FileName, label: "k-q", seeAlso: "php-function-names-933151.ra and php-function-names-933153.ra", from: 'k', to: 'q'},
+	{fileName: Rule933153FileName, label: "r-z", seeAlso: "php-function-names-933151.ra and php-function-names-933152.ra", from: 'r', to: 'z'},
+}
+
+// rareWordBucket is one alphabetical partition of the rare-function word list,
+// ready to be written to its own include file.
+type rareWordBucket struct {
+	fileName  string
+	label     string
+	seeAlso   string
+	functions []string
+}
+
+// partitionRareFunctionsAlphabetically splits functions into the alphabetical
+// buckets described by ranges, based on the lowercased first letter of each
+// function name.
+func partitionRareFunctionsAlphabetically(functions []string, ranges []rareWordRange) []rareWordBucket {
+	buckets := make([]rareWordBucket, len(ranges))
+	for i, r := range ranges {
+		buckets[i] = rareWordBucket{fileName: r.fileName, label: r.label, seeAlso: r.seeAlso}
+	}
+
+	for _, fn := range functions {
+		if fn == "" {
+			continue
+		}
+		c := fn[0]
+		if c >= 'A' && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		for i, r := range ranges {
+			if c >= r.from && c <= r.to {
+				buckets[i].functions = append(buckets[i].functions, fn)
+				break
+			}
+		}
+	}
+	return buckets
+}
 
 var zendFunctionRegex = regexp.MustCompile(`ZEND_FUNCTION\(([^$)]+)\)`)
 
@@ -52,14 +108,14 @@ type PhpDictionaryGenOptions struct {
 	// If empty, the PHP repository will be cloned from GitHub.
 	PhpRepoPath string
 	// FrequencyLimit is the minimum GitHub occurrence count to qualify for rule 933150.
-	// Functions with fewer occurrences will be placed in rule 933151.
+	// Functions with fewer occurrences will be placed in rules 933151/933152/933153.
 	FrequencyLimit int
 	// AgeLimitDays is the number of days before a frequency cache entry is considered stale.
 	AgeLimitDays int
 	// FrequencyListPath is the path to the frequency cache file.
 	// If empty, no caching is used.
 	FrequencyListPath string
-	// Rules is a list of rule IDs to generate (e.g. ["933150", "933151", "933161"]).
+	// Rules is a list of rule IDs to generate (e.g. ["933150", "933151", "933152", "933153", "933161"]).
 	// If empty, all supported rules are generated.
 	Rules []string
 	// GitHubToken is the GitHub API token for authenticated requests.
@@ -186,18 +242,23 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 	}
 	rules := opts.Rules
 	if len(rules) == 0 {
-		rules = []string{"933150", "933151", "933161"}
+		rules = []string{"933150", "933151", "933152", "933153", "933161"}
 	}
 
 	// Determine which rules to generate
 	doRule933150 := slices.Contains(rules, "933150")
 	doRule933151 := slices.Contains(rules, "933151")
+	doRule933152 := slices.Contains(rules, "933152")
+	doRule933153 := slices.Contains(rules, "933153")
 	doRule933161 := slices.Contains(rules, "933161")
+	// 933151/933152/933153 are three alphabetical partitions of the same
+	// "rare function" word list, split to work around regex size limitations.
+	doRuleRare := doRule933151 || doRule933152 || doRule933153
 
 	// Initialize WordNet if not provided; it is needed for all rule combinations
 	// because classifyFunctions (which separates English/non-English names) is
 	// called whenever any rule is being generated.
-	if wn == nil && (doRule933161 || doRule933150 || doRule933151) {
+	if wn == nil && (doRule933161 || doRule933150 || doRuleRare) {
 		var err error
 		wn, err = NewWordNet()
 		if err != nil {
@@ -263,7 +324,7 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 	var frequentFunctions []string
 	var rareFunctions []string
 
-	if doRule933150 || doRule933151 {
+	if doRule933150 || doRuleRare {
 		today := time.Now().Format(frequencyListDateFormat)
 		ageLimitDuration := time.Duration(opts.AgeLimitDays) * 24 * time.Hour
 
@@ -303,11 +364,21 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 		}
 	}
 
-	if doRule933151 {
-		outPath := filepath.Join(ctxt.RulesDir(), Rule933151FileName)
-		logger.Info().Msgf("Writing rule 933151 data to %s", outPath)
-		if err := p.writeDataFile(outPath, rareFunctions, opts.FrequencyLimit, opts.AgeLimitDays); err != nil {
-			return fmt.Errorf("writing 933151 data file: %w", err)
+	if doRuleRare {
+		requested := map[string]bool{
+			Rule933151FileName: doRule933151,
+			Rule933152FileName: doRule933152,
+			Rule933153FileName: doRule933153,
+		}
+		for _, words := range partitionRareFunctionsAlphabetically(rareFunctions, rareWordRanges) {
+			if !requested[words.fileName] {
+				continue
+			}
+			outPath := filepath.Join(ctxt.IncludesDir(), words.fileName)
+			logger.Info().Msgf("Writing word list for %s to %s", words.fileName, outPath)
+			if err := p.writeIncludeWordListFile(outPath, words.functions, opts.FrequencyLimit, opts.AgeLimitDays, words.label, words.seeAlso); err != nil {
+				return fmt.Errorf("writing %s word list: %w", words.fileName, err)
+			}
 		}
 	}
 
@@ -529,9 +600,47 @@ func (p *PhpDictionaryGen) writeAssemblyFile(path string, functions []string, fr
 	return writer.Flush()
 }
 
+// writeIncludeWordListFile writes one alphabetical partition of the rare-function
+// word list (rule 933151/933152/933153) to its regex-assembly include file.
+func (p *PhpDictionaryGen) writeIncludeWordListFile(path string, functions []string, frequencyLimit, ageLimitDays int, label, seeAlso string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	if err := p.writeIncludeWordListFileHeader(writer, frequencyLimit, ageLimitDays, label, seeAlso); err != nil {
+		return err
+	}
+
+	for _, fn := range functions {
+		if _, err := fmt.Fprintln(writer, fn); err != nil {
+			return err
+		}
+	}
+	return writer.Flush()
+}
+
+func (p *PhpDictionaryGen) writeIncludeWordListFileHeader(w io.Writer, frequencyLimit, ageLimitDays int, label, seeAlso string) error {
+	lines := []string{
+		"##! Please refer to the documentation at",
+		"##! https://coreruleset.org/docs/development/regex_assembly/.",
+		"",
+		fmt.Sprintf("##! File autogenerated by %s with: -a %d -F %d", generatorName, ageLimitDays, frequencyLimit),
+		fmt.Sprintf("##! This file only includes words which start with %s. See %s.", label, seeAlso),
+	}
+	for _, line := range lines {
+		if _, err := fmt.Fprintln(w, line); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (p *PhpDictionaryGen) writeDataFileHeader(w io.Writer, frequencyLimit, ageLimitDays int) error {
-	_, err := fmt.Fprintf(w, "##! File autogenerated by util/php-dictionary-gen with: -a %d -F %d\n",
-		ageLimitDays, frequencyLimit)
+	_, err := fmt.Fprintf(w, "##! File autogenerated by %s with: -a %d -F %d\n",
+		generatorName, ageLimitDays, frequencyLimit)
 	return err
 }
 
@@ -540,7 +649,7 @@ func (p *PhpDictionaryGen) writeAssemblyFileHeader(w io.Writer, frequencyLimit, 
 		"##! Please refer to the documentation at",
 		"##! https://coreruleset.org/docs/development/regex_assembly/.",
 		"",
-		fmt.Sprintf("##! File autogenerated by util/php-dictionary-gen with: -a %d -F %d", ageLimitDays, frequencyLimit),
+		fmt.Sprintf("##! File autogenerated by %s with: -a %d -F %d", generatorName, ageLimitDays, frequencyLimit),
 		"",
 		"##!+ i",
 		`##!^ \b`,
