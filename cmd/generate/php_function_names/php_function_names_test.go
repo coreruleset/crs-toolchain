@@ -1,7 +1,7 @@
 // Copyright 2025 OWASP Core Rule Set Project
 // SPDX-License-Identifier: Apache-2.0
 
-package phpDictionaryGen
+package phpFunctionNames
 
 import (
 	"strconv"
@@ -14,64 +14,64 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/util"
 )
 
-type phpDictionaryGenCmdTestSuite struct {
+type phpFunctionNamesCmdTestSuite struct {
 	suite.Suite
 	rootDir    string
 	cmdContext *internal.CommandContext
 	cmd        *cobra.Command
 }
 
-func (s *phpDictionaryGenCmdTestSuite) SetupTest() {
+func (s *phpFunctionNamesCmdTestSuite) SetupTest() {
 	s.rootDir = s.T().TempDir()
 	s.cmdContext = internal.NewCommandContext(s.rootDir)
 	s.cmd = New(s.cmdContext)
 }
 
-func TestRunPhpDictionaryGenCmdTestSuite(t *testing.T) {
-	suite.Run(t, new(phpDictionaryGenCmdTestSuite))
+func TestRunPhpFunctionNamesCmdTestSuite(t *testing.T) {
+	suite.Run(t, new(phpFunctionNamesCmdTestSuite))
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestCommandName() {
-	s.Equal("php-dictionary-gen", s.cmd.Name())
+func (s *phpFunctionNamesCmdTestSuite) TestCommandName() {
+	s.Equal("php-function-names", s.cmd.Name())
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestCommandHasFrequencyLimitFlag() {
+func (s *phpFunctionNamesCmdTestSuite) TestCommandHasFrequencyLimitFlag() {
 	flag := s.cmd.Flags().Lookup("frequency-limit")
 	s.Require().NotNil(flag)
 	s.Equal(strconv.Itoa(util.DefaultFrequencyLimit), flag.DefValue)
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestCommandHasAgeLimitFlag() {
+func (s *phpFunctionNamesCmdTestSuite) TestCommandHasAgeLimitFlag() {
 	flag := s.cmd.Flags().Lookup("age-limit")
 	s.Require().NotNil(flag)
 	s.Equal(strconv.Itoa(util.DefaultAgeLimitDays), flag.DefValue)
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestCommandHasPhpRepoFlag() {
+func (s *phpFunctionNamesCmdTestSuite) TestCommandHasPhpRepoFlag() {
 	flag := s.cmd.Flags().Lookup("php-repo")
 	s.Require().NotNil(flag)
 	s.Equal("", flag.DefValue)
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestCommandHasFrequencyListFlag() {
+func (s *phpFunctionNamesCmdTestSuite) TestCommandHasFrequencyListFlag() {
 	flag := s.cmd.Flags().Lookup("frequency-list")
 	s.Require().NotNil(flag)
 	s.Equal("", flag.DefValue)
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestCommandHasRulesFlag() {
+func (s *phpFunctionNamesCmdTestSuite) TestCommandHasRulesFlag() {
 	flag := s.cmd.Flags().Lookup("rules")
 	s.Require().NotNil(flag)
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestNormalizeRules_CommaSeparated() {
+func (s *phpFunctionNamesCmdTestSuite) TestNormalizeRules_CommaSeparated() {
 	// cobra's StringSliceVarP already handles comma-splitting before normalizeRules is called.
 	// normalizeRules only needs to trim whitespace from each pre-split element.
 	result := normalizeRules([]string{"933150", "933151"})
 	s.Equal([]string{"933150", "933151"}, result)
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestNormalizeRules_TrimsWhitespace() {
+func (s *phpFunctionNamesCmdTestSuite) TestNormalizeRules_TrimsWhitespace() {
 	// cobra's StringSliceVarP splits "933150, 933151" into ["933150", " 933151"];
 	// normalizeRules must trim the leading space cobra leaves behind, and drop
 	// entries that are blank after trimming.
@@ -79,7 +79,7 @@ func (s *phpDictionaryGenCmdTestSuite) TestNormalizeRules_TrimsWhitespace() {
 	s.Equal([]string{"933150", "933151"}, result)
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestValidateRules_ValidRules() {
+func (s *phpFunctionNamesCmdTestSuite) TestValidateRules_ValidRules() {
 	s.NoError(validateRules([]string{"933150"}))
 	s.NoError(validateRules([]string{"933151"}))
 	s.NoError(validateRules([]string{"933152"}))
@@ -88,12 +88,12 @@ func (s *phpDictionaryGenCmdTestSuite) TestValidateRules_ValidRules() {
 	s.NoError(validateRules([]string{"933150", "933151", "933152", "933153", "933161"}))
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestValidateRules_InvalidRule() {
+func (s *phpFunctionNamesCmdTestSuite) TestValidateRules_InvalidRule() {
 	err := validateRules([]string{"999999"})
 	s.Error(err)
 	s.Contains(err.Error(), "999999")
 }
 
-func (s *phpDictionaryGenCmdTestSuite) TestValidateRules_Empty() {
+func (s *phpFunctionNamesCmdTestSuite) TestValidateRules_Empty() {
 	s.NoError(validateRules([]string{}))
 }

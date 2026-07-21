@@ -1,12 +1,13 @@
 // Copyright 2025 OWASP Core Rule Set Project
 // SPDX-License-Identifier: Apache-2.0
 
-package phpDictionaryGen
+package phpFunctionNames
 
 import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -15,20 +16,21 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/util"
 )
 
-var logger = log.With().Str("component", "cmd.util.php-dictionary-gen").Logger()
+var logger = log.With().Str("component", "cmd.generate.php-function-names").Logger()
 
 var (
 	phpRepoPath       string
+	phpReleaseCount   int
 	frequencyLimit    int
 	ageLimitDays      int
 	frequencyListPath string
 	rules             []string
 )
 
-// New creates the php-dictionary-gen cobra command.
+// New creates the php-function-names cobra command.
 func New(cmdContext *internal.CommandContext) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "php-dictionary-gen",
+		Use:   "php-function-names",
 		Short: "Generate PHP function name data files",
 		Long: `Generate *.data and *.ra files for PHP function names used in CRS rules
 933150, 933151, 933152, 933153, and 933161.
@@ -49,10 +51,18 @@ into categories:
      across 933151/933152/933153 respectively.
 
 The command requires access to the GitHub API for frequency lookups.
-Set the GITHUB_TOKEN environment variable to avoid rate limiting.
+Set the GITHUB_TOKEN (or GH_TOKEN) environment variable to avoid rate limiting.
 
-If --php-repo is not provided, the PHP source repository is cloned from
-https://github.com/php/php-src (requires git to be available).`,
+If --php-repo is not provided, the PHP source repository is cloned from the
+repository configured by php_dictionary_gen.php_repo_url in toolchain.yaml
+(https://github.com/php/php-src by default; requires git to be available).
+In that case, --php-release-count of its most recent PHP-X.Y release
+branches are also scanned, so functions added only in older releases aren't
+missed.
+
+Defaults for the repository URL, frequency/age limits, release count, output
+file names, and GitHub rate-limit wait can all be set in toolchain.yaml's
+php_dictionary_gen section; explicit flags always take precedence.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Validate --php-repo path if provided
@@ -66,18 +76,39 @@ https://github.com/php/php-src (requires git to be available).`,
 				}
 			}
 
-			// Read the GitHub token from the GITHUB_TOKEN environment variable.
+			// Read the GitHub token; falls back to go-gh's own resolution when empty.
 			githubToken := os.Getenv("GITHUB_TOKEN")
+			if githubToken == "" {
+				githubToken = os.Getenv("GH_TOKEN")
+			}
 
 			ctxt := cmdContext.RootContext()
+			cfg := ctxt.Configuration().PhpDictionaryGen
 			gen := util.NewPhpDictionaryGen()
 
 			opts := util.PhpDictionaryGenOptions{
-				PhpRepoPath:       phpRepoPath,
-				FrequencyLimit:    frequencyLimit,
-				AgeLimitDays:      ageLimitDays,
-				FrequencyListPath: frequencyListPath,
-				GitHubToken:       githubToken,
+				PhpRepoPath:        phpRepoPath,
+				PhpRepoURL:         cfg.PhpRepoURL,
+				FrequencyListPath:  frequencyListPath,
+				Rule933150FileName: cfg.Rule933150FileName,
+				Rule933151FileName: cfg.Rule933151FileName,
+				Rule933152FileName: cfg.Rule933152FileName,
+				Rule933153FileName: cfg.Rule933153FileName,
+				Rule933161FileName: cfg.Rule933161FileName,
+				MaxRateLimitWait:   time.Duration(cfg.MaxRateLimitWaitSeconds) * time.Second,
+			}
+
+			opts.FrequencyLimit = frequencyLimit
+			if !cmd.Flags().Changed("frequency-limit") {
+				opts.FrequencyLimit = cfg.FrequencyLimit
+			}
+			opts.AgeLimitDays = ageLimitDays
+			if !cmd.Flags().Changed("age-limit") {
+				opts.AgeLimitDays = cfg.AgeLimitDays
+			}
+			opts.PhpReleaseCount = phpReleaseCount
+			if !cmd.Flags().Changed("php-release-count") {
+				opts.PhpReleaseCount = cfg.PhpReleaseCount
 			}
 
 			if len(rules) > 0 {
@@ -87,12 +118,15 @@ https://github.com/php/php-src (requires git to be available).`,
 				}
 			}
 
-			searcher := util.NewGitHubSearchClient(githubToken)
+			searcher, err := util.NewGitHubSearchClient(githubToken)
+			if err != nil {
+				return fmt.Errorf("creating GitHub search client: %w", err)
+			}
 
 			logger.Info().Msg("Starting PHP dictionary generation")
 			// wn is passed as nil; Generate will create it automatically when needed
 			if err := gen.Generate(cmd.Context(), ctxt, opts, nil, searcher); err != nil {
-				return fmt.Errorf("php-dictionary-gen failed: %w", err)
+				return fmt.Errorf("php-function-names failed: %w", err)
 			}
 			logger.Info().Msg("PHP dictionary generation complete")
 			return nil
@@ -106,11 +140,13 @@ https://github.com/php/php-src (requires git to be available).`,
 func buildFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&phpRepoPath, "php-repo", "p", "",
 		"Path to a local PHP source repository. If not provided, the repository is cloned from GitHub.")
+	cmd.Flags().IntVarP(&phpReleaseCount, "php-release-count", "R", util.DefaultPhpReleaseCount,
+		"Number of most recent PHP-X.Y release branches (besides the default branch) to also extract function names from. Only applies when --php-repo is not provided.")
 	cmd.Flags().IntVarP(&frequencyLimit, "frequency-limit", "F", util.DefaultFrequencyLimit,
 		"Minimum number of GitHub occurrences to qualify for rule 933150. Functions below this threshold go to 933151/933152/933153.")
 	cmd.Flags().IntVarP(&ageLimitDays, "age-limit", "a", util.DefaultAgeLimitDays,
 		"Number of days before a frequency cache entry is considered stale and refreshed.")
-	cmd.Flags().StringVarP(&frequencyListPath, "frequency-list", "f", "",
+	cmd.Flags().StringVarP(&frequencyListPath, "frequency-list", "L", "",
 		"Path to the frequency cache file. If not provided, no caching is used.")
 	cmd.Flags().StringSliceVarP(&rules, "rules", "r", []string{},
 		`Comma-separated list of rules to generate. Available: 933150, 933151, 933152, 933153, 933161.

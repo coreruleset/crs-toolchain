@@ -6,7 +6,6 @@ package util
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,30 +20,43 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/coreruleset/wnram"
 	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/storage/memory"
 
+	"github.com/coreruleset/crs-toolchain/v2/configuration"
 	crsctx "github.com/coreruleset/crs-toolchain/v2/context"
 	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
 const (
-	phpRepoURL              = "https://github.com/php/php-src"
-	DefaultFrequencyLimit   = 90000
-	DefaultAgeLimitDays     = 30
-	Rule933150FileName      = "php-function-names-933150.data"
-	Rule933151FileName      = "php-function-names-933151.ra"
-	Rule933152FileName      = "php-function-names-933152.ra"
-	Rule933153FileName      = "php-function-names-933153.ra"
-	Rule933161FileName      = "933161.ra"
-	gitHubSearchAPIFormat   = "https://api.github.com/search/code?q=%s+language:php&type=Code&per_page=1"
-	gitHubAPIVersion        = "2022-11-28"
 	frequencyListDateFormat = "2006-01-02"
-	generatorName           = "crs-toolchain util php-dictionary-gen"
-	// maxRateLimitWait caps how long getOrUpdateFrequency will sleep before
-	// retrying a rate-limited request, in case the server-reported wait time
-	// (e.g. X-RateLimit-Reset far in the future) is unexpectedly large.
-	maxRateLimitWait = 2 * time.Minute
+	generatorName           = "crs-toolchain generate php-function-names"
+	gitHubAPIVersion        = "2022-11-28"
+
+	// staleFrequencyHardLimitMultiplier bounds how far past the configured
+	// age limit a cached frequency entry may still be used as a fallback
+	// when refreshing it fails. Beyond ageLimit * staleFrequencyHardLimitMultiplier,
+	// getOrUpdateFrequency gives up and returns an error instead of trusting
+	// a value that has gotten too old.
+	staleFrequencyHardLimitMultiplier = 3
+)
+
+// These re-export the configuration package's PhpDictionaryGen defaults for
+// callers (such as cobra flag registration and tests) that only need the
+// code-level fallback, not the full toolchain.yaml-aware value.
+const (
+	DefaultFrequencyLimit     = configuration.DefaultFrequencyLimit
+	DefaultAgeLimitDays       = configuration.DefaultAgeLimitDays
+	DefaultPhpReleaseCount    = configuration.DefaultPhpReleaseCount
+	DefaultRule933150FileName = configuration.DefaultRule933150FileName
+	DefaultRule933151FileName = configuration.DefaultRule933151FileName
+	DefaultRule933152FileName = configuration.DefaultRule933152FileName
+	DefaultRule933153FileName = configuration.DefaultRule933153FileName
+	DefaultRule933161FileName = configuration.DefaultRule933161FileName
 )
 
 // rateLimitError indicates the GitHub API rate limit was hit while looking up
@@ -61,6 +73,35 @@ func (e *rateLimitError) Error() string {
 	return fmt.Sprintf("GitHub API rate limit exceeded for %s (status %d)", e.functionName, e.statusCode)
 }
 
+// errFrequencyUnavailable indicates no frequency value could be obtained for
+// functionName and there was no cached entry to fall back to.
+type errFrequencyUnavailable struct {
+	functionName string
+	cause        error
+}
+
+func (e *errFrequencyUnavailable) Error() string {
+	return fmt.Sprintf("no frequency available for %s: %v", e.functionName, e.cause)
+}
+
+func (e *errFrequencyUnavailable) Unwrap() error { return e.cause }
+
+// errFrequencyRenewalExpired indicates a cached frequency entry for
+// functionName exists but is older than staleFrequencyHardLimitMultiplier *
+// ageLimit, and the attempt to refresh it failed, so the stale value can no
+// longer be trusted.
+type errFrequencyRenewalExpired struct {
+	functionName string
+	age          time.Duration
+	cause        error
+}
+
+func (e *errFrequencyRenewalExpired) Error() string {
+	return fmt.Sprintf("frequency for %s is %v old and renewal failed: %v", e.functionName, e.age, e.cause)
+}
+
+func (e *errFrequencyRenewalExpired) Unwrap() error { return e.cause }
+
 // rareWordRange describes one of the three alphabetical partitions that rule
 // 933151 was split into (933151/933152/933153) to work around regex size
 // limitations. Bucketing is based on the lowercased first letter of the
@@ -72,10 +113,30 @@ type rareWordRange struct {
 	from, to byte
 }
 
-var rareWordRanges = []rareWordRange{
-	{fileName: Rule933151FileName, label: "a-j", seeAlso: "php-function-names-933152.ra and php-function-names-933153.ra", from: 'a', to: 'j'},
-	{fileName: Rule933152FileName, label: "k-q", seeAlso: "php-function-names-933151.ra and php-function-names-933153.ra", from: 'k', to: 'q'},
-	{fileName: Rule933153FileName, label: "r-z", seeAlso: "php-function-names-933151.ra and php-function-names-933152.ra", from: 'r', to: 'z'},
+// buildRareWordRanges describes the three alphabetical partitions using the
+// (possibly configured) file names from opts, so the "see also" cross
+// references always point at the actual output file names.
+func buildRareWordRanges(opts PhpDictionaryGenOptions) []rareWordRange {
+	return []rareWordRange{
+		{
+			fileName: opts.Rule933151FileName,
+			label:    "a-j",
+			seeAlso:  fmt.Sprintf("%s and %s", opts.Rule933152FileName, opts.Rule933153FileName),
+			from:     'a', to: 'j',
+		},
+		{
+			fileName: opts.Rule933152FileName,
+			label:    "k-q",
+			seeAlso:  fmt.Sprintf("%s and %s", opts.Rule933151FileName, opts.Rule933153FileName),
+			from:     'k', to: 'q',
+		},
+		{
+			fileName: opts.Rule933153FileName,
+			label:    "r-z",
+			seeAlso:  fmt.Sprintf("%s and %s", opts.Rule933151FileName, opts.Rule933152FileName),
+			from:     'r', to: 'z',
+		},
+	}
 }
 
 // rareWordBucket is one alphabetical partition of the rare-function word list,
@@ -116,6 +177,10 @@ func partitionRareFunctionsAlphabetically(functions []string, ranges []rareWordR
 
 var zendFunctionRegex = regexp.MustCompile(`ZEND_FUNCTION\(([^$)]+)\)`)
 
+// phpReleaseBranchPattern matches php-src's release branch naming convention,
+// e.g. "PHP-8.3", capturing the major and minor version for sorting.
+var phpReleaseBranchPattern = regexp.MustCompile(`^PHP-(\d+)\.(\d+)$`)
+
 // GitHubSearcher defines the interface for checking PHP function frequency on GitHub.
 type GitHubSearcher interface {
 	SearchCodeCount(ctx context.Context, functionName string) (int, error)
@@ -124,8 +189,16 @@ type GitHubSearcher interface {
 // PhpDictionaryGenOptions contains options for PHP dictionary generation.
 type PhpDictionaryGenOptions struct {
 	// PhpRepoPath is the path to a local PHP source repository.
-	// If empty, the PHP repository will be cloned from GitHub.
+	// If empty, the PHP repository will be cloned from GitHub, and, in
+	// addition to its default branch, PhpReleaseCount of its most recent
+	// PHP-X.Y release branches will also be cloned and scanned.
 	PhpRepoPath string
+	// PhpRepoURL is the repository to clone when PhpRepoPath is empty.
+	PhpRepoURL string
+	// PhpReleaseCount is the number of most recent PHP-X.Y release branches
+	// (beyond the default branch) to also extract function names from.
+	// Only applies when PhpRepoPath is empty.
+	PhpReleaseCount int
 	// FrequencyLimit is the minimum GitHub occurrence count to qualify for rule 933150.
 	// Functions with fewer occurrences will be placed in rules 933151/933152/933153.
 	FrequencyLimit int
@@ -137,9 +210,53 @@ type PhpDictionaryGenOptions struct {
 	// Rules is a list of rule IDs to generate (e.g. ["933150", "933151", "933152", "933153", "933161"]).
 	// If empty, all supported rules are generated.
 	Rules []string
-	// GitHubToken is the GitHub API token for authenticated requests.
-	// Reads from the GITHUB_TOKEN environment variable if empty.
-	GitHubToken string
+	// Rule933150FileName..Rule933161FileName are the output file names used for each generated rule.
+	Rule933150FileName string
+	Rule933151FileName string
+	Rule933152FileName string
+	Rule933153FileName string
+	Rule933161FileName string
+	// MaxRateLimitWait caps how long getOrUpdateFrequency will sleep before
+	// retrying a rate-limited request, in case the server-reported wait time
+	// (e.g. X-RateLimit-Reset far in the future) is unexpectedly large.
+	MaxRateLimitWait time.Duration
+}
+
+// applyDefaults fills any zero-valued fields in opts with the configuration
+// package's defaults, so Generate can be called directly (e.g. from tests)
+// without requiring every option to be set.
+func applyDefaults(opts PhpDictionaryGenOptions) PhpDictionaryGenOptions {
+	if opts.PhpRepoURL == "" {
+		opts.PhpRepoURL = configuration.DefaultPhpRepoURL
+	}
+	if opts.PhpReleaseCount == 0 {
+		opts.PhpReleaseCount = configuration.DefaultPhpReleaseCount
+	}
+	if opts.FrequencyLimit <= 0 {
+		opts.FrequencyLimit = configuration.DefaultFrequencyLimit
+	}
+	if opts.AgeLimitDays <= 0 {
+		opts.AgeLimitDays = configuration.DefaultAgeLimitDays
+	}
+	if opts.Rule933150FileName == "" {
+		opts.Rule933150FileName = configuration.DefaultRule933150FileName
+	}
+	if opts.Rule933151FileName == "" {
+		opts.Rule933151FileName = configuration.DefaultRule933151FileName
+	}
+	if opts.Rule933152FileName == "" {
+		opts.Rule933152FileName = configuration.DefaultRule933152FileName
+	}
+	if opts.Rule933153FileName == "" {
+		opts.Rule933153FileName = configuration.DefaultRule933153FileName
+	}
+	if opts.Rule933161FileName == "" {
+		opts.Rule933161FileName = configuration.DefaultRule933161FileName
+	}
+	if opts.MaxRateLimitWait <= 0 {
+		opts.MaxRateLimitWait = time.Duration(configuration.DefaultMaxRateLimitWaitSecs) * time.Second
+	}
+	return opts
 }
 
 // PhpDictionaryGen generates .data and .ra files for PHP function names.
@@ -184,73 +301,72 @@ type frequencyEntry struct {
 
 // gitHubSearchClient implements GitHubSearcher using the GitHub search API.
 type gitHubSearchClient struct {
-	token      string
-	httpClient *http.Client
+	client *api.RESTClient
 }
 
-func NewGitHubSearchClient(token string) *gitHubSearchClient {
-	return &gitHubSearchClient{
-		token:      token,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+// NewGitHubSearchClient creates a GitHubSearcher backed by go-gh's REST
+// client. If token is empty, go-gh falls back to its usual token resolution
+// (GH_TOKEN/GITHUB_TOKEN environment variables or the gh CLI's own config).
+func NewGitHubSearchClient(token string) (*gitHubSearchClient, error) {
+	client, err := api.NewRESTClient(api.ClientOptions{
+		AuthToken: token,
+		Headers: map[string]string{
+			"Accept":               "application/vnd.github+json",
+			"X-GitHub-Api-Version": gitHubAPIVersion,
+		},
+		Timeout: 30 * time.Second,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("creating GitHub REST client: %w", err)
 	}
+	return &gitHubSearchClient{client: client}, nil
 }
 
 // SearchCodeCount returns the number of GitHub code search results for the given PHP function name.
 func (c *gitHubSearchClient) SearchCodeCount(ctx context.Context, functionName string) (int, error) {
 	escapedName := url.QueryEscape(functionName)
-	apiURL := fmt.Sprintf(gitHubSearchAPIFormat, escapedName)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-	if err != nil {
-		return 0, fmt.Errorf("creating request for %s: %w", functionName, err)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("X-GitHub-Api-Version", gitHubAPIVersion)
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return 0, fmt.Errorf("fetching frequency for %s: %w", functionName, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
-		rlErr := &rateLimitError{functionName: functionName, statusCode: resp.StatusCode}
-		// Try to honour the Retry-After header so the caller knows when to retry.
-		if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
-			if secs, err := strconv.Atoi(retryAfter); err == nil {
-				rlErr.retryAfter = time.Duration(secs) * time.Second
-				rlErr.hasRetryAfter = true
-				logger.Warn().Msgf("GitHub API rate limit hit for %s; retry after %d seconds", functionName, secs)
-			}
-		} else if resetHeader := resp.Header.Get("X-RateLimit-Reset"); resetHeader != "" {
-			if resetUnix, err := strconv.ParseInt(resetHeader, 10, 64); err == nil {
-				resetTime := time.Unix(resetUnix, 0)
-				if wait := time.Until(resetTime); wait > 0 {
-					rlErr.retryAfter = wait
-					rlErr.hasRetryAfter = true
-				}
-				logger.Warn().Msgf("GitHub API rate limit hit for %s; resets at %v", functionName, resetTime)
-			}
-		} else {
-			logger.Warn().Msgf("GitHub API rate limit hit for %s (status %d)", functionName, resp.StatusCode)
-		}
-		return 0, rlErr
-	}
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("unexpected GitHub API status %d for %s", resp.StatusCode, functionName)
-	}
+	path := fmt.Sprintf("search/code?q=%s+language:php&type=Code&per_page=1", escapedName)
 
 	var result struct {
 		TotalCount int `json:"total_count"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return 0, fmt.Errorf("decoding GitHub response for %s: %w", functionName, err)
+	if err := c.client.DoWithContext(ctx, http.MethodGet, path, nil, &result); err != nil {
+		var httpErr *api.HTTPError
+		if errors.As(err, &httpErr) && (httpErr.StatusCode == http.StatusForbidden || httpErr.StatusCode == http.StatusTooManyRequests) {
+			return 0, newRateLimitError(functionName, httpErr)
+		}
+		return 0, fmt.Errorf("fetching frequency for %s: %w", functionName, err)
 	}
 
 	return result.TotalCount, nil
+}
+
+// newRateLimitError builds a rateLimitError from a rate-limited HTTP
+// response, trying to honour the Retry-After or X-RateLimit-Reset headers so
+// the caller knows when to retry.
+func newRateLimitError(functionName string, httpErr *api.HTTPError) *rateLimitError {
+	rlErr := &rateLimitError{functionName: functionName, statusCode: httpErr.StatusCode}
+
+	if retryAfter := httpErr.Headers.Get("Retry-After"); retryAfter != "" {
+		if secs, err := strconv.Atoi(retryAfter); err == nil {
+			rlErr.retryAfter = time.Duration(secs) * time.Second
+			rlErr.hasRetryAfter = true
+			logger.Warn().Msgf("GitHub API rate limit hit for %s; retry after %d seconds", functionName, secs)
+		}
+	} else if resetHeader := httpErr.Headers.Get("X-RateLimit-Reset"); resetHeader != "" {
+		if resetUnix, err := strconv.ParseInt(resetHeader, 10, 64); err == nil {
+			resetTime := time.Unix(resetUnix, 0)
+			if wait := time.Until(resetTime); wait > 0 {
+				rlErr.retryAfter = wait
+				rlErr.hasRetryAfter = true
+			}
+			logger.Warn().Msgf("GitHub API rate limit hit for %s; resets at %v", functionName, resetTime)
+		}
+	} else {
+		logger.Warn().Msgf("GitHub API rate limit hit for %s (status %d)", functionName, httpErr.StatusCode)
+	}
+
+	return rlErr
 }
 
 // Generate runs the PHP dictionary generation process.
@@ -260,12 +376,8 @@ func (c *gitHubSearchClient) SearchCodeCount(ctx context.Context, functionName s
 // If wn is nil, a WordNet instance is created automatically (downloading the
 // dictionary if needed).
 func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, opts PhpDictionaryGenOptions, wn WordNet, searcher GitHubSearcher) error {
-	if opts.FrequencyLimit <= 0 {
-		opts.FrequencyLimit = DefaultFrequencyLimit
-	}
-	if opts.AgeLimitDays <= 0 {
-		opts.AgeLimitDays = DefaultAgeLimitDays
-	}
+	opts = applyDefaults(opts)
+
 	rules := opts.Rules
 	if len(rules) == 0 {
 		rules = []string{"933150", "933151", "933152", "933153", "933161"}
@@ -292,38 +404,7 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 		}
 	}
 
-	// Get PHP source (clone if necessary)
-	phpRepoPath := opts.PhpRepoPath
-	cleanupTmpDir := ""
-	if phpRepoPath == "" {
-		tmpDir, err := os.MkdirTemp("", "php-src-")
-		if err != nil {
-			return fmt.Errorf("creating temp directory for PHP repo: %w", err)
-		}
-		cleanupTmpDir = tmpDir
-		logger.Info().Msgf("Cloning PHP repository from %s", phpRepoURL)
-		_, err = git.PlainCloneContext(ctx, tmpDir, false, &git.CloneOptions{
-			URL:   phpRepoURL,
-			Depth: 1,
-		})
-		if err != nil {
-			os.RemoveAll(cleanupTmpDir)
-			return fmt.Errorf("cloning PHP repository: %w", err)
-		}
-		phpRepoPath = tmpDir
-		logger.Info().Msg("PHP repository cloned successfully")
-	}
-	if cleanupTmpDir != "" {
-		defer func() {
-			if err := os.RemoveAll(cleanupTmpDir); err != nil {
-				logger.Warn().Err(err).Msgf("Failed to clean up temporary PHP repo at %s", cleanupTmpDir)
-			}
-		}()
-	}
-
-	// Extract function names
-	logger.Info().Msg("Extracting PHP function names")
-	functions, err := p.ExtractFunctions(phpRepoPath)
+	functions, err := p.extractAllFunctions(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("extracting PHP function names: %w", err)
 	}
@@ -347,35 +428,11 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 		len(englishWords), len(nonEnglishWords))
 
 	// For non-English words: check frequency and categorize
-	var frequentFunctions []string
-	var rareFunctions []string
-
+	var frequentFunctions, rareFunctions []string
 	if doRule933150 || doRuleRare {
-		today := time.Now().Format(frequencyListDateFormat)
-		ageLimitDuration := time.Duration(opts.AgeLimitDays) * 24 * time.Hour
-
-		for _, fn := range nonEnglishWords {
-			count, err := p.getOrUpdateFrequency(ctx, fn, frequencyCache, searcher, ageLimitDuration, today)
-			if err != nil {
-				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					return fmt.Errorf("frequency lookup for %s interrupted: %w", fn, err)
-				}
-				logger.Warn().Err(err).Msgf("Failed to get frequency for %s, skipping", fn)
-				continue
-			}
-
-			if count > opts.FrequencyLimit {
-				frequentFunctions = append(frequentFunctions, fn)
-			} else {
-				rareFunctions = append(rareFunctions, fn)
-			}
-		}
-
-		// Save updated frequency cache
-		if opts.FrequencyListPath != "" {
-			if err := p.saveFrequencyList(opts.FrequencyListPath, frequencyCache); err != nil {
-				return fmt.Errorf("saving frequency list: %w", err)
-			}
+		frequentFunctions, rareFunctions, err = p.categorizeByFrequency(ctx, nonEnglishWords, frequencyCache, searcher, opts)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -386,7 +443,7 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 
 	// Write output files
 	if doRule933150 {
-		outPath := filepath.Join(ctxt.RulesDir(), Rule933150FileName)
+		outPath := filepath.Join(ctxt.RulesDir(), opts.Rule933150FileName)
 		logger.Info().Msgf("Writing rule 933150 data to %s", outPath)
 		if err := p.writeDataFile(outPath, frequentFunctions, opts.FrequencyLimit, opts.AgeLimitDays); err != nil {
 			return fmt.Errorf("writing 933150 data file: %w", err)
@@ -395,11 +452,11 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 
 	if doRuleRare {
 		requested := map[string]bool{
-			Rule933151FileName: doRule933151,
-			Rule933152FileName: doRule933152,
-			Rule933153FileName: doRule933153,
+			opts.Rule933151FileName: doRule933151,
+			opts.Rule933152FileName: doRule933152,
+			opts.Rule933153FileName: doRule933153,
 		}
-		for _, words := range partitionRareFunctionsAlphabetically(rareFunctions, rareWordRanges) {
+		for _, words := range partitionRareFunctionsAlphabetically(rareFunctions, buildRareWordRanges(opts)) {
 			if !requested[words.fileName] {
 				continue
 			}
@@ -412,7 +469,7 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 	}
 
 	if doRule933161 {
-		outPath := filepath.Join(ctxt.AssemblyDir(), Rule933161FileName)
+		outPath := filepath.Join(ctxt.AssemblyDir(), opts.Rule933161FileName)
 		logger.Info().Msgf("Writing rule 933161 regex-assembly to %s", outPath)
 		if err := p.writeAssemblyFile(outPath, englishWords, opts.FrequencyLimit, opts.AgeLimitDays); err != nil {
 			return fmt.Errorf("writing 933161 assembly file: %w", err)
@@ -420,6 +477,160 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 	}
 
 	return nil
+}
+
+// extractAllFunctions obtains the PHP function names to classify.
+// If opts.PhpRepoPath is set, it scans that local checkout as-is (release
+// branches are not considered, since the tool doesn't own that directory).
+// Otherwise, it clones opts.PhpRepoURL's default branch plus, when
+// opts.PhpReleaseCount > 0, that many of its most recent PHP-X.Y release
+// branches, merging and deduplicating function names across all of them.
+// All temporary clones are cleaned up before returning.
+func (p *PhpDictionaryGen) extractAllFunctions(ctx context.Context, opts PhpDictionaryGenOptions) ([]string, error) {
+	if opts.PhpRepoPath != "" {
+		logger.Info().Msgf("Using local PHP repository at %s; not checking release branches", opts.PhpRepoPath)
+		return p.ExtractFunctions(opts.PhpRepoPath)
+	}
+
+	var cleanupDirs []string
+	defer func() {
+		for _, dir := range cleanupDirs {
+			if err := os.RemoveAll(dir); err != nil {
+				logger.Warn().Err(err).Msgf("Failed to clean up temporary PHP repo at %s", dir)
+			}
+		}
+	}()
+
+	logger.Info().Msg("Extracting PHP function names")
+	functions, mainDir, err := p.cloneAndExtract(ctx, opts.PhpRepoURL, "")
+	if mainDir != "" {
+		cleanupDirs = append(cleanupDirs, mainDir)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	releaseBranches, err := listRecentReleaseBranches(ctx, opts.PhpRepoURL, opts.PhpReleaseCount)
+	if err != nil {
+		return nil, fmt.Errorf("listing PHP release branches: %w", err)
+	}
+	if len(releaseBranches) > 0 {
+		logger.Info().Msgf("Also extracting functions from release branches: %v", releaseBranches)
+	}
+
+	for _, branch := range releaseBranches {
+		branchFunctions, branchDir, err := p.cloneAndExtract(ctx, opts.PhpRepoURL, branch)
+		if branchDir != "" {
+			cleanupDirs = append(cleanupDirs, branchDir)
+		}
+		if err != nil {
+			return nil, err
+		}
+		functions = mergeUniqueSorted(functions, branchFunctions)
+	}
+
+	return functions, nil
+}
+
+// cloneAndExtract shallow-clones repoURL at branch (or its default branch, if
+// branch is empty) into a new temporary directory and extracts PHP function
+// names from it. The temporary directory is always returned, even on error,
+// so the caller can clean it up.
+func (p *PhpDictionaryGen) cloneAndExtract(ctx context.Context, repoURL, branch string) ([]string, string, error) {
+	tmpDir, err := os.MkdirTemp("", "php-src-")
+	if err != nil {
+		return nil, "", fmt.Errorf("creating temp directory for PHP repo: %w", err)
+	}
+
+	cloneOpts := &git.CloneOptions{URL: repoURL, Depth: 1}
+	label := "default branch"
+	if branch != "" {
+		cloneOpts.ReferenceName = plumbing.NewBranchReferenceName(branch)
+		cloneOpts.SingleBranch = true
+		label = branch
+	}
+
+	logger.Info().Msgf("Cloning PHP repository %s (%s)", repoURL, label)
+	if _, err := git.PlainCloneContext(ctx, tmpDir, false, cloneOpts); err != nil {
+		return nil, tmpDir, fmt.Errorf("cloning %s: %w", label, err)
+	}
+
+	functions, err := p.ExtractFunctions(tmpDir)
+	if err != nil {
+		return nil, tmpDir, fmt.Errorf("extracting functions from %s: %w", label, err)
+	}
+	return functions, tmpDir, nil
+}
+
+// listRecentReleaseBranches returns the names of the count most recent
+// PHP-X.Y release branches on repoURL, newest first, without cloning the
+// repository.
+func listRecentReleaseBranches(ctx context.Context, repoURL string, count int) ([]string, error) {
+	if count <= 0 {
+		return nil, nil
+	}
+
+	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{repoURL},
+	})
+	refs, err := remote.ListContext(ctx, &git.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("listing remote branches for %s: %w", repoURL, err)
+	}
+
+	type release struct {
+		name         string
+		major, minor int
+	}
+	var releases []release
+	for _, ref := range refs {
+		if !ref.Name().IsBranch() {
+			continue
+		}
+		match := phpReleaseBranchPattern.FindStringSubmatch(ref.Name().Short())
+		if match == nil {
+			continue
+		}
+		major, _ := strconv.Atoi(match[1])
+		minor, _ := strconv.Atoi(match[2])
+		releases = append(releases, release{name: ref.Name().Short(), major: major, minor: minor})
+	}
+
+	slices.SortFunc(releases, func(a, b release) int {
+		if a.major != b.major {
+			return b.major - a.major
+		}
+		return b.minor - a.minor
+	})
+	if len(releases) > count {
+		releases = releases[:count]
+	}
+
+	names := make([]string, len(releases))
+	for i, r := range releases {
+		names[i] = r.name
+	}
+	return names, nil
+}
+
+// mergeUniqueSorted merges function name lists gathered from multiple
+// ZEND_FUNCTION extraction passes (e.g. main plus several PHP release
+// branches) into a single deduplicated, sorted list.
+func mergeUniqueSorted(lists ...[]string) []string {
+	seen := make(map[string]struct{})
+	var merged []string
+	for _, list := range lists {
+		for _, fn := range list {
+			if _, ok := seen[fn]; ok {
+				continue
+			}
+			seen[fn] = struct{}{}
+			merged = append(merged, fn)
+		}
+	}
+	slices.Sort(merged)
+	return merged
 }
 
 // ExtractFunctions extracts PHP function names from ZEND_FUNCTION macros
@@ -508,12 +719,60 @@ func (p *PhpDictionaryGen) classifyFunctions(functions []string, wn WordNet) (en
 	return english, nonEnglish
 }
 
-// getOrUpdateFrequency returns the GitHub code frequency for the given function name,
-// updating the cache if the entry is missing or stale.
-func (p *PhpDictionaryGen) getOrUpdateFrequency(ctx context.Context, functionName string, cache map[string]frequencyEntry, searcher GitHubSearcher, ageLimit time.Duration, today string) (int, error) {
-	if entry, ok := cache[functionName]; ok {
+// frequencyLookupParams bundles the tunable parameters for a single
+// getOrUpdateFrequency call.
+type frequencyLookupParams struct {
+	ageLimit         time.Duration
+	today            string
+	maxRateLimitWait time.Duration
+}
+
+// categorizeByFrequency splits nonEnglishWords into frequent (GitHub
+// occurrence count above opts.FrequencyLimit) and rare functions, consulting
+// and updating frequencyCache along the way, and persists the cache if
+// opts.FrequencyListPath is set.
+func (p *PhpDictionaryGen) categorizeByFrequency(ctx context.Context, nonEnglishWords []string, frequencyCache map[string]frequencyEntry, searcher GitHubSearcher, opts PhpDictionaryGenOptions) (frequent, rare []string, err error) {
+	lookupParams := frequencyLookupParams{
+		ageLimit:         time.Duration(opts.AgeLimitDays) * 24 * time.Hour,
+		today:            time.Now().Format(frequencyListDateFormat),
+		maxRateLimitWait: opts.MaxRateLimitWait,
+	}
+
+	for _, fn := range nonEnglishWords {
+		count, err := p.getOrUpdateFrequency(ctx, fn, frequencyCache, searcher, lookupParams)
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting frequency for %s: %w", fn, err)
+		}
+
+		if count > opts.FrequencyLimit {
+			frequent = append(frequent, fn)
+		} else {
+			rare = append(rare, fn)
+		}
+	}
+
+	if opts.FrequencyListPath != "" {
+		if err := p.saveFrequencyList(opts.FrequencyListPath, frequencyCache); err != nil {
+			return nil, nil, fmt.Errorf("saving frequency list: %w", err)
+		}
+	}
+
+	return frequent, rare, nil
+}
+
+// getOrUpdateFrequency returns the GitHub code frequency for the given
+// function name, updating cache if the entry is missing or stale.
+//
+// If refreshing a stale entry fails, the stale value is still returned as
+// long as its age is within staleFrequencyHardLimitMultiplier * ageLimit
+// (errFrequencyRenewalExpired otherwise); if there was no cached entry at
+// all, errFrequencyUnavailable is returned. Both cause the caller to fail
+// rather than silently guessing a frequency.
+func (p *PhpDictionaryGen) getOrUpdateFrequency(ctx context.Context, functionName string, cache map[string]frequencyEntry, searcher GitHubSearcher, params frequencyLookupParams) (int, error) {
+	entry, hasEntry := cache[functionName]
+	if hasEntry {
 		age := time.Since(entry.updatedAt)
-		if age <= ageLimit {
+		if age <= params.ageLimit {
 			logger.Debug().Msgf("Using cached frequency for %s: %d", functionName, entry.count)
 			return entry.count, nil
 		}
@@ -523,10 +782,7 @@ func (p *PhpDictionaryGen) getOrUpdateFrequency(ctx context.Context, functionNam
 	count, err := searcher.SearchCodeCount(ctx, functionName)
 	var rlErr *rateLimitError
 	if errors.As(err, &rlErr) && rlErr.hasRetryAfter {
-		wait := rlErr.retryAfter
-		if wait > maxRateLimitWait {
-			wait = maxRateLimitWait
-		}
+		wait := min(rlErr.retryAfter, params.maxRateLimitWait)
 		logger.Warn().Msgf("Waiting %v before retrying rate-limited lookup for %s", wait, functionName)
 		select {
 		case <-ctx.Done():
@@ -535,14 +791,29 @@ func (p *PhpDictionaryGen) getOrUpdateFrequency(ctx context.Context, functionNam
 		}
 		count, err = searcher.SearchCodeCount(ctx, functionName)
 	}
-	if err != nil {
+
+	if err == nil {
+		updatedAt, _ := time.Parse(frequencyListDateFormat, params.today)
+		cache[functionName] = frequencyEntry{count: count, updatedAt: updatedAt}
+		logger.Debug().Msgf("Fetched frequency for %s: %d", functionName, count)
+		return count, nil
+	}
+
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return 0, err
 	}
 
-	updatedAt, _ := time.Parse(frequencyListDateFormat, today)
-	cache[functionName] = frequencyEntry{count: count, updatedAt: updatedAt}
-	logger.Debug().Msgf("Fetched frequency for %s: %d", functionName, count)
-	return count, nil
+	if !hasEntry {
+		return 0, &errFrequencyUnavailable{functionName: functionName, cause: err}
+	}
+
+	age := time.Since(entry.updatedAt)
+	if hardLimit := params.ageLimit * staleFrequencyHardLimitMultiplier; age > hardLimit {
+		return 0, &errFrequencyRenewalExpired{functionName: functionName, age: age, cause: err}
+	}
+
+	logger.Warn().Err(err).Msgf("Failed to refresh frequency for %s; using stale cached value %d (age %v)", functionName, entry.count, age)
+	return entry.count, nil
 }
 
 // loadFrequencyList loads the frequency cache from a file.
