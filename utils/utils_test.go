@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -161,6 +162,41 @@ func (s *utilsTestSuite) TestGetLatestGitHubRelease_RequestFailure() {
 	original := githubAPIBaseURL
 	githubAPIBaseURL = "http://127.0.0.1:0"
 	defer func() { githubAPIBaseURL = original }()
+
+	_, _, _, err := GetLatestGitHubRelease("owner", "repo", func(name string) bool {
+		return true
+	})
+
+	s.Error(err)
+}
+
+func (s *utilsTestSuite) TestGetLatestGitHubRelease_NonSuccessStatus() {
+	defer s.stubGitHubAPI(http.StatusInternalServerError, `{"message": "boom"}`)()
+
+	_, _, _, err := GetLatestGitHubRelease("owner", "repo", func(name string) bool {
+		return true
+	})
+
+	s.ErrorContains(err, "500")
+}
+
+func (s *utilsTestSuite) TestGetLatestGitHubRelease_Timeout() {
+	// Server that never responds until the test releases it, forcing the
+	// request to exceed the configured timeout.
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+	}))
+	defer server.Close()
+	defer close(release)
+
+	originalURL := githubAPIBaseURL
+	githubAPIBaseURL = server.URL
+	defer func() { githubAPIBaseURL = originalURL }()
+
+	originalTimeout := githubAPITimeout
+	githubAPITimeout = 50 * time.Millisecond
+	defer func() { githubAPITimeout = originalTimeout }()
 
 	_, _, _, err := GetLatestGitHubRelease("owner", "repo", func(name string) bool {
 		return true

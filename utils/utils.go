@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/hashicorp/go-getter/v2"
 )
@@ -70,6 +71,11 @@ func RunGit(repositoryPath string, args ...string) ([]byte, error) {
 // an httptest server instead of the real GitHub API.
 var githubAPIBaseURL = "https://api.github.com"
 
+// githubAPITimeout bounds the total time spent fetching a release, including
+// connecting, following redirects, and reading the response body. It is a var
+// so tests can lower it to exercise the timeout path.
+var githubAPITimeout = 30 * time.Second
+
 // GetLatestGitHubRelease fetches the latest release of owner/repo from the
 // GitHub API and returns the release tag, the name, and the
 // browser_download_url of the first asset whose name satisfies matchAsset.
@@ -82,11 +88,24 @@ var githubAPIBaseURL = "https://api.github.com"
 // older matching name.
 func GetLatestGitHubRelease(owner, repo string, matchAsset func(name string) bool) (tag, assetName, downloadURL string, err error) {
 	apiURL := fmt.Sprintf("%s/repos/%s/%s/releases/latest", githubAPIBaseURL, owner, repo)
-	resp, err := http.Get(apiURL) //nolint:noctx
+
+	ctx, cancel := context.WithTimeout(context.Background(), githubAPITimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", "", "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", "", "", fmt.Errorf("unexpected status %s fetching %s", resp.Status, apiURL)
+	}
 
 	var release struct {
 		TagName string `json:"tag_name"`
