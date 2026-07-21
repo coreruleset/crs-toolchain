@@ -48,7 +48,7 @@ func dictionaryCacheKey(tag, assetName string) string {
 	return fmt.Sprintf("%s-%s", tag, assetName)
 }
 
-func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath string, englishDictionaryCommitRef string) error {
+func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath string) error {
 	// Fetch the latest English WordNet release from GitHub
 	tag, assetName, downloadURL, err := utils.GetLatestGitHubRelease(wordNetOwner, wordNetRepo, func(name string) bool {
 		return strings.HasSuffix(name, ".zip") &&

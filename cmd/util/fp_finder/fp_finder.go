@@ -14,7 +14,6 @@ import (
 )
 
 var extendedDictPath string
-var englishDictionaryCommitRef string
 
 func New(cmdContext *internal.CommandContext) *cobra.Command {
 	cmd := &cobra.Command{
@@ -39,7 +38,7 @@ from stdin instead.`,
 				return fmt.Errorf("extended dictionary %s doesn't exist", extendedDictPath)
 			}
 
-			return fpFinder.FpFinder(filenameArg, extendedDictPath, englishDictionaryCommitRef)
+			return fpFinder.FpFinder(filenameArg, extendedDictPath)
 		},
 	}
 
