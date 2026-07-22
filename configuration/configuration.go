@@ -16,7 +16,7 @@ const DefaultDictionaryCommitRef = "refs/heads/master"
 // Defaults for PhpDictionaryGen, used whenever toolchain.yaml doesn't set a value.
 const (
 	DefaultPhpRepoURL           = "https://github.com/php/php-src"
-	DefaultPhpReleaseCount      = 3
+	DefaultPhpMajorVersionCount = 3
 	DefaultFrequencyLimit       = 90000
 	DefaultAgeLimitDays         = 30
 	DefaultRule933150FileName   = "php-function-names-933150.data"
@@ -48,9 +48,11 @@ type Pattern struct {
 type PhpDictionaryGen struct {
 	// PhpRepoURL is the PHP source repository to clone when --php-repo isn't given.
 	PhpRepoURL string `yaml:"php_repo_url"`
-	// PhpReleaseCount is the number of most recent PHP-X.Y release branches
-	// (beyond the default branch) to also extract function names from.
-	PhpReleaseCount int `yaml:"php_release_count"`
+	// PhpMajorVersionCount is the number of most recent PHP major versions
+	// (beyond the default branch) to also extract function names from. For
+	// each major version considered, only its oldest and newest release
+	// branch are scanned (see selectReleaseBranches in util/php_dictionary_gen.go).
+	PhpMajorVersionCount int `yaml:"php_major_version_count"`
 	// FrequencyLimit is the default minimum GitHub occurrence count to qualify for rule 933150.
 	FrequencyLimit int `yaml:"frequency_limit"`
 	// AgeLimitDays is the default number of days before a frequency cache entry is stale.
@@ -95,8 +97,8 @@ func applyPhpDictionaryGenDefaults(c *PhpDictionaryGen) {
 	if c.PhpRepoURL == "" {
 		c.PhpRepoURL = DefaultPhpRepoURL
 	}
-	if c.PhpReleaseCount == 0 {
-		c.PhpReleaseCount = DefaultPhpReleaseCount
+	if c.PhpMajorVersionCount == 0 {
+		c.PhpMajorVersionCount = DefaultPhpMajorVersionCount
 	}
 	if c.FrequencyLimit == 0 {
 		c.FrequencyLimit = DefaultFrequencyLimit

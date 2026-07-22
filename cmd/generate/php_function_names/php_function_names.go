@@ -19,12 +19,12 @@ import (
 var logger = log.With().Str("component", "cmd.generate.php-function-names").Logger()
 
 var (
-	phpRepoPath       string
-	phpReleaseCount   int
-	frequencyLimit    int
-	ageLimitDays      int
-	frequencyListPath string
-	rules             []string
+	phpRepoPath          string
+	phpMajorVersionCount int
+	frequencyLimit       int
+	ageLimitDays         int
+	frequencyListPath    string
+	rules                []string
 )
 
 // New creates the php-function-names cobra command.
@@ -56,13 +56,15 @@ Set the GITHUB_TOKEN (or GH_TOKEN) environment variable to avoid rate limiting.
 If --php-repo is not provided, the PHP source repository is cloned from the
 repository configured by php_dictionary_gen.php_repo_url in toolchain.yaml
 (https://github.com/php/php-src by default; requires git to be available).
-In that case, --php-release-count of its most recent PHP-X.Y release
-branches are also scanned, so functions added only in older releases aren't
-missed.
+In that case, release branches from --php-major-version-count of its most
+recent major versions are also scanned, so functions added only in older
+major versions aren't missed. Within each major version considered, only its
+oldest and newest release branch are scanned, not every minor release.
 
-Defaults for the repository URL, frequency/age limits, release count, output
-file names, and GitHub rate-limit wait can all be set in toolchain.yaml's
-php_dictionary_gen section; explicit flags always take precedence.`,
+Defaults for the repository URL, frequency/age limits, major version count,
+output file names, and GitHub rate-limit wait can all be set in
+toolchain.yaml's php_dictionary_gen section; explicit flags always take
+precedence.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Validate --php-repo path if provided
@@ -106,9 +108,9 @@ php_dictionary_gen section; explicit flags always take precedence.`,
 			if !cmd.Flags().Changed("age-limit") {
 				opts.AgeLimitDays = cfg.AgeLimitDays
 			}
-			opts.PhpReleaseCount = phpReleaseCount
-			if !cmd.Flags().Changed("php-release-count") {
-				opts.PhpReleaseCount = cfg.PhpReleaseCount
+			opts.PhpMajorVersionCount = phpMajorVersionCount
+			if !cmd.Flags().Changed("php-major-version-count") {
+				opts.PhpMajorVersionCount = cfg.PhpMajorVersionCount
 			}
 
 			if len(rules) > 0 {
@@ -140,8 +142,9 @@ php_dictionary_gen section; explicit flags always take precedence.`,
 func buildFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&phpRepoPath, "php-repo", "p", "",
 		"Path to a local PHP source repository. If not provided, the repository is cloned from GitHub.")
-	cmd.Flags().IntVarP(&phpReleaseCount, "php-release-count", "R", util.DefaultPhpReleaseCount,
-		"Number of most recent PHP-X.Y release branches (besides the default branch) to also extract function names from. Only applies when --php-repo is not provided.")
+	cmd.Flags().IntVarP(&phpMajorVersionCount, "php-major-version-count", "R", util.DefaultPhpMajorVersionCount,
+		`Number of most recent PHP major versions (besides the default branch) to also extract function names from.
+Only the oldest and newest release branch of each major version considered are scanned. Only applies when --php-repo is not provided.`)
 	cmd.Flags().IntVarP(&frequencyLimit, "frequency-limit", "F", util.DefaultFrequencyLimit,
 		"Minimum number of GitHub occurrences to qualify for rule 933150. Functions below this threshold go to 933151/933152/933153.")
 	cmd.Flags().IntVarP(&ageLimitDays, "age-limit", "a", util.DefaultAgeLimitDays,

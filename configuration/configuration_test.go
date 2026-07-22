@@ -75,7 +75,7 @@ func newTestConfiguration() *Configuration {
 		},
 		PhpDictionaryGen: PhpDictionaryGen{
 			PhpRepoURL:              DefaultPhpRepoURL,
-			PhpReleaseCount:         DefaultPhpReleaseCount,
+			PhpMajorVersionCount:    DefaultPhpMajorVersionCount,
 			FrequencyLimit:          DefaultFrequencyLimit,
 			AgeLimitDays:            DefaultAgeLimitDays,
 			Rule933150FileName:      DefaultRule933150FileName,
@@ -93,7 +93,7 @@ func (s *configurationTestSuite) TestPhpDictionaryGenDefaults_AppliedWhenUnset()
 
 	readConfiguration := New(s.assemblyDir, "toolchain.yaml")
 	s.Equal(DefaultPhpRepoURL, readConfiguration.PhpDictionaryGen.PhpRepoURL)
-	s.Equal(DefaultPhpReleaseCount, readConfiguration.PhpDictionaryGen.PhpReleaseCount)
+	s.Equal(DefaultPhpMajorVersionCount, readConfiguration.PhpDictionaryGen.PhpMajorVersionCount)
 	s.Equal(DefaultFrequencyLimit, readConfiguration.PhpDictionaryGen.FrequencyLimit)
 	s.Equal(DefaultAgeLimitDays, readConfiguration.PhpDictionaryGen.AgeLimitDays)
 	s.Equal(DefaultRule933150FileName, readConfiguration.PhpDictionaryGen.Rule933150FileName)

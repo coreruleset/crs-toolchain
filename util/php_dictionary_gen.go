@@ -49,14 +49,14 @@ const (
 // callers (such as cobra flag registration and tests) that only need the
 // code-level fallback, not the full toolchain.yaml-aware value.
 const (
-	DefaultFrequencyLimit     = configuration.DefaultFrequencyLimit
-	DefaultAgeLimitDays       = configuration.DefaultAgeLimitDays
-	DefaultPhpReleaseCount    = configuration.DefaultPhpReleaseCount
-	DefaultRule933150FileName = configuration.DefaultRule933150FileName
-	DefaultRule933151FileName = configuration.DefaultRule933151FileName
-	DefaultRule933152FileName = configuration.DefaultRule933152FileName
-	DefaultRule933153FileName = configuration.DefaultRule933153FileName
-	DefaultRule933161FileName = configuration.DefaultRule933161FileName
+	DefaultFrequencyLimit       = configuration.DefaultFrequencyLimit
+	DefaultAgeLimitDays         = configuration.DefaultAgeLimitDays
+	DefaultPhpMajorVersionCount = configuration.DefaultPhpMajorVersionCount
+	DefaultRule933150FileName   = configuration.DefaultRule933150FileName
+	DefaultRule933151FileName   = configuration.DefaultRule933151FileName
+	DefaultRule933152FileName   = configuration.DefaultRule933152FileName
+	DefaultRule933153FileName   = configuration.DefaultRule933153FileName
+	DefaultRule933161FileName   = configuration.DefaultRule933161FileName
 )
 
 // rateLimitError indicates the GitHub API rate limit was hit while looking up
@@ -190,15 +190,17 @@ type GitHubSearcher interface {
 type PhpDictionaryGenOptions struct {
 	// PhpRepoPath is the path to a local PHP source repository.
 	// If empty, the PHP repository will be cloned from GitHub, and, in
-	// addition to its default branch, PhpReleaseCount of its most recent
-	// PHP-X.Y release branches will also be cloned and scanned.
+	// addition to its default branch, release branches from
+	// PhpMajorVersionCount of its most recent major versions will also be
+	// cloned and scanned.
 	PhpRepoPath string
 	// PhpRepoURL is the repository to clone when PhpRepoPath is empty.
 	PhpRepoURL string
-	// PhpReleaseCount is the number of most recent PHP-X.Y release branches
-	// (beyond the default branch) to also extract function names from.
-	// Only applies when PhpRepoPath is empty.
-	PhpReleaseCount int
+	// PhpMajorVersionCount is the number of most recent PHP major versions
+	// (beyond the default branch) to also extract function names from. Only
+	// applies when PhpRepoPath is empty; see selectReleaseBranches for how
+	// branches are chosen within each major version.
+	PhpMajorVersionCount int
 	// FrequencyLimit is the minimum GitHub occurrence count to qualify for rule 933150.
 	// Functions with fewer occurrences will be placed in rules 933151/933152/933153.
 	FrequencyLimit int
@@ -229,8 +231,8 @@ func applyDefaults(opts PhpDictionaryGenOptions) PhpDictionaryGenOptions {
 	if opts.PhpRepoURL == "" {
 		opts.PhpRepoURL = configuration.DefaultPhpRepoURL
 	}
-	if opts.PhpReleaseCount == 0 {
-		opts.PhpReleaseCount = configuration.DefaultPhpReleaseCount
+	if opts.PhpMajorVersionCount == 0 {
+		opts.PhpMajorVersionCount = configuration.DefaultPhpMajorVersionCount
 	}
 	if opts.FrequencyLimit <= 0 {
 		opts.FrequencyLimit = configuration.DefaultFrequencyLimit
@@ -483,9 +485,9 @@ func (p *PhpDictionaryGen) Generate(ctx context.Context, ctxt *crsctx.Context, o
 // If opts.PhpRepoPath is set, it scans that local checkout as-is (release
 // branches are not considered, since the tool doesn't own that directory).
 // Otherwise, it clones opts.PhpRepoURL's default branch plus, when
-// opts.PhpReleaseCount > 0, that many of its most recent PHP-X.Y release
-// branches, merging and deduplicating function names across all of them.
-// All temporary clones are cleaned up before returning.
+// opts.PhpMajorVersionCount > 0, release branches from that many of its most
+// recent major versions, merging and deduplicating function names across all
+// of them. All temporary clones are cleaned up before returning.
 func (p *PhpDictionaryGen) extractAllFunctions(ctx context.Context, opts PhpDictionaryGenOptions) ([]string, error) {
 	if opts.PhpRepoPath != "" {
 		logger.Info().Msgf("Using local PHP repository at %s; not checking release branches", opts.PhpRepoPath)
@@ -510,7 +512,7 @@ func (p *PhpDictionaryGen) extractAllFunctions(ctx context.Context, opts PhpDict
 		return nil, err
 	}
 
-	releaseBranches, err := listRecentReleaseBranches(ctx, opts.PhpRepoURL, opts.PhpReleaseCount)
+	releaseBranches, err := listReleaseBranchesToScan(ctx, opts.PhpRepoURL, opts.PhpMajorVersionCount)
 	if err != nil {
 		return nil, fmt.Errorf("listing PHP release branches: %w", err)
 	}
@@ -562,11 +564,17 @@ func (p *PhpDictionaryGen) cloneAndExtract(ctx context.Context, repoURL, branch 
 	return functions, tmpDir, nil
 }
 
-// listRecentReleaseBranches returns the names of the count most recent
-// PHP-X.Y release branches on repoURL, newest first, without cloning the
-// repository.
-func listRecentReleaseBranches(ctx context.Context, repoURL string, count int) ([]string, error) {
-	if count <= 0 {
+// phpRelease is a parsed PHP-X.Y release branch name.
+type phpRelease struct {
+	name         string
+	major, minor int
+}
+
+// listReleaseBranchesToScan discovers repoURL's PHP-X.Y release branches
+// (without cloning the repository) and returns the ones selectReleaseBranches
+// picks for majorVersionCount.
+func listReleaseBranchesToScan(ctx context.Context, repoURL string, majorVersionCount int) ([]string, error) {
+	if majorVersionCount <= 0 {
 		return nil, nil
 	}
 
@@ -579,11 +587,7 @@ func listRecentReleaseBranches(ctx context.Context, repoURL string, count int) (
 		return nil, fmt.Errorf("listing remote branches for %s: %w", repoURL, err)
 	}
 
-	type release struct {
-		name         string
-		major, minor int
-	}
-	var releases []release
+	var releases []phpRelease
 	for _, ref := range refs {
 		if !ref.Name().IsBranch() {
 			continue
@@ -594,24 +598,53 @@ func listRecentReleaseBranches(ctx context.Context, repoURL string, count int) (
 		}
 		major, _ := strconv.Atoi(match[1])
 		minor, _ := strconv.Atoi(match[2])
-		releases = append(releases, release{name: ref.Name().Short(), major: major, minor: minor})
+		releases = append(releases, phpRelease{name: ref.Name().Short(), major: major, minor: minor})
 	}
 
-	slices.SortFunc(releases, func(a, b release) int {
-		if a.major != b.major {
-			return b.major - a.major
+	return selectReleaseBranches(releases, majorVersionCount), nil
+}
+
+// selectReleaseBranches picks which PHP-X.Y release branches to scan for
+// function names out of all known releases: the majorVersionCount most
+// recent major versions, and for each of those, only its oldest and newest
+// minor release branch (deduplicated when a major has just one).
+//
+// Minor-release branches within a single PHP major version are too numerous
+// to all clone cheaply, and a function's presence rarely changes across
+// minors within the same major, so scanning just the oldest and newest is a
+// deliberate performance/completeness trade-off: a function added and later
+// removed within a single major's intermediate minors (skipping its oldest
+// and newest) could be missed, but that's an unlikely, narrow gap.
+func selectReleaseBranches(releases []phpRelease, majorVersionCount int) []string {
+	if majorVersionCount <= 0 {
+		return nil
+	}
+
+	byMajor := make(map[int][]phpRelease)
+	for _, r := range releases {
+		byMajor[r.major] = append(byMajor[r.major], r)
+	}
+
+	majors := make([]int, 0, len(byMajor))
+	for major := range byMajor {
+		majors = append(majors, major)
+	}
+	slices.SortFunc(majors, func(a, b int) int { return b - a })
+	if len(majors) > majorVersionCount {
+		majors = majors[:majorVersionCount]
+	}
+
+	var branches []string
+	for _, major := range majors {
+		group := byMajor[major]
+		slices.SortFunc(group, func(a, b phpRelease) int { return a.minor - b.minor })
+		oldest, newest := group[0].name, group[len(group)-1].name
+		branches = append(branches, oldest)
+		if newest != oldest {
+			branches = append(branches, newest)
 		}
-		return b.minor - a.minor
-	})
-	if len(releases) > count {
-		releases = releases[:count]
 	}
-
-	names := make([]string, len(releases))
-	for i, r := range releases {
-		names[i] = r.name
-	}
-	return names, nil
+	return branches
 }
 
 // mergeUniqueSorted merges function name lists gathered from multiple

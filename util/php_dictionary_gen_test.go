@@ -252,6 +252,55 @@ func (s *phpDictionaryGenTestSuite) TestPartitionRareFunctionsAlphabetically_Cas
 	s.Equal([]string{"ZendTestNS2_namespaced_func"}, buckets[2].functions, "r-z bucket")
 }
 
+func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_OldestAndNewestPerMajor() {
+	// PHP 5 had many minor releases; only 5.0 (oldest) and 5.12 (newest)
+	// should be selected, per theseion's review comment.
+	releases := []phpRelease{
+		{name: "PHP-5.0", major: 5, minor: 0},
+		{name: "PHP-5.3", major: 5, minor: 3},
+		{name: "PHP-5.6", major: 5, minor: 6},
+		{name: "PHP-5.12", major: 5, minor: 12},
+	}
+
+	branches := selectReleaseBranches(releases, 1)
+
+	s.ElementsMatch([]string{"PHP-5.0", "PHP-5.12"}, branches)
+}
+
+func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_SingleMinorNotDuplicated() {
+	releases := []phpRelease{
+		{name: "PHP-8.0", major: 8, minor: 0},
+	}
+
+	branches := selectReleaseBranches(releases, 1)
+
+	s.Equal([]string{"PHP-8.0"}, branches)
+}
+
+func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_LimitsToMostRecentMajors() {
+	releases := []phpRelease{
+		{name: "PHP-5.0", major: 5, minor: 0},
+		{name: "PHP-5.12", major: 5, minor: 12},
+		{name: "PHP-7.0", major: 7, minor: 0},
+		{name: "PHP-7.4", major: 7, minor: 4},
+		{name: "PHP-8.0", major: 8, minor: 0},
+		{name: "PHP-8.3", major: 8, minor: 3},
+	}
+
+	branches := selectReleaseBranches(releases, 2)
+
+	// Only major versions 8 and 7 (the 2 most recent) should be considered;
+	// major 5 should be dropped entirely.
+	s.ElementsMatch([]string{"PHP-8.0", "PHP-8.3", "PHP-7.0", "PHP-7.4"}, branches)
+}
+
+func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_ZeroOrNegativeCountReturnsNil() {
+	releases := []phpRelease{{name: "PHP-8.3", major: 8, minor: 3}}
+
+	s.Nil(selectReleaseBranches(releases, 0))
+	s.Nil(selectReleaseBranches(releases, -1))
+}
+
 func (s *phpDictionaryGenTestSuite) TestWriteIncludeWordListFile() {
 	tmpDir := s.T().TempDir()
 	outPath := filepath.Join(tmpDir, "php-function-names-933151.ra")
