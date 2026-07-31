@@ -177,9 +177,12 @@ func partitionRareFunctionsAlphabetically(functions []string, ranges []rareWordR
 
 var zendFunctionRegex = regexp.MustCompile(`ZEND_FUNCTION\(([^$)]+)\)`)
 
-// phpReleaseBranchPattern matches php-src's release branch naming convention,
-// e.g. "PHP-8.3", capturing the major and minor version for sorting.
-var phpReleaseBranchPattern = regexp.MustCompile(`^PHP-(\d+)\.(\d+)$`)
+// phpReleaseBranchPattern matches php-src's release branch naming convention:
+// the bare, actively-developed minor branch ("PHP-8.3") and the frozen
+// per-patch branches php-src also keeps around ("PHP-8.3.31"). Some old
+// minors (e.g. PHP-4.2) only exist as patch branches, with no bare branch at
+// all, so both forms must be matched to discover every minor version.
+var phpReleaseBranchPattern = regexp.MustCompile(`^PHP-(\d+)\.(\d+)(?:\.(\d+))?$`)
 
 // GitHubSearcher defines the interface for checking PHP function frequency on GitHub.
 type GitHubSearcher interface {
@@ -564,10 +567,11 @@ func (p *PhpDictionaryGen) cloneAndExtract(ctx context.Context, repoURL, branch 
 	return functions, tmpDir, nil
 }
 
-// phpRelease is a parsed PHP-X.Y release branch name.
+// phpRelease is a parsed PHP release branch name. Patch is -1 for a bare
+// "PHP-X.Y" branch (which has no patch component of its own).
 type phpRelease struct {
-	name         string
-	major, minor int
+	name                string
+	major, minor, patch int
 }
 
 // listReleaseBranchesToScan discovers repoURL's PHP-X.Y release branches
@@ -598,23 +602,27 @@ func listReleaseBranchesToScan(ctx context.Context, repoURL string, majorVersion
 		}
 		major, _ := strconv.Atoi(match[1])
 		minor, _ := strconv.Atoi(match[2])
-		releases = append(releases, phpRelease{name: ref.Name().Short(), major: major, minor: minor})
+		patch := -1
+		if match[3] != "" {
+			patch, _ = strconv.Atoi(match[3])
+		}
+		releases = append(releases, phpRelease{name: ref.Name().Short(), major: major, minor: minor, patch: patch})
 	}
 
 	return selectReleaseBranches(releases, majorVersionCount), nil
 }
 
-// selectReleaseBranches picks which PHP-X.Y release branches to scan for
-// function names out of all known releases: the majorVersionCount most
-// recent major versions, and for each of those, only its oldest and newest
-// minor release branch (deduplicated when a major has just one).
+// selectReleaseBranches picks which PHP release branches to scan for function
+// names out of all known releases: the majorVersionCount most recent major
+// versions, and for each of those, only its oldest and newest minor version
+// (deduplicated when a major has just one minor).
 //
-// Minor-release branches within a single PHP major version are too numerous
-// to all clone cheaply, and a function's presence rarely changes across
-// minors within the same major, so scanning just the oldest and newest is a
-// deliberate performance/completeness trade-off: a function added and later
-// removed within a single major's intermediate minors (skipping its oldest
-// and newest) could be missed, but that's an unlikely, narrow gap.
+// Minor versions within a single PHP major are too numerous to all clone
+// cheaply, and a function's presence rarely changes across minors within the
+// same major, so scanning just the oldest and newest minor is a deliberate
+// performance/completeness trade-off: a function added and later removed
+// within a single major's intermediate minors (skipping its oldest and
+// newest) could be missed, but that's an unlikely, narrow gap.
 func selectReleaseBranches(releases []phpRelease, majorVersionCount int) []string {
 	if majorVersionCount <= 0 {
 		return nil
@@ -637,14 +645,41 @@ func selectReleaseBranches(releases []phpRelease, majorVersionCount int) []strin
 	var branches []string
 	for _, major := range majors {
 		group := byMajor[major]
-		slices.SortFunc(group, func(a, b phpRelease) int { return a.minor - b.minor })
-		oldest, newest := group[0].name, group[len(group)-1].name
+		minMinor, maxMinor := group[0].minor, group[0].minor
+		for _, r := range group {
+			minMinor = min(minMinor, r.minor)
+			maxMinor = max(maxMinor, r.minor)
+		}
+		oldest := representativeBranch(group, minMinor)
 		branches = append(branches, oldest)
-		if newest != oldest {
-			branches = append(branches, newest)
+		if maxMinor != minMinor {
+			branches = append(branches, representativeBranch(group, maxMinor))
 		}
 	}
 	return branches
+}
+
+// representativeBranch picks the branch that best represents minor within
+// group. Some minors (e.g. PHP-4.2) only exist as patch branches, with no
+// bare branch at all, so minors are discovered from both forms; the bare
+// "PHP-X.Y" branch is preferred when present, since it's the mutable tip and
+// therefore the freshest code for that line, otherwise the highest-numbered
+// patch branch is used.
+func representativeBranch(group []phpRelease, minor int) string {
+	var best phpRelease
+	found := false
+	for _, r := range group {
+		if r.minor != minor {
+			continue
+		}
+		if r.patch == -1 {
+			return r.name
+		}
+		if !found || r.patch > best.patch {
+			best, found = r, true
+		}
+	}
+	return best.name
 }
 
 // mergeUniqueSorted merges function name lists gathered from multiple

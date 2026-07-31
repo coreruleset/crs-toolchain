@@ -252,24 +252,77 @@ func (s *phpDictionaryGenTestSuite) TestPartitionRareFunctionsAlphabetically_Cas
 	s.Equal([]string{"ZendTestNS2_namespaced_func"}, buckets[2].functions, "r-z bucket")
 }
 
+func (s *phpDictionaryGenTestSuite) TestPhpReleaseBranchPattern_MatchesBareAndPatchBranches() {
+	// Real branch names observed on github.com/php/php-src.
+	cases := map[string][]string{
+		"PHP-8.3":        {"8", "3", ""},
+		"PHP-8.3.31":     {"8", "3", "31"},
+		"PHP-4.2.0":      {"4", "2", "0"},
+		"PHP-5.6.39":     {"5", "6", "39"},
+		"PHP-7.1.0RC1":   nil, // pre-release suffixes must not match
+		"PHP-7.1.0beta1": nil,
+		"master":         nil,
+	}
+	for branch, want := range cases {
+		match := phpReleaseBranchPattern.FindStringSubmatch(branch)
+		if want == nil {
+			s.Nil(match, "branch %s should not match", branch)
+			continue
+		}
+		if s.NotNil(match, "branch %s should match", branch) {
+			s.Equal(want, match[1:], "captured groups for %s", branch)
+		}
+	}
+}
+
 func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_OldestAndNewestPerMajor() {
-	// PHP 5 had many minor releases; only 5.0 (oldest) and 5.12 (newest)
-	// should be selected, per theseion's review comment.
+	// PHP 5 only ever had 6 minor releases (5.0-5.6); the youngest branch was
+	// PHP-5.6, whose final patch was 5.6.39/40. Per theseion's review comment,
+	// only 5.0 (oldest) and 5.6 (newest) should be selected.
 	releases := []phpRelease{
-		{name: "PHP-5.0", major: 5, minor: 0},
-		{name: "PHP-5.3", major: 5, minor: 3},
-		{name: "PHP-5.6", major: 5, minor: 6},
-		{name: "PHP-5.12", major: 5, minor: 12},
+		{name: "PHP-5.0", major: 5, minor: 0, patch: -1},
+		{name: "PHP-5.3", major: 5, minor: 3, patch: -1},
+		{name: "PHP-5.6", major: 5, minor: 6, patch: -1},
+		{name: "PHP-5.6.39", major: 5, minor: 6, patch: 39},
 	}
 
 	branches := selectReleaseBranches(releases, 1)
 
-	s.ElementsMatch([]string{"PHP-5.0", "PHP-5.12"}, branches)
+	s.ElementsMatch([]string{"PHP-5.0", "PHP-5.6"}, branches)
+}
+
+func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_PatchOnlyMinorIsNotDropped() {
+	// Real php-src history: PHP-4.2 never got a bare branch, only patch
+	// branches (PHP-4.2.0, PHP-4.2.2). It must still be discovered and used
+	// as the newest minor for major 4, represented by its highest patch.
+	releases := []phpRelease{
+		{name: "PHP-4.0", major: 4, minor: 0, patch: -1},
+		{name: "PHP-4.2.0", major: 4, minor: 2, patch: 0},
+		{name: "PHP-4.2.2", major: 4, minor: 2, patch: 2},
+	}
+
+	branches := selectReleaseBranches(releases, 1)
+
+	s.ElementsMatch([]string{"PHP-4.0", "PHP-4.2.2"}, branches)
+}
+
+func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_PrefersBareBranchOverPatch() {
+	// When a minor has both a bare branch and patch branches, the bare
+	// branch is the mutable tip and should be preferred as the freshest code.
+	releases := []phpRelease{
+		{name: "PHP-8.3.0", major: 8, minor: 3, patch: 0},
+		{name: "PHP-8.3.31", major: 8, minor: 3, patch: 31},
+		{name: "PHP-8.3", major: 8, minor: 3, patch: -1},
+	}
+
+	branches := selectReleaseBranches(releases, 1)
+
+	s.Equal([]string{"PHP-8.3"}, branches)
 }
 
 func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_SingleMinorNotDuplicated() {
 	releases := []phpRelease{
-		{name: "PHP-8.0", major: 8, minor: 0},
+		{name: "PHP-8.0", major: 8, minor: 0, patch: -1},
 	}
 
 	branches := selectReleaseBranches(releases, 1)
@@ -279,12 +332,12 @@ func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_SingleMinorNotDupl
 
 func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_LimitsToMostRecentMajors() {
 	releases := []phpRelease{
-		{name: "PHP-5.0", major: 5, minor: 0},
-		{name: "PHP-5.12", major: 5, minor: 12},
-		{name: "PHP-7.0", major: 7, minor: 0},
-		{name: "PHP-7.4", major: 7, minor: 4},
-		{name: "PHP-8.0", major: 8, minor: 0},
-		{name: "PHP-8.3", major: 8, minor: 3},
+		{name: "PHP-5.0", major: 5, minor: 0, patch: -1},
+		{name: "PHP-5.6", major: 5, minor: 6, patch: -1},
+		{name: "PHP-7.0", major: 7, minor: 0, patch: -1},
+		{name: "PHP-7.4", major: 7, minor: 4, patch: -1},
+		{name: "PHP-8.0", major: 8, minor: 0, patch: -1},
+		{name: "PHP-8.3", major: 8, minor: 3, patch: -1},
 	}
 
 	branches := selectReleaseBranches(releases, 2)
@@ -295,7 +348,7 @@ func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_LimitsToMostRecent
 }
 
 func (s *phpDictionaryGenTestSuite) TestSelectReleaseBranches_ZeroOrNegativeCountReturnsNil() {
-	releases := []phpRelease{{name: "PHP-8.3", major: 8, minor: 3}}
+	releases := []phpRelease{{name: "PHP-8.3", major: 8, minor: 3, patch: -1}}
 
 	s.Nil(selectReleaseBranches(releases, 0))
 	s.Nil(selectReleaseBranches(releases, -1))
