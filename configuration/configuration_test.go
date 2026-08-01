@@ -73,5 +73,44 @@ func newTestConfiguration() *Configuration {
 				Windows: "_av-ns-w-suffix_",
 			},
 		},
+		PhpDictionaryGen: PhpDictionaryGen{
+			PhpRepoURL:              DefaultPhpRepoURL,
+			PhpMajorVersionCount:    DefaultPhpMajorVersionCount,
+			FrequencyLimit:          DefaultFrequencyLimit,
+			AgeLimitDays:            DefaultAgeLimitDays,
+			Rule933150FileName:      DefaultRule933150FileName,
+			Rule933151FileName:      DefaultRule933151FileName,
+			Rule933152FileName:      DefaultRule933152FileName,
+			Rule933153FileName:      DefaultRule933153FileName,
+			Rule933161FileName:      DefaultRule933161FileName,
+			MaxRateLimitWaitSeconds: DefaultMaxRateLimitWaitSecs,
+		},
 	}
+}
+
+func (s *configurationTestSuite) TestPhpDictionaryGenDefaults_AppliedWhenUnset() {
+	s.writeConfig(&Configuration{})
+
+	readConfiguration := New(s.assemblyDir, "toolchain.yaml")
+	s.Equal(DefaultPhpRepoURL, readConfiguration.PhpDictionaryGen.PhpRepoURL)
+	s.Equal(DefaultPhpMajorVersionCount, readConfiguration.PhpDictionaryGen.PhpMajorVersionCount)
+	s.Equal(DefaultFrequencyLimit, readConfiguration.PhpDictionaryGen.FrequencyLimit)
+	s.Equal(DefaultAgeLimitDays, readConfiguration.PhpDictionaryGen.AgeLimitDays)
+	s.Equal(DefaultRule933150FileName, readConfiguration.PhpDictionaryGen.Rule933150FileName)
+	s.Equal(DefaultMaxRateLimitWaitSecs, readConfiguration.PhpDictionaryGen.MaxRateLimitWaitSeconds)
+}
+
+func (s *configurationTestSuite) TestPhpDictionaryGenDefaults_OverriddenByConfig() {
+	s.writeConfig(&Configuration{
+		PhpDictionaryGen: PhpDictionaryGen{
+			PhpRepoURL:     "https://example.invalid/php-src",
+			FrequencyLimit: 42,
+		},
+	})
+
+	readConfiguration := New(s.assemblyDir, "toolchain.yaml")
+	s.Equal("https://example.invalid/php-src", readConfiguration.PhpDictionaryGen.PhpRepoURL)
+	s.Equal(42, readConfiguration.PhpDictionaryGen.FrequencyLimit)
+	// Unset fields still fall back to their defaults.
+	s.Equal(DefaultAgeLimitDays, readConfiguration.PhpDictionaryGen.AgeLimitDays)
 }
