@@ -48,7 +48,10 @@ func dictionaryCacheKey(tag, assetName string) string {
 	return fmt.Sprintf("%s-%s", tag, assetName)
 }
 
-func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath string) error {
+// getDictionaryPath ensures a valid WordNet dictionary is cached locally and
+// returns its path, fetching the latest English WordNet release from GitHub
+// first if needed.
+func getDictionaryPath() (string, error) {
 	// Fetch the latest English WordNet release from GitHub
 	tag, assetName, downloadURL, err := utils.GetLatestGitHubRelease(wordNetOwner, wordNetRepo, func(name string) bool {
 		return strings.HasSuffix(name, ".zip") &&
@@ -56,7 +59,7 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 			!strings.Contains(name, "-plus")
 	})
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to get latest English WordNet release")
+		return "", fmt.Errorf("getting latest English WordNet release: %w", err)
 	}
 
 	// Get the dictionary path in ~/.crs-toolchain, named after the release tag and
@@ -66,12 +69,21 @@ func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath str
 	// that case.
 	dictionaryPath, err := utils.GetCacheFilePath(dictionaryCacheKey(tag, assetName))
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Error getting dictionary path")
+		return "", fmt.Errorf("getting dictionary path: %w", err)
 	}
 
 	// Ensure a valid dictionary is available at dictionaryPath, downloading it
 	// if the cached copy is missing or unusable.
 	if err := ensureDictionary(dictionaryPath, downloadURL, tag, assetName); err != nil {
+		return "", fmt.Errorf("preparing dictionary: %w", err)
+	}
+
+	return dictionaryPath, nil
+}
+
+func (t *FpFinder) FpFinder(inputFilePath string, extendedDictionaryFilePath string) error {
+	dictionaryPath, err := getDictionaryPath()
+	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to prepare dictionary")
 	}
 
