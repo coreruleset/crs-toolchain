@@ -1,6 +1,6 @@
 module github.com/coreruleset/crs-toolchain/v2
 
-go 1.25.0
+go 1.26.0
 
 require (
 	dario.cat/mergo v1.0.2
@@ -10,13 +10,13 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/cli/go-gh/v2 v2.13.0
-	github.com/coreruleset/wnram v0.1.0
+	github.com/coreruleset/wnram v0.2.0
 	github.com/creativeprojects/go-selfupdate v1.5.2
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-getter/v2 v2.2.3
 	github.com/itchyny/rassemble-go v0.1.2
-	gopkg.in/yaml.v3 v3.0.1
+	go.yaml.in/yaml/v4 v4.0.0-rc.4
 )
 
 require (
@@ -65,14 +65,15 @@ require (
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	gitlab.com/gitlab-org/api/client-go v1.9.1 // indirect
-	golang.org/x/crypto v0.52.0 // indirect
-	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/crypto v0.53.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/term v0.43.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/term v0.44.0 // indirect
+	golang.org/x/text v0.39.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
