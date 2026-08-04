@@ -44,27 +44,27 @@ func (s *utilsTestSuite) TestIsEscaped_Not_Backslashes() {
 	s.False(IsEscaped(`abc\\\`, 5))
 }
 
-// stubGitHubAPI starts an httptest server serving body for
-// /repos/{owner}/{repo}/releases/latest, points githubAPIBaseURL at it, and
+// stubGitHubApi starts an httptest server serving body for
+// /repos/{owner}/{repo}/releases/latest, points githubApiBaseURL at it, and
 // returns a cleanup func that restores the original base URL and closes the
 // server.
-func (s *utilsTestSuite) stubGitHubAPI(status int, body string) func() {
+func (s *utilsTestSuite) stubGitHubApi(status int, body string) func() {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		_, _ = w.Write([]byte(body))
 	}))
 
-	original := githubAPIBaseURL
-	githubAPIBaseURL = server.URL
+	original := githubApiBaseURL
+	githubApiBaseURL = server.URL
 
 	return func() {
-		githubAPIBaseURL = original
+		githubApiBaseURL = original
 		server.Close()
 	}
 }
 
 func (s *utilsTestSuite) TestGetLatestGitHubRelease_SingleMatchingAsset() {
-	defer s.stubGitHubAPI(http.StatusOK, `{
+	defer s.stubGitHubApi(http.StatusOK, `{
 		"tag_name": "v1.2.3",
 		"assets": [
 			{"name": "release.zip", "browser_download_url": "https://example.com/release.zip"}
@@ -86,7 +86,7 @@ func (s *utilsTestSuite) TestGetLatestGitHubRelease_PicksFirstMatchingAsset() {
 	// in array order must win. A release can gain a new matching asset over
 	// time without changing its tag, so callers rely on array order being
 	// stable and on "first match" being well-defined behavior.
-	defer s.stubGitHubAPI(http.StatusOK, `{
+	defer s.stubGitHubApi(http.StatusOK, `{
 		"tag_name": "v1.2.3",
 		"assets": [
 			{"name": "first-match.zip", "browser_download_url": "https://example.com/first-match.zip"},
@@ -105,7 +105,7 @@ func (s *utilsTestSuite) TestGetLatestGitHubRelease_PicksFirstMatchingAsset() {
 }
 
 func (s *utilsTestSuite) TestGetLatestGitHubRelease_SkipsNonMatchingAssets() {
-	defer s.stubGitHubAPI(http.StatusOK, `{
+	defer s.stubGitHubApi(http.StatusOK, `{
 		"tag_name": "v1.2.3",
 		"assets": [
 			{"name": "unrelated.txt", "browser_download_url": "https://example.com/unrelated.txt"},
@@ -124,7 +124,7 @@ func (s *utilsTestSuite) TestGetLatestGitHubRelease_SkipsNonMatchingAssets() {
 }
 
 func (s *utilsTestSuite) TestGetLatestGitHubRelease_NoMatchingAsset() {
-	defer s.stubGitHubAPI(http.StatusOK, `{
+	defer s.stubGitHubApi(http.StatusOK, `{
 		"tag_name": "v1.2.3",
 		"assets": [
 			{"name": "unrelated.txt", "browser_download_url": "https://example.com/unrelated.txt"}
@@ -139,7 +139,7 @@ func (s *utilsTestSuite) TestGetLatestGitHubRelease_NoMatchingAsset() {
 }
 
 func (s *utilsTestSuite) TestGetLatestGitHubRelease_NoAssets() {
-	defer s.stubGitHubAPI(http.StatusOK, `{"tag_name": "v1.2.3", "assets": []}`)()
+	defer s.stubGitHubApi(http.StatusOK, `{"tag_name": "v1.2.3", "assets": []}`)()
 
 	_, _, _, err := GetLatestGitHubRelease("owner", "repo", func(name string) bool {
 		return true
@@ -149,7 +149,7 @@ func (s *utilsTestSuite) TestGetLatestGitHubRelease_NoAssets() {
 }
 
 func (s *utilsTestSuite) TestGetLatestGitHubRelease_MalformedJSON() {
-	defer s.stubGitHubAPI(http.StatusOK, `not json`)()
+	defer s.stubGitHubApi(http.StatusOK, `not json`)()
 
 	_, _, _, err := GetLatestGitHubRelease("owner", "repo", func(name string) bool {
 		return true
@@ -159,9 +159,9 @@ func (s *utilsTestSuite) TestGetLatestGitHubRelease_MalformedJSON() {
 }
 
 func (s *utilsTestSuite) TestGetLatestGitHubRelease_RequestFailure() {
-	original := githubAPIBaseURL
-	githubAPIBaseURL = "http://127.0.0.1:0"
-	defer func() { githubAPIBaseURL = original }()
+	original := githubApiBaseURL
+	githubApiBaseURL = "http://127.0.0.1:0"
+	defer func() { githubApiBaseURL = original }()
 
 	_, _, _, err := GetLatestGitHubRelease("owner", "repo", func(name string) bool {
 		return true
@@ -171,7 +171,7 @@ func (s *utilsTestSuite) TestGetLatestGitHubRelease_RequestFailure() {
 }
 
 func (s *utilsTestSuite) TestGetLatestGitHubRelease_NonSuccessStatus() {
-	defer s.stubGitHubAPI(http.StatusInternalServerError, `{"message": "boom"}`)()
+	defer s.stubGitHubApi(http.StatusInternalServerError, `{"message": "boom"}`)()
 
 	_, _, _, err := GetLatestGitHubRelease("owner", "repo", func(name string) bool {
 		return true
@@ -190,13 +190,13 @@ func (s *utilsTestSuite) TestGetLatestGitHubRelease_Timeout() {
 	defer server.Close()
 	defer close(release)
 
-	originalURL := githubAPIBaseURL
-	githubAPIBaseURL = server.URL
-	defer func() { githubAPIBaseURL = originalURL }()
+	originalURL := githubApiBaseURL
+	githubApiBaseURL = server.URL
+	defer func() { githubApiBaseURL = originalURL }()
 
-	originalTimeout := githubAPITimeout
-	githubAPITimeout = 50 * time.Millisecond
-	defer func() { githubAPITimeout = originalTimeout }()
+	originalTimeout := githubApiTimeout
+	githubApiTimeout = 50 * time.Millisecond
+	defer func() { githubApiTimeout = originalTimeout }()
 
 	_, _, _, err := GetLatestGitHubRelease("owner", "repo", func(name string) bool {
 		return true

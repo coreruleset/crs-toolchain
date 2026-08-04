@@ -67,14 +67,14 @@ func RunGit(repositoryPath string, args ...string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-// githubAPIBaseURL is overridable in tests to point GetLatestGitHubRelease at
+// githubApiBaseURL is overridable in tests to point GetLatestGitHubRelease at
 // an httptest server instead of the real GitHub API.
-var githubAPIBaseURL = "https://api.github.com"
+var githubApiBaseURL = "https://api.github.com"
 
-// githubAPITimeout bounds the total time spent fetching a release, including
+// githubApiTimeout bounds the total time spent fetching a release, including
 // connecting, following redirects, and reading the response body. It is a var
 // so tests can lower it to exercise the timeout path.
-var githubAPITimeout = 30 * time.Second
+var githubApiTimeout = 30 * time.Second
 
 // GetLatestGitHubRelease fetches the latest release of owner/repo from the
 // GitHub API and returns the release tag, the name, and the
@@ -87,9 +87,9 @@ var githubAPITimeout = 30 * time.Second
 // silently reusing a stale, differently-formatted asset cached under an
 // older matching name.
 func GetLatestGitHubRelease(owner, repo string, matchAsset func(name string) bool) (tag, assetName, downloadURL string, err error) {
-	apiURL := fmt.Sprintf("%s/repos/%s/%s/releases/latest", githubAPIBaseURL, owner, repo)
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/releases/latest", githubApiBaseURL, owner, repo)
 
-	ctx, cancel := context.WithTimeout(context.Background(), githubAPITimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), githubApiTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)

@@ -118,7 +118,7 @@ func ensureDictionary(dictionaryPath, downloadURL, tag, assetName string) error 
 			return nil
 		}
 		// A cached copy exists but is unusable; discard it before re-downloading.
-		logger.Debug().Msgf("Cached dictionary for %s (%s) is invalid, re-downloading.", tag, assetName)
+		logger.Warn().Msgf("Cached dictionary for %s (%s) is invalid, re-downloading.", tag, assetName)
 		if err := os.RemoveAll(dictionaryPath); err != nil {
 			return fmt.Errorf("removing invalid cached dictionary: %w", err)
 		}
