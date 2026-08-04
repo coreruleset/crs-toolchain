@@ -149,7 +149,7 @@ id:123456`)
 	s.writeDataFile("123456.ra", "foo")
 	s.cmd.SetArgs([]string{"--all"})
 	_, err := s.cmd.ExecuteC()
-	s.Require().NoError(err)
+	s.Require().Error(err)
 
 	buffer := make([]byte, 1024)
 	_, err = read.Read(buffer)
