@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,7 +25,7 @@ var logger = log.With().Str("component", "agenda").Logger()
 //go:embed agenda-next.md
 var agendaNextTemplate []byte
 
-func Agenda() {
+func Agenda(printOnly bool) {
 	opts := api.ClientOptions{
 		Headers: map[string]string{"Accept": "application/vnd.github+json"},
 		Timeout: 30 * time.Second,
@@ -50,7 +51,7 @@ func Agenda() {
 	logger.Info().Msg("Cloning wiki repository")
 	tempDir, err := os.MkdirTemp("", "crs-wiki")
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to create temporary directory for cloning the wiki repository")
+		logger.Fatal().Err(err).Msg("Failed to create temporary directory for cloning the wiki repository")
 	}
 	defer func() {
 		err := os.RemoveAll(tempDir)
@@ -61,19 +62,27 @@ func Agenda() {
 	cloneWiki(tempDir, "wiki")
 	wikiDir := filepath.Join(tempDir, "wiki")
 
+	agendaBody := buildAgendaBody(client, wikiDir, previousDate, nextDate)
+	if printOnly {
+		if _, err := io.WriteString(os.Stdout, agendaBody); err != nil {
+			logger.Error().Err(err).Msg("Failed to print agenda body to terminal")
+		}
+		return
+	}
+
 	bodyJson, err := json.Marshal(&issueBody{
 		Title:  fmt.Sprintf("Monthly Chat Agenda %s %d (%s)", month, year, dateString),
 		Labels: []string{":bookmark: Meeting Agenda"},
-		Body:   buildAgendaBody(client, wikiDir, previousDate, nextDate),
+		Body:   agendaBody,
 	})
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to serialize body of GH REST request")
+		logger.Fatal().Err(err).Msg("Failed to serialize body of GH REST request")
 	}
 
 	logger.Info().Msg("Creating new agenda issue")
 	response, err := client.Request(http.MethodPost, "repos/coreruleset/coreruleset/issues", bytes.NewReader(bodyJson))
 	if err != nil {
-		logger.Fatal().Err(err).Msg("creating agenda failed")
+		logger.Fatal().Err(err).Msg("Creating agenda failed")
 	}
 	defer response.Body.Close()
 
@@ -86,15 +95,15 @@ func Agenda() {
 
 func resetAgendaNext(wikiDir string) {
 	if err := os.WriteFile(filepath.Join(wikiDir, "Agenda-Next.md"), agendaNextTemplate, 0644); err != nil {
-		logger.Fatal().Msg(`failed to write "Agenda-Next.md"`)
+		logger.Fatal().Msg(`Failed to write "Agenda-Next.md"`)
 	}
 	out, err := utils.RunGit(wikiDir, "commit", "-m", "Reset Agenda-Next.md", "Agenda-Next.md")
 	if err != nil {
-		logger.Fatal().Err(err).Msgf(`failed to commit "Agenda-Next": %s`, out)
+		logger.Fatal().Err(err).Msgf(`Failed to commit "Agenda-Next": %s`, out)
 	}
 	out, err = utils.RunGit(wikiDir, "push")
 	if err != nil {
-		logger.Fatal().Err(err).Msgf(`failed to push "Agenda-Next": %s`, out)
+		logger.Fatal().Err(err).Msgf(`Failed to push "Agenda-Next": %s`, out)
 	}
 }
 
@@ -103,7 +112,7 @@ func buildAgendaBody(client *api.RESTClient, wikiDir string, previousDate time.T
 	agendaPath := filepath.Join(wikiDir, "Agenda-Next.md")
 	template, err := os.ReadFile(agendaPath)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to read meeting agenda")
+		logger.Fatal().Err(err).Msg("Failed to read meeting agenda")
 	}
 
 	logger.Info().Msg("Fetching PR statistics from GitHub")
@@ -138,14 +147,14 @@ func cloneWiki(path string, repoName string) {
 		logger.Debug().Msgf("Cloning wiki with remote %s", remote)
 		out, err := utils.RunGit(path, "clone", remote, repoName)
 		if err != nil {
-			logger.Warn().Err(err).Msgf("failed to clone coreruleset wiki: %s", out)
+			logger.Warn().Err(err).Msgf("Failed to clone coreruleset wiki: %s", out)
 			continue
 		}
 		succeeded = true
 		break
 	}
 	if !succeeded {
-		logger.Fatal().Msg("failed to clone wiki using both SSH and HTTPS; giving up")
+		logger.Fatal().Msg("Failed to clone wiki using both SSH and HTTPS; giving up")
 	}
 
 }
