@@ -138,9 +138,11 @@ func performCompare(processAll bool, ctx *processors.Context, cmdContext *regexI
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to compare expressions")
 		}
-		if failed && cmdContext.OuterContext.Output == internal.GitHub {
-			fmt.Println("::error::All rules need to be up to date.",
-				"Please run `crs-toolchain regex update --all`")
+		if failed {
+			if cmdContext.OuterContext.Output == internal.GitHub {
+				fmt.Println("::error::All rules need to be up to date.",
+					"Please run `crs-toolchain regex update --all`")
+			}
 			return &ComparisonError{}
 		}
 	} else {
