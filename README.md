@@ -107,6 +107,17 @@ crs-toolchain util renumber-tests 932100 --check
 crs-toolchain util renumber-tests --all
 ```
 
+### Generate commands
+
+```shell
+# Generate PHP function name data files for rules 933150/933151/933152/933153/933161
+# (clones php-src automatically unless --php-repo is given)
+crs-toolchain generate php-function-names
+
+# Generate a single rule from a local PHP checkout, caching GitHub frequency lookups
+crs-toolchain generate php-function-names --rules 933161 --php-repo /path/to/php-src --frequency-list ./php-frequency-cache.txt
+```
+
 ### Chore commands
 
 ```shell
@@ -115,6 +126,9 @@ crs-toolchain chore release --source-ref main
 
 # Refresh copyright headers
 crs-toolchain chore update-copyright --year 2026
+
+# Preview the monthly chat agenda without creating a GitHub issue
+crs-toolchain chore create-agenda --print
 
 # Create monthly chat agenda (requires GitHub token and wiki access)
 crs-toolchain chore create-agenda
