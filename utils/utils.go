@@ -5,9 +5,13 @@ package utils
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/hashicorp/go-getter/v2"
 )
@@ -61,4 +65,62 @@ func RunGit(repositoryPath string, args ...string) ([]byte, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = repositoryPath
 	return cmd.CombinedOutput()
+}
+
+// githubApiBaseURL is overridable in tests to point GetLatestGitHubRelease at
+// an httptest server instead of the real GitHub API.
+var githubApiBaseURL = "https://api.github.com"
+
+// githubApiTimeout bounds the total time spent fetching a release, including
+// connecting, following redirects, and reading the response body. It is a var
+// so tests can lower it to exercise the timeout path.
+var githubApiTimeout = 30 * time.Second
+
+// GetLatestGitHubRelease fetches the latest release of owner/repo from the
+// GitHub API and returns the release tag, the name, and the
+// browser_download_url of the first asset whose name satisfies matchAsset.
+//
+// The asset name is returned in addition to the tag because releases can
+// gain, lose, or rename assets after being published without the tag
+// changing; callers that cache the downloaded asset should key their cache
+// on the asset name (or download URL), not on the tag alone, or they risk
+// silently reusing a stale, differently-formatted asset cached under an
+// older matching name.
+func GetLatestGitHubRelease(owner, repo string, matchAsset func(name string) bool) (tag, assetName, downloadURL string, err error) {
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/releases/latest", githubApiBaseURL, owner, repo)
+
+	ctx, cancel := context.WithTimeout(context.Background(), githubApiTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", "", "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", "", "", fmt.Errorf("unexpected status %s fetching %s", resp.Status, apiURL)
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+		Assets  []struct {
+			Name               string `json:"name"`
+			BrowserDownloadURL string `json:"browser_download_url"`
+		} `json:"assets"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return "", "", "", err
+	}
+	for _, asset := range release.Assets {
+		if matchAsset(asset.Name) {
+			return release.TagName, asset.Name, asset.BrowserDownloadURL, nil
+		}
+	}
+	return "", "", "", fmt.Errorf("no matching asset found in release %s", release.TagName)
 }
