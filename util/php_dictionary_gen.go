@@ -29,7 +29,6 @@ import (
 
 	"github.com/coreruleset/crs-toolchain/v2/configuration"
 	crsctx "github.com/coreruleset/crs-toolchain/v2/context"
-	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
 const (
@@ -274,21 +273,9 @@ func NewPhpDictionaryGen() *PhpDictionaryGen {
 
 // NewWordNet creates a WordNet instance, downloading the dictionary if needed.
 func NewWordNet() (WordNet, error) {
-	dictionaryPath, err := utils.GetCacheFilePath(dictionaryBaseFileName)
+	dictionaryPath, err := getDictionaryPath()
 	if err != nil {
-		return nil, fmt.Errorf("getting dictionary path: %w", err)
-	}
-
-	if _, err := os.Stat(dictionaryPath); os.IsNotExist(err) {
-		logger.Debug().Msg("WordNet dictionary not found. Downloading...")
-		dictionaryURL := fmt.Sprintf(dictionaryURLFormat, dictionaryBaseFileName)
-		logger.Debug().Msgf("Downloading dictionary from %s to %s", dictionaryURL, dictionaryPath)
-		if err := utils.DownloadFile(dictionaryPath, dictionaryURL); err != nil {
-			return nil, fmt.Errorf("downloading WordNet dictionary: %w", err)
-		}
-		logger.Debug().Msg("Download complete.")
-	} else {
-		logger.Debug().Msg("WordNet dictionary found, skipping download.")
+		return nil, err
 	}
 
 	wn, err := wnram.New(dictionaryPath)
