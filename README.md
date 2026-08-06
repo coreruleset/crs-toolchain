@@ -98,7 +98,7 @@ crs-toolchain regex update --all
 printf "select\nxqz\n" | crs-toolchain util fp-finder -
 
 # Use an additional dictionary
-crs-toolchain util fp-finder ./candidate_words.txt --extended-dictionary ./words-extra.txt
+crs-toolchain util fp-finder candidate_words.txt --extended-dictionary ./words-extra.txt
 
 # Check test numbering for one rule
 crs-toolchain util renumber-tests 932100 --check
