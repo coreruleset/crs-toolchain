@@ -4,7 +4,9 @@
 package operators
 
 import (
+	"io/fs"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -1188,6 +1190,44 @@ false
 	s.Contains(output, `.*\)`)
 	s.Contains(output, `tru`)
 	s.Contains(output, `fals`)
+}
+
+// writeIncludeFile writes an include file that `##!> include name` will resolve.
+func (s *assemblerTestSuite) writeIncludeFile(name string, contents string) {
+	s.T().Helper()
+	includeDir := path.Join(s.tempDir, "regex-assembly", "include")
+	s.Require().NoError(os.MkdirAll(includeDir, fs.ModePerm))
+	s.Require().NoError(os.WriteFile(path.Join(includeDir, name+".ra"), []byte(contents), fs.ModePerm))
+}
+
+func (s *assemblerTestSuite) TestAssemble_IncludedPrefixIsScopedToIncludedContent() {
+	s.writeIncludeFile("scoped_prefix", "##!^ PRE_\nalpha\n")
+
+	// `beta` belongs to the including file and must not pick up the include's prefix,
+	// no matter which side of the include it sits on.
+	for _, tt := range []struct {
+		name     string
+		contents string
+		expected string
+	}{
+		{"caller line after include", "##!> include scoped_prefix\nbeta", `(?:PRE_alph|bet)a`},
+		{"caller line before include", "beta\n##!> include scoped_prefix", `(?:bet|PRE_alph)a`},
+		{"caller lines on both sides", "gamma\n##!> include scoped_prefix\nbeta", `(?:gamm|PRE_alph|bet)a`},
+	} {
+		s.Run(tt.name, func() {
+			output, err := NewAssembler(s.ctx).Run(tt.contents)
+			s.Require().NoError(err)
+			s.Equal(tt.expected, output)
+		})
+	}
+}
+
+func (s *assemblerTestSuite) TestAssemble_IncludedSuffixIsScopedToIncludedContent() {
+	s.writeIncludeFile("scoped_suffix", "##!$ _SUF\nalpha\n")
+
+	output, err := NewAssembler(s.ctx).Run("##!> include scoped_suffix\nbeta")
+	s.Require().NoError(err)
+	s.Equal(`alpha_SUF|beta`, output)
 }
 
 func (s *assemblerTestSuite) TestAssemble_PrefixSuffixWithStashing() {

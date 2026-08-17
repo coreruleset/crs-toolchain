@@ -130,9 +130,10 @@ func (a *Operator) complete(assembleParser *parser.Parser) (string, error) {
 	}
 
 	// Note: Prefix/suffix application is now handled by individual Assemble processors (block-scoped).
-	// While Parser.Prefixes and Parser.Suffixes are still populated by the parser for include file
-	// merging compatibility, they are not used in the operator path as prefix/suffix directives are
-	// passed through as raw lines and processed by each Assemble instance.
+	// Prefix/suffix directives are passed through as raw lines, so they are not applied here.
+	// Parser.Prefixes and Parser.Suffixes record which directives a file contained; the parser
+	// uses that to decide whether an included file needs its own assemble block, and the operator
+	// path does not read them.
 
 	if len(result) > 0 {
 		logger.Trace().Msgf("Applying last cleanups to %s\n", result)
