@@ -52,6 +52,98 @@ go install github.com/coreruleset/crs-toolchain/v2@latest
 
 Make sure your Go bin directory (typically `~/go/bin`) is on your `PATH`.
 
+## Usage Examples
+
+Run from the CRS repository root (or provide `--directory`):
+
+```shell
+crs-toolchain --directory /path/to/coreruleset/coreruleset regex compare 932100
+```
+
+### Regex workflow
+
+```shell
+# Generate regex for one assembly file
+crs-toolchain regex generate 932100
+
+# Generate regex from stdin input
+cat regex-assembly/REQUEST-932-APPLICATION-ATTACK-RCE/932100.ra | crs-toolchain regex generate -
+
+# Compare one rule against generated output
+crs-toolchain regex compare 932100
+
+# Compare all rules
+crs-toolchain regex compare --all
+
+# Format one regex-assembly file
+crs-toolchain regex format 932100
+
+# Check formatting without writing changes
+crs-toolchain regex format --all --check
+
+# Update one rule from assembly source
+crs-toolchain regex update 932100
+
+# Update multiple rules/files in one call
+crs-toolchain regex update 932100 933100-chain1.ra
+
+# Update all rules from assembly files
+crs-toolchain regex update --all
+```
+
+### Utility commands
+
+```shell
+# Filter likely false-positive words from stdin
+printf "select\nxqz\n" | crs-toolchain util fp-finder -
+
+# Use an additional dictionary
+crs-toolchain util fp-finder candidate_words.txt --extended-dictionary ./words-extra.txt
+
+# Check test numbering for one rule
+crs-toolchain util renumber-tests 932100 --check
+
+# Renumber all tests
+crs-toolchain util renumber-tests --all
+```
+
+### Generate commands
+
+```shell
+# Generate PHP function name data files for rules 933150/933151/933152/933153/933161
+# (clones php-src automatically unless --php-repo is given)
+crs-toolchain generate php-function-names
+
+# Generate a single rule from a local PHP checkout, caching GitHub frequency lookups
+crs-toolchain generate php-function-names --rules 933161 --php-repo /path/to/php-src --frequency-list ./php-frequency-cache.txt
+```
+
+### Chore commands
+
+```shell
+# Create release branch from a specific source ref
+crs-toolchain chore release --source-ref main
+
+# Refresh copyright headers
+crs-toolchain chore update-copyright --year 2026
+
+# Preview the monthly chat agenda without creating a GitHub issue
+crs-toolchain chore create-agenda --print
+
+# Create monthly chat agenda (requires GitHub token and wiki access)
+crs-toolchain chore create-agenda
+```
+
+### Shell completion and output modes
+
+```shell
+# Generate shell completion
+crs-toolchain completion zsh > ~/.zfunc/_crs-toolchain
+
+# Use GitHub Actions-friendly output and debug logs
+crs-toolchain --output github --log-level debug regex format --all --check
+```
+
 ### Self-Update
 
 Once `crs-toolchain` is installed (via any method), you can update to the latest version using the built-in self-update command:
