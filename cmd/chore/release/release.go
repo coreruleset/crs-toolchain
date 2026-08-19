@@ -4,7 +4,7 @@
 package cmd
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
@@ -15,35 +15,29 @@ import (
 )
 
 var sourceRef string
-var repositoryPath string
 var version *semver.Version
 
 func New(cmdContext *internal.CommandContext) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "release",
+		Use:   "release <version>",
 		Short: "Create new release of CRS",
-		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
-		ValidArgs: []string{
-			"version",
-		},
+		Long: `Create a new release of CRS.
+
+The repository to operate on is the CRS directory determined by the global
+--directory flag, or the current working directory if that flag is not set.`,
+		Args: cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			repositoryPath = args[0]
-
-			if _, err := os.Stat(repositoryPath); err != nil {
-				return err
-			}
-
 			var err error
-			version, err = semver.NewVersion(args[1])
+			version, err = semver.NewVersion(args[0])
 			if err != nil {
-				return err
+				return fmt.Errorf("parsing version %q: %w", args[0], err)
 			}
 
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			rootContext := context.New(cmdContext.WorkingDirectory, cmdContext.ConfigurationFileName)
-			release.Release(rootContext, repositoryPath, version, sourceRef)
+			release.Release(rootContext, version, sourceRef)
 		},
 	}
 	buildFlags(cmd)

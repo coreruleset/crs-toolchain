@@ -91,6 +91,37 @@ func (s *choreTestSuite) TestChore_UpdateCopyright() {
 	s.Equal(buffer.String(), actual)
 }
 
+func (s *choreTestSuite) TestChore_ReleaseArgs() {
+	for _, tt := range []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{"accepts a plain version", []string{"4.1.0"}, false},
+		{"accepts a v-prefixed version", []string{"v4.1.0"}, false},
+		{"accepts a prerelease version", []string{"v4.1.0-rc1"}, false},
+		{"rejects a non-version argument", []string{"not-a-version"}, true},
+		{"rejects no arguments", []string{}, true},
+		{"rejects a leftover repository path argument", []string{".", "v4.1.0"}, true},
+	} {
+		s.Run(tt.name, func() {
+			releaseCmd, _, err := s.cmd.Find([]string{"release"})
+			s.Require().NoError(err)
+
+			err = releaseCmd.ValidateArgs(tt.args)
+			if err == nil && releaseCmd.PreRunE != nil {
+				err = releaseCmd.PreRunE(releaseCmd, tt.args)
+			}
+
+			if tt.wantErr {
+				s.Error(err)
+			} else {
+				s.NoError(err)
+			}
+		})
+	}
+}
+
 func (s *choreTestSuite) writeRulesFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.rulesDir, filename), []byte(contents), fs.ModePerm)
 	s.Require().NoError(err)

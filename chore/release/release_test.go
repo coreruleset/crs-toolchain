@@ -34,6 +34,11 @@ func (s *choreReleaseTestSuite) SetupTest() {
 	out, err = utils.RunGit(s.repoDir, "config", "user.name", "dummy")
 	s.Require().NoError(err, string(out))
 
+	// The dummy identity above has no signing key, so a global commit.gpgsign
+	// setting would make every commit in these tests fail.
+	out, err = utils.RunGit(s.repoDir, "config", "commit.gpgsign", "false")
+	s.Require().NoError(err, string(out))
+
 	out, err = utils.RunGit(s.repoDir, "commit", "--allow-empty", "-m", "dummy")
 	s.Require().NoError(err, string(out))
 }

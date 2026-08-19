@@ -32,7 +32,7 @@ const (
 
 var logger = log.With().Str("component", "release").Logger()
 
-func Release(context *context.Context, repositoryPath string, version *semver.Version, sourceRef string) {
+func Release(context *context.Context, version *semver.Version, sourceRef string) {
 	remoteName := findRemoteName(context.RootDir())
 	if remoteName == "" {
 		logger.Fatal().Msg("failed to find remote for coreruleset/coreruleset")
@@ -49,8 +49,7 @@ func Release(context *context.Context, repositoryPath string, version *semver.Ve
 
 func createAndCheckOutBranch(context *context.Context, branchName string, sourceRef string) {
 	if err := checkForCleanWorkTree(context); err != nil {
-		// FIXME
-		panic(err)
+		logger.Fatal().Err(err).Msg("cannot create release branch")
 	}
 
 	out, err := utils.RunGit(context.RootDir(), "switch", "-c", branchName, sourceRef)
@@ -70,21 +69,17 @@ func checkForCleanWorkTree(context *context.Context) error {
 	repositoryPath := context.RootDir()
 	repo, err := git.PlainOpen(repositoryPath)
 	if err != nil {
-		//FIXME
-		panic(err)
+		return fmt.Errorf("opening git repository at %s: %w", repositoryPath, err)
 	}
 	worktree, err := repo.Worktree()
 	if err != nil {
-		//FIXME
-		panic(err)
+		return fmt.Errorf("reading worktree of %s: %w", repositoryPath, err)
 	}
 	status, err := worktree.Status()
 	if err != nil {
-		//FIXME
-		panic(err)
+		return fmt.Errorf("reading status of worktree at %s: %w", repositoryPath, err)
 	}
 	if !status.IsClean() {
-		// FIXME
 		return errors.New("worktree not clean. Please stash or commit your changes first")
 	}
 	return nil
