@@ -129,12 +129,11 @@ func (a *Operator) complete(assembleParser *parser.Parser) (string, error) {
 		return "", err
 	}
 
-	if len(assembleParser.Prefixes) > 0 && len(assembleParser.Suffixes) > 0 && len(result) > 0 {
-		result = "(?:" + result + ")"
-	}
-	prefixes := strings.Join(assembleParser.Prefixes, "")
-	suffixes := strings.Join(assembleParser.Suffixes, "")
-	result = prefixes + result + suffixes
+	// Note: Prefix/suffix application is now handled by individual Assemble processors (block-scoped).
+	// Prefix/suffix directives are passed through as raw lines, so they are not applied here.
+	// Parser.Prefixes and Parser.Suffixes record which directives a file contained; the parser
+	// uses that to decide whether an included file needs its own assemble block, and the operator
+	// path does not read them.
 
 	if len(result) > 0 {
 		logger.Trace().Msgf("Applying last cleanups to %s\n", result)

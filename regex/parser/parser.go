@@ -150,9 +150,15 @@ func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 				}
 			}
 		case prefix:
+			// Pass the directive through for the Assemble processor to apply (block-scoped).
+			// Prefixes is still recorded so that parseFile knows whether an included file
+			// needs its own assemble block to scope these directives to its content.
 			p.Prefixes = append(p.Prefixes, parsedLine.prefix)
+			text = line + "\n"
 		case suffix:
+			// See the prefix case above.
 			p.Suffixes = append(p.Suffixes, parsedLine.suffix)
+			text = line + "\n"
 		}
 		if formatOnly {
 			text = line + "\n"
@@ -275,7 +281,7 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 		newP.variables = definitions
 	}
 	out := newP.Parse(false)
-	newOut, err := mergePrefixesSuffixes(newP, out)
+	newOut, err := scopeIncludedFileDirectives(newP, out)
 	if err != nil {
 		logger.Fatal().Msgf("error parsing file: %v", err.Error())
 	}
@@ -283,16 +289,18 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 	return newOut, newP.variables
 }
 
-// Merge prefixes, and suffixes from include files into another parser.
-// All of these need to be treated as local to the source parser.
+// Scope prefixes and suffixes from an included file to the content of that file.
+// The directives themselves are passed through as raw lines for the Assemble processor
+// to apply, so they need an assemble block of their own. Without it they stay active
+// for the rest of the including file and wrap the caller's content as well.
 // We removed flag merging because of https://github.com/coreruleset/crs-toolchain/issues/72
-func mergePrefixesSuffixes(source *Parser, out *bytes.Buffer) (*bytes.Buffer, error) {
-	logger.Trace().Msg("merging prefixes, suffixes from included file")
+func scopeIncludedFileDirectives(source *Parser, out *bytes.Buffer) (*bytes.Buffer, error) {
+	logger.Trace().Msg("scoping prefixes, suffixes from included file")
 	// If the included file has flags, this is an error
 	if len(source.Flags) > 0 {
 		return new(bytes.Buffer), errors.New("include files must not contain flags. See https://github.com/coreruleset/crs-toolchain/v2/issues/71")
 	}
-	// IMPORTANT: don't write the assemble block at all if there are no flags, prefixes, or
+	// IMPORTANT: don't write the assemble block at all if there are no prefixes or
 	// suffixes. Enclosing the output in an assemble block can change the semantics, for example,
 	// when the included content is processed by the cmdline processor in the including file.
 	if len(source.Prefixes) == 0 && len(source.Suffixes) == 0 {
@@ -301,31 +309,11 @@ func mergePrefixesSuffixes(source *Parser, out *bytes.Buffer) (*bytes.Buffer, er
 
 	newOut := new(bytes.Buffer)
 	newOut.WriteString("##!> assemble\n")
-
-	for _, prefix := range source.Prefixes {
-		newOut.WriteString(prefix)
-		newOut.WriteString("\n##!=>\n")
-	}
 	if _, err := out.WriteTo(newOut); err != nil {
 		logger.Fatal().Err(err).Msg("failed to copy output to new buffer")
 	}
-
-	sawNewLine := false
-	if err := out.UnreadByte(); err == nil {
-		lastByte, err := out.ReadByte()
-		if err == nil {
-			sawNewLine = lastByte == 13
-		}
-	}
-	if sawNewLine {
+	if !bytes.HasSuffix(newOut.Bytes(), []byte("\n")) {
 		newOut.WriteString("\n")
-	}
-	if len(source.Suffixes) > 0 {
-		newOut.WriteString("##!=>\n")
-	}
-	for _, suffix := range source.Suffixes {
-		newOut.WriteString(suffix)
-		newOut.WriteString("\n##!=>\n")
 	}
 	newOut.WriteString("##!<\n")
 	return newOut, nil

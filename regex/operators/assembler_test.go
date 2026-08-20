@@ -4,7 +4,9 @@
 package operators
 
 import (
+	"io/fs"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -832,6 +834,7 @@ d
 
 }
 func (s *assemblerTestSuite) TestAssemble_ConcatenationWithPrefixAndSuffix() {
+	// Test that top-level prefix/suffix apply to the implicit top-level block
 	contents := `##!^ prefix
 ##!$ suffix
   ##!> assemble
@@ -1120,4 +1123,218 @@ func (s *assemblerTestSuite) TestAssemble_ValidateCharacterClass() {
 	_, err := assembler.Run(contents)
 
 	s.ErrorContains(err, "unicode hex escape codepoint too big: 1114111 > 255")
+}
+
+// Test block-scoped prefix/suffix behavior
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_InsideBlock() {
+	// Test that prefix/suffix inside an assemble block are block-scoped
+	contents := `##!> assemble
+##!^ prefix
+##!$ suffix
+a
+b
+##!<`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// wrapCompletedAssembly already wraps in (?:...)
+	s.Equal(`prefix[ab]suffix`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_TopLevel() {
+	// Verify top-level directives still work (implicit top-level block)
+	contents := `##!^ prefix
+##!$ suffix
+a
+b`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	s.Equal(`prefix[ab]suffix`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_MultipleBlocks() {
+	// Test multiple assemble blocks with different prefix/suffix in each
+	contents := `##!> assemble
+##!^ prefix1
+a
+b
+##!<
+##!=>
+##!> assemble
+##!$ suffix2
+c
+d
+##!<`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// Each block applies its own prefix/suffix independently
+	s.Equal(`prefix1[ab][cd]suffix2`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_NestedPattern() {
+	// Test the pattern from 934160.ra - prefix/suffix at start of assemble block
+	contents := `##!> assemble
+##!^ while\s*\([\s(]*
+##!$ .*\)
+true
+false
+##!<`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// Note: assembler applies various transformations like \s -> [\s\x0b]
+	// We just check that prefix/suffix are applied
+	s.Contains(output, `while`)
+	s.Contains(output, `.*\)`)
+	s.Contains(output, `tru`)
+	s.Contains(output, `fals`)
+}
+
+// writeIncludeFile writes an include file that `##!> include name` will resolve.
+func (s *assemblerTestSuite) writeIncludeFile(name string, contents string) {
+	s.T().Helper()
+	includeDir := path.Join(s.tempDir, "regex-assembly", "include")
+	s.Require().NoError(os.MkdirAll(includeDir, fs.ModePerm))
+	s.Require().NoError(os.WriteFile(path.Join(includeDir, name+".ra"), []byte(contents), fs.ModePerm))
+}
+
+func (s *assemblerTestSuite) TestAssemble_IncludedPrefixIsScopedToIncludedContent() {
+	s.writeIncludeFile("scoped_prefix", "##!^ PRE_\nalpha\n")
+
+	// `beta` belongs to the including file and must not pick up the include's prefix,
+	// no matter which side of the include it sits on.
+	for _, tt := range []struct {
+		name     string
+		contents string
+		expected string
+	}{
+		{"caller line after include", "##!> include scoped_prefix\nbeta", `(?:PRE_alph|bet)a`},
+		{"caller line before include", "beta\n##!> include scoped_prefix", `(?:bet|PRE_alph)a`},
+		{"caller lines on both sides", "gamma\n##!> include scoped_prefix\nbeta", `(?:gamm|PRE_alph|bet)a`},
+	} {
+		s.Run(tt.name, func() {
+			output, err := NewAssembler(s.ctx).Run(tt.contents)
+			s.Require().NoError(err)
+			s.Equal(tt.expected, output)
+		})
+	}
+}
+
+func (s *assemblerTestSuite) TestAssemble_IncludedSuffixIsScopedToIncludedContent() {
+	s.writeIncludeFile("scoped_suffix", "##!$ _SUF\nalpha\n")
+
+	output, err := NewAssembler(s.ctx).Run("##!> include scoped_suffix\nbeta")
+	s.Require().NoError(err)
+	s.Equal(`alpha_SUF|beta`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_PrefixSuffixWithStashing() {
+	// Test that prefixes/suffixes are applied when storing expressions with ##!=<
+	contents := `##!> assemble
+##!^ prefix
+##!$ suffix
+a
+b
+##!=< stored
+##!<
+##!=> stored`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// The stored expression should include the prefix/suffix from its block
+	s.Equal(`prefix[ab]suffix`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_PrefixSuffixWithStashing_MultipleBlocks() {
+	// Test that each block's prefix/suffix are independently applied when stashing
+	contents := `##!> assemble
+##!^ prefix1
+##!$ suffix1
+a
+b
+##!=< block1
+##!<
+##!> assemble
+##!^ prefix2
+##!$ suffix2
+c
+d
+##!=< block2
+##!<
+##!=> block1
+##!=> block2`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// Each stored expression should have its own block's prefix/suffix
+	s.Equal(`prefix1[ab]suffix1prefix2[cd]suffix2`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_PrefixSuffixWithStashing_NoPrefix() {
+	// Test stashing without prefix/suffix works as before
+	contents := `##!> assemble
+a
+b
+##!=< stored
+##!<
+##!=> stored`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// No prefix/suffix should be applied
+	s.Equal(`[ab]`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_PrefixSuffixWithStashing_OnlyPrefix() {
+	// Test stashing with only prefix
+	contents := `##!> assemble
+##!^ prefix
+a
+b
+##!=< stored
+##!<
+##!=> stored`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// Only prefix should be applied
+	s.Equal(`prefix[ab]`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_BlockScopedPrefixSuffix_MultipleNestingLevels() {
+	// Test that prefix/suffix is correctly scoped when blocks are nested multiple levels deep.
+	// The outer block's prefix/suffix wraps the inner block's output, while the inner block's
+	// prefix/suffix only applies to the inner block's content.
+	contents := `##!> assemble
+##!^ outer_prefix
+##!$ outer_suffix
+##!> assemble
+##!^ inner_prefix
+##!$ inner_suffix
+a
+b
+##!<
+##!<`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	s.Equal(`outer_prefixinner_prefix[ab]inner_suffixouter_suffix`, output)
+}
+
+func (s *assemblerTestSuite) TestAssemble_PrefixSuffixWithStashing_OnlySuffix() {
+	// Test stashing with only suffix
+	contents := `##!> assemble
+##!$ suffix
+a
+b
+##!=< stored
+##!<
+##!=> stored`
+	assembler := NewAssembler(s.ctx)
+	output, err := assembler.Run(contents)
+	s.Require().NoError(err)
+	// Only suffix should be applied
+	s.Equal(`[ab]suffix`, output)
 }
