@@ -1,0 +1,45 @@
+name: release-please
+
+# default token permissions: none
+permissions: {}
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Dry run — preview the release PR without creating or modifying anything"
+        type: boolean
+        default: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # create the release PR, changelog commit and tag
+      pull-requests: write   # open and update the release PR
+      issues: write          # label the release PR
+
+    steps:
+      # GITHUB_TOKEN-authored pushes never trigger other workflows, so a tag
+      # created with it would not fire the tag-triggered goreleaser workflow.
+      # RELEASE_PLEASE_CLIENT_ID/_APP_PRIVATE_KEY currently hold the same
+      # GitHub App credentials as HOMEBREW_APP_ID/_PRIVATE_KEY. client-id (not
+      # app-id): create-github-app-token deprecated app-id in favor of it.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # ratchet:actions/create-github-app-token@v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ secrets.RELEASE_PLEASE_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # ratchet:googleapis/release-please-action@v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+          skip-github-pull-request: ${{ inputs.dry-run == true }}
