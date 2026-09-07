@@ -18,9 +18,9 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     permissions:
-      contents: write        # create the release PR, changelog commit and tag
-      pull-requests: write   # open and update the release PR
-      issues: write          # label the release PR
+      contents: write # create the release PR, changelog commit and tag
+      pull-requests: write # open and update the release PR
+      issues: write # label the release PR
 
     steps:
       # GITHUB_TOKEN-authored pushes never trigger other workflows, so a tag
@@ -38,8 +38,31 @@ jobs:
           permission-issues: write
 
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # ratchet:googleapis/release-please-action@v5.0.0
+        if: inputs.dry-run != true
         with:
           token: ${{ steps.app-token.outputs.token }}
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
-          skip-github-pull-request: ${{ inputs.dry-run == true }}
+
+      # A real preview: the release-please CLI's --dry-run reports what would
+      # happen via read-only GitHub API calls, no PR or tag is ever created,
+      # so it runs on the default GITHUB_TOKEN instead of the write-scoped App
+      # token above.
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # ratchet:actions/setup-node@v6.0.0
+        if: inputs.dry-run == true
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Preview release PR
+        if: inputs.dry-run == true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_URL: ${{ github.repository }}
+        run: |
+          npx --yes release-please@17.11.2 release-pr \
+            --token="${GITHUB_TOKEN}" \
+            --repo-url="${REPO_URL}" \
+            --config-file=.github/release-please-config.json \
+            --manifest-file=.github/.release-please-manifest.json \
+            --dry-run
