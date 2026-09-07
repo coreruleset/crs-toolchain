@@ -17,10 +17,14 @@ on:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    # The real release path's writes (PR, changelog commit, tag) go through
+    # the separately-scoped App token below, not this job's GITHUB_TOKEN --
+    # the only thing GITHUB_TOKEN is used for here is the read-only dry-run
+    # preview, so it needs no write access.
     permissions:
-      contents: write # create the release PR, changelog commit and tag
-      pull-requests: write # open and update the release PR
-      issues: write # label the release PR
+      contents: read
+      pull-requests: read
+      issues: read
 
     steps:
       # GITHUB_TOKEN-authored pushes never trigger other workflows, so a tag
@@ -28,8 +32,10 @@ jobs:
       # RELEASE_PLEASE_CLIENT_ID/_APP_PRIVATE_KEY currently hold the same
       # GitHub App credentials as HOMEBREW_APP_ID/_PRIVATE_KEY. client-id (not
       # app-id): create-github-app-token deprecated app-id in favor of it.
+      # Skipped for dry-run: the preview below never uses it.
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # ratchet:actions/create-github-app-token@v3.2.0
         id: app-token
+        if: inputs.dry-run != true
         with:
           client-id: ${{ secrets.RELEASE_PLEASE_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
@@ -60,7 +66,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_URL: ${{ github.repository }}
         run: |
-          npx --yes release-please@17.11.2 release-pr \
+          # Pinned to the exact release-please version googleapis/release-please-action@v5.0.0
+          # bundles, so the preview matches what the real run above would compute.
+          npx --yes release-please@17.6.0 release-pr \
             --token="${GITHUB_TOKEN}" \
             --repo-url="${REPO_URL}" \
             --config-file=.github/release-please-config.json \
