@@ -541,6 +541,45 @@ func (s *phpDictionaryGenTestSuite) TestGetOrUpdateFrequency_RenewalFailure_Retu
 	var renewalErr *errFrequencyRenewalExpired
 	s.Require().ErrorAs(err, &renewalErr)
 }
+func (s *phpDictionaryGenTestSuite) TestCategorizeByFrequency_ForcedFrequentFunctions() {
+    ctx := context.Background()
+    opts := PhpDictionaryGenOptions{
+        FrequencyLimit: 100,
+    }
+    
+    // Set counts below FrequencyLimit to prove they are forced frequent regardless of count
+    searcher := &mockSearcher{
+        counts: map[string]int{
+            "ftp_ssl_connect": 5,
+            "lstat":           2,
+            "normal_rare":     10,
+            "normal_frequent": 500,
+        },
+    }
+    cache := map[string]frequencyEntry{}
+    
+    words := []string{"ftp_ssl_connect", "lstat", "normal_rare", "normal_frequent"}
+
+    frequent, rare, err := s.gen.categorizeByFrequency(ctx, words, cache, searcher, opts)
+    s.Require().NoError(err)
+
+    // Test cases defining expected categories
+    expectedCategories := map[string]bool{
+        "ftp_ssl_connect": true, // Forced frequent
+        "lstat":           true, // Forced frequent
+        "normal_rare":     false, // Below limit -> rare
+        "normal_frequent": true,  // Above limit -> frequent
+    }
+
+    for _, word := range words {
+        shouldBeFrequent := expectedCategories[word]
+        if shouldBeFrequent {
+            s.Contains(frequent, word, "word %s should be frequent", word)
+        } else {
+            s.Contains(rare, word, "word %s should be rare", word)
+        }
+    }
+}
 
 func mustParseDate(s string) time.Time {
 	t, _ := time.Parse(frequencyListDateFormat, s)
