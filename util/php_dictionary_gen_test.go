@@ -542,6 +542,31 @@ func (s *phpDictionaryGenTestSuite) TestGetOrUpdateFrequency_RenewalFailure_Retu
 	s.Require().ErrorAs(err, &renewalErr)
 }
 
+func (s *phpDictionaryGenTestSuite) TestCategorizeByFrequency_ForcedFrequentFunctions() {
+    ctx := context.Background()
+    opts := PhpDictionaryGenOptions{
+        FrequencyLimit: 100,
+    }
+    // Return counts below FrequencyLimit to ensure they are forced frequent
+    searcher := &mockSearcher{
+        counts: map[string]int{
+            "ftp_ssl_connect": 5,
+            "lstat":           2,
+        },
+    }
+    cache := map[string]frequencyEntry{}
+    words := []string{"ftp_ssl_connect", "lstat", "normal_rare_func"}
+
+    frequent, rare, err := s.gen.categorizeByFrequency(ctx, words, cache, searcher, opts)
+    s.Require().NoError(err)
+
+    s.Contains(frequent, "ftp_ssl_connect")
+    s.Contains(frequent, "lstat")
+    s.NotContains(rare, "ftp_ssl_connect")
+    s.NotContains(rare, "lstat")
+    s.Contains(rare, "normal_rare_func")
+}
+
 func mustParseDate(s string) time.Time {
 	t, _ := time.Parse(frequencyListDateFormat, s)
 	return t
