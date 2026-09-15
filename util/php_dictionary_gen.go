@@ -794,7 +794,7 @@ func (p *PhpDictionaryGen) categorizeByFrequency(ctx context.Context, nonEnglish
 	}
 
 	forcedFrequent := map[string]bool{
-        "ftp_connect_ssl": true,
+        "ftp_ssl_connect": true,
     }
 
 
