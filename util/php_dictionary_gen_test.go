@@ -554,6 +554,7 @@ func (s *phpDictionaryGenTestSuite) TestCategorizeByFrequency_ForcedFrequentFunc
             "lstat":           2,
             "normal_rare":     10,
             "normal_frequent": 500,
+			"file_put_contents": 0,
         },
     }
     cache := map[string]frequencyEntry{}
