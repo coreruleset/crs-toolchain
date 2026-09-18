@@ -559,7 +559,7 @@ func (s *phpDictionaryGenTestSuite) TestCategorizeByFrequency_ForcedFrequentFunc
     }
     cache := map[string]frequencyEntry{}
     
-    words := []string{"ftp_ssl_connect", "lstat", "normal_rare", "normal_frequent"}
+    words := []string{"ftp_ssl_connect", "lstat", "normal_rare", "normal_frequent", "file_put_contents",}
 
     frequent, rare, err := s.gen.categorizeByFrequency(ctx, words, cache, searcher, opts)
     s.Require().NoError(err)
