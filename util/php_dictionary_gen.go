@@ -793,7 +793,19 @@ func (p *PhpDictionaryGen) categorizeByFrequency(ctx context.Context, nonEnglish
 		maxRateLimitWait: opts.MaxRateLimitWait,
 	}
 
+	forcedFrequent := map[string]bool{
+        "ftp_ssl_connect": true,
+		"lstat": true,
+		"file_put_contents": true,
+    }
+
+
 	for _, fn := range nonEnglishWords {
+		// If it's in our forced list, skip GitHub lookup and put it directly in frequent
+		if forcedFrequent[fn] {
+        	frequent = append(frequent, fn)
+        	continue
+    	}
 		count, err := p.getOrUpdateFrequency(ctx, fn, frequencyCache, searcher, lookupParams)
 		if err != nil {
 			return nil, nil, fmt.Errorf("getting frequency for %s: %w", fn, err)
