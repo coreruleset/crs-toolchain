@@ -570,6 +570,7 @@ func (s *phpDictionaryGenTestSuite) TestCategorizeByFrequency_ForcedFrequentFunc
         "lstat":           true, // Forced frequent
         "normal_rare":     false, // Below limit -> rare
         "normal_frequent": true,  // Above limit -> frequent
+		"file_put_contents": true,
     }
 
     for _, word := range words {
