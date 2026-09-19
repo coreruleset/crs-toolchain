@@ -72,11 +72,11 @@ func (s *parserIncludeTestSuite) TestParserInclude_Prefixes() {
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
 	actual := parser.Parse(false)
+	// Directives are passed through as-is, wrapped in an assemble block that scopes
+	// them to the included content instead of the rest of the including file.
 	expected := bytes.NewBufferString(`##!> assemble
-prefix1
-##!=>
-prefix2
-##!=>
+##!^ prefix1
+##!^ prefix2
 included regex
 ##!<
 data regex
@@ -90,13 +90,12 @@ func (s *parserIncludeTestSuite) TestParserInclude_Suffixes() {
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
 	actual := parser.Parse(false)
+	// Directives are passed through as-is, wrapped in an assemble block that scopes
+	// them to the included content instead of the rest of the including file.
 	expected := bytes.NewBufferString(`##!> assemble
+##!$ suffix1
+##!$ suffix2
 included regex
-##!=>
-suffix1
-##!=>
-suffix2
-##!=>
 ##!<
 data regex
 `)
@@ -112,17 +111,14 @@ func (s *parserIncludeTestSuite) TestParserInclude_FlagsPrefixesSuffixes() {
 included regex`, "data regex")
 	parser := NewParser(s.ctx, s.reader)
 	actual := parser.Parse(false)
+	// Directives are passed through as-is, wrapped in an assemble block that scopes
+	// them to the included content instead of the rest of the including file.
 	expected := bytes.NewBufferString(`##!> assemble
-prefix1
-##!=>
-prefix2
-##!=>
+##!$ suffix1
+##!$ suffix2
+##!^ prefix1
+##!^ prefix2
 included regex
-##!=>
-suffix1
-##!=>
-suffix2
-##!=>
 ##!<
 data regex
 `)
