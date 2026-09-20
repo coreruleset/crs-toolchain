@@ -118,6 +118,16 @@ crs-toolchain generate php-function-names
 crs-toolchain generate php-function-names --rules 933161 --php-repo /path/to/php-src --frequency-list ./php-frequency-cache.txt
 ```
 
+### Plugin commands
+
+```shell
+# Install a plugin's newest release into <CRS_ROOT>/plugins
+crs-toolchain -d /path/to/coreruleset plugin install fake-bot
+
+# Pin a version and install into a custom directory
+crs-toolchain plugin install fake-bot --version v1.1.0 --plugins-dir /etc/crs/plugins
+```
+
 ### Chore commands
 
 ```shell
