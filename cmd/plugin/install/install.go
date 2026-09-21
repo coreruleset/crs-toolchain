@@ -48,7 +48,7 @@ Existing files are never overwritten unless --force is given.`,
 				return err
 			}
 
-			report(cmd, cmdContext, result)
+			report(cmd, cmdContext, targetDir, result)
 			return nil
 		},
 	}
@@ -69,10 +69,9 @@ func buildFlags(cmd *cobra.Command) {
 			"so this always fails today.")
 }
 
-func report(cmd *cobra.Command, cmdContext *internal.CommandContext, result *plugin.Result) {
+func report(cmd *cobra.Command, cmdContext *internal.CommandContext, targetDir string, result *plugin.Result) {
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "Installed %s %s (%s) into %s\n", result.Name, result.Tag, result.Repository,
-		cmdContext.RootContext().PluginsDir())
+	fmt.Fprintf(out, "Installed %s %s (%s) into %s\n", result.Name, result.Tag, result.Repository, targetDir)
 	fmt.Fprintf(out, "  type: %s, status: %s, rule IDs: %d-%d\n",
 		result.Type, result.Status, result.RuleIDRange.Start, result.RuleIDRange.End)
 	fmt.Fprintf(out, "  digest: %s\n", result.Digest)

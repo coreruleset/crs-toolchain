@@ -204,6 +204,9 @@ func extractPluginFiles(tarballPath, destDir string) ([]string, error) {
 		if relPath == "." || strings.HasPrefix(relPath, "..") {
 			continue
 		}
+		if relPath == recordsFileName {
+			return nil, fmt.Errorf("release contains reserved path %q", relPath)
+		}
 
 		destPath := filepath.Join(destDir, filepath.FromSlash(relPath))
 		if !strings.HasPrefix(destPath, filepath.Clean(destDir)+string(os.PathSeparator)) {
@@ -229,15 +232,19 @@ func extractFile(src io.Reader, destPath string) error {
 		return err
 	}
 	defer out.Close()
-	_, err = io.Copy(out, src)
-	return err
+	if _, err := io.Copy(out, src); err != nil {
+		return err
+	}
+	return out.Close()
 }
 
-// findConflicts returns the relPaths that already exist under targetDir.
+// findConflicts returns the relPaths that already exist under targetDir. It
+// uses Lstat, not Stat, so a dangling symlink planted at the destination is
+// still reported as a conflict rather than silently followed on write.
 func findConflicts(targetDir string, relPaths []string) []string {
 	var conflicts []string
 	for _, relPath := range relPaths {
-		if _, err := os.Stat(filepath.Join(targetDir, relPath)); err == nil {
+		if _, err := os.Lstat(filepath.Join(targetDir, relPath)); err == nil {
 			conflicts = append(conflicts, relPath)
 		}
 	}
@@ -290,33 +297,43 @@ func copyFile(srcPath, destPath string) (hexDigest string, err error) {
 	if _, err := io.Copy(io.MultiWriter(dest, hasher), src); err != nil {
 		return "", err
 	}
+	if err := dest.Close(); err != nil {
+		return "", err
+	}
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
 var ruleIDPattern = regexp.MustCompile(`\bid:\s*(\d+)`)
 
-// findRuleIDOverlaps scans the .conf files already present in targetDir
-// (excluding the files this install just placed there) for ModSecurity rule
-// IDs that fall inside ruleIDRange, and returns the names of any that do.
+// findRuleIDOverlaps recursively scans the .conf files already present under
+// targetDir (excluding the files this install just placed there) for
+// ModSecurity rule IDs that fall inside ruleIDRange, and returns the paths of
+// any that do, relative to targetDir.
 func findRuleIDOverlaps(targetDir string, ruleIDRange RuleIDRange, ownRelPaths []string) ([]string, error) {
 	own := make(map[string]bool, len(ownRelPaths))
 	for _, relPath := range ownRelPaths {
-		own[relPath] = true
-	}
-
-	entries, err := os.ReadDir(targetDir)
-	if err != nil {
-		return nil, err
+		own[filepath.ToSlash(relPath)] = true
 	}
 
 	var overlaps []string
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".conf") || own[entry.Name()] {
-			continue
-		}
-		content, err := os.ReadFile(filepath.Join(targetDir, entry.Name()))
+	err := filepath.WalkDir(targetDir, func(currentPath string, entry os.DirEntry, err error) error {
 		if err != nil {
-			return nil, err
+			return err
+		}
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".conf") {
+			return nil
+		}
+		relPath, err := filepath.Rel(targetDir, currentPath)
+		if err != nil {
+			return err
+		}
+		relPath = filepath.ToSlash(relPath)
+		if own[relPath] {
+			return nil
+		}
+		content, err := os.ReadFile(currentPath)
+		if err != nil {
+			return err
 		}
 		for _, match := range ruleIDPattern.FindAllStringSubmatch(string(content), -1) {
 			id, err := strconv.Atoi(match[1])
@@ -324,10 +341,14 @@ func findRuleIDOverlaps(targetDir string, ruleIDRange RuleIDRange, ownRelPaths [
 				continue
 			}
 			if ruleIDRange.Contains(id) {
-				overlaps = append(overlaps, entry.Name())
+				overlaps = append(overlaps, relPath)
 				break
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return overlaps, nil
 }
@@ -336,6 +357,10 @@ func findRuleIDOverlaps(targetDir string, ruleIDRange RuleIDRange, ownRelPaths [
 // under pluginsDir, preserving the entries of any other installed plugins.
 func recordInstall(pluginsDir, name string, rec record) error {
 	recordsPath := filepath.Join(pluginsDir, recordsFileName)
+
+	if info, err := os.Lstat(recordsPath); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s is a symlink, refusing to read or write it", recordsPath)
+	}
 
 	records := map[string]record{}
 	if content, err := os.ReadFile(recordsPath); err == nil {

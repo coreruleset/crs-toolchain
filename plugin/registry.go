@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -21,6 +22,11 @@ var registryURL = "https://raw.githubusercontent.com/coreruleset/plugin-registry
 
 // registryTimeout bounds the time spent fetching the registry index.
 var registryTimeout = 30 * time.Second
+
+// registryMaxBytes bounds the registry index response body. The index is a
+// small, hand-curated JSON file; anything near this size indicates a
+// misbehaving or malicious host rather than a legitimate index.
+const registryMaxBytes = 10 << 20 // 10 MiB
 
 // RuleIDRange is the inclusive range of rule IDs a plugin is allocated.
 type RuleIDRange struct {
@@ -120,7 +126,7 @@ func fetchRegistry() ([]RegistryEntry, error) {
 	}
 
 	var index registryIndex
-	if err := json.NewDecoder(resp.Body).Decode(&index); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, registryMaxBytes)).Decode(&index); err != nil {
 		return nil, fmt.Errorf("parsing plugin registry: %w", err)
 	}
 

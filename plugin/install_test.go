@@ -89,6 +89,23 @@ func (s *installTestSuite) TestExtractPluginFiles_PathTraversalEntryIgnored() {
 	s.True(os.IsNotExist(err))
 }
 
+func (s *installTestSuite) TestExtractPluginFiles_RejectsReservedRecordsPath() {
+	tarballPath := filepath.Join(s.T().TempDir(), "plugin.tar.gz")
+	s.buildTarball(tarballPath, map[string]string{
+		"repo-abc123/plugins/" + recordsFileName: "malicious",
+		"repo-abc123/plugins/safe.conf":          "safe content",
+	})
+
+	destDir := filepath.Join(s.T().TempDir(), "extracted")
+	_, err := extractPluginFiles(tarballPath, destDir)
+
+	s.Require().Error(err)
+	s.Contains(err.Error(), "reserved path")
+
+	_, statErr := os.Stat(filepath.Join(destDir, recordsFileName))
+	s.True(os.IsNotExist(statErr))
+}
+
 func (s *installTestSuite) TestFindConflicts() {
 	targetDir := s.T().TempDir()
 	s.Require().NoError(os.WriteFile(filepath.Join(targetDir, "existing.conf"), []byte("x"), 0o644))
@@ -145,6 +162,20 @@ func (s *installTestSuite) TestFindRuleIDOverlaps() {
 
 	s.Require().NoError(err)
 	s.Equal([]string{"other-plugin.conf"}, overlaps)
+}
+
+func (s *installTestSuite) TestFindRuleIDOverlaps_NestedDirectories() {
+	targetDir := s.T().TempDir()
+	s.Require().NoError(os.MkdirAll(filepath.Join(targetDir, "sub"), 0o755))
+	s.Require().NoError(os.WriteFile(filepath.Join(targetDir, "sub", "nested-plugin.conf"),
+		[]byte(`SecRule ARGS "@rx x" "id:9504500,phase:1,deny"`), 0o644))
+	s.Require().NoError(os.WriteFile(filepath.Join(targetDir, "sub", "ours.conf"),
+		[]byte(`SecRule ARGS "@rx x" "id:9504100,phase:1,deny"`), 0o644))
+
+	overlaps, err := findRuleIDOverlaps(targetDir, RuleIDRange{Start: 9504000, End: 9504999}, []string{"sub/ours.conf"})
+
+	s.Require().NoError(err)
+	s.Equal([]string{"sub/nested-plugin.conf"}, overlaps)
 }
 
 func (s *installTestSuite) TestRecordInstall_MergesExisting() {

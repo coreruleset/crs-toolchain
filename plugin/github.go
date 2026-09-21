@@ -24,6 +24,12 @@ var githubAPIBaseURL = "https://api.github.com"
 // githubTimeout bounds a single GitHub API or download request.
 var githubTimeout = 60 * time.Second
 
+// maxTarballBytes bounds the size of a downloaded plugin source tarball.
+// Plugin repositories are a handful of rule/config/lua files; anything
+// approaching this size indicates a misbehaving or malicious release rather
+// than a legitimate plugin.
+const maxTarballBytes = 100 << 20 // 100 MiB
+
 var repositoryURLPattern = regexp.MustCompile(`^https://github\.com/([^/]+)/([^/]+?)/?$`)
 
 // parseRepository extracts the owner and repo name from a GitHub repository
@@ -99,7 +105,14 @@ func downloadTarball(client *api.RESTClient, owner, repo, tag, destFile string) 
 	}
 	defer out.Close()
 
-	if _, err := io.Copy(out, resp.Body); err != nil {
+	written, err := io.Copy(out, io.LimitReader(resp.Body, maxTarballBytes+1))
+	if err != nil {
+		return fmt.Errorf("writing %s/%s@%s: %w", owner, repo, tag, err)
+	}
+	if written > maxTarballBytes {
+		return fmt.Errorf("downloading %s/%s@%s: archive exceeds maximum size of %d bytes", owner, repo, tag, maxTarballBytes)
+	}
+	if err := out.Close(); err != nil {
 		return fmt.Errorf("writing %s/%s@%s: %w", owner, repo, tag, err)
 	}
 	return nil
