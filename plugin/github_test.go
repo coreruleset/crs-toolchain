@@ -4,6 +4,7 @@
 package plugin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -67,7 +68,7 @@ func (s *githubTestSuite) TestResolveTag_Latest() {
 		_, _ = w.Write([]byte(`{"tag_name": "v1.1.0"}`))
 	})()
 
-	tag, err := resolveTag(s.client, "owner", "repo", "")
+	tag, err := resolveTag(context.Background(), s.client, "owner", "repo", "")
 
 	s.Require().NoError(err)
 	s.Equal("v1.1.0", tag)
@@ -79,7 +80,7 @@ func (s *githubTestSuite) TestResolveTag_Pinned() {
 		_, _ = w.Write([]byte(`{"tag_name": "v1.0.0"}`))
 	})()
 
-	tag, err := resolveTag(s.client, "owner", "repo", "v1.0.0")
+	tag, err := resolveTag(context.Background(), s.client, "owner", "repo", "v1.0.0")
 
 	s.Require().NoError(err)
 	s.Equal("v1.0.0", tag)
@@ -91,7 +92,7 @@ func (s *githubTestSuite) TestResolveTag_NoReleases() {
 		_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 	})()
 
-	_, err := resolveTag(s.client, "owner", "repo", "")
+	_, err := resolveTag(context.Background(), s.client, "owner", "repo", "")
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "no releases found")
@@ -103,7 +104,7 @@ func (s *githubTestSuite) TestResolveTag_UnknownPinnedVersion() {
 		_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 	})()
 
-	_, err := resolveTag(s.client, "owner", "repo", "v9.9.9")
+	_, err := resolveTag(context.Background(), s.client, "owner", "repo", "v9.9.9")
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), `no release tagged "v9.9.9"`)
@@ -116,7 +117,7 @@ func (s *githubTestSuite) TestDownloadTarball() {
 	})()
 
 	destFile := filepath.Join(s.T().TempDir(), "plugin.tar.gz")
-	err := downloadTarball(s.client, "owner", "repo", "v1.0.0", destFile)
+	err := downloadTarball(context.Background(), s.client, "owner", "repo", "v1.0.0", destFile)
 
 	s.Require().NoError(err)
 	content, err := os.ReadFile(destFile)

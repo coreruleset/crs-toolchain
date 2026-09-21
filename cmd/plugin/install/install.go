@@ -37,7 +37,7 @@ Existing files are never overwritten unless --force is given.`,
 				targetDir = cmdContext.RootContext().PluginsDir()
 			}
 
-			result, err := plugin.Install(plugin.Options{
+			result, err := plugin.Install(cmd.Context(), plugin.Options{
 				Name:             args[0],
 				Version:          version,
 				PluginsDir:       targetDir,

@@ -74,8 +74,8 @@ func (e *UnknownPluginError) Error() string {
 // ResolvePlugin fetches the published registry index and returns the entry
 // matching name exactly. If no plugin matches, it returns an
 // *UnknownPluginError listing names that contain the query as a substring.
-func ResolvePlugin(name string) (*RegistryEntry, error) {
-	entries, err := fetchRegistry()
+func ResolvePlugin(ctx context.Context, name string) (*RegistryEntry, error) {
+	entries, err := fetchRegistry(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +106,8 @@ func nearMatches(query string, entries []RegistryEntry) []string {
 	return matches
 }
 
-func fetchRegistry() ([]RegistryEntry, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), registryTimeout)
+func fetchRegistry(ctx context.Context) ([]RegistryEntry, error) {
+	ctx, cancel := context.WithTimeout(ctx, registryTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, registryURL, nil)

@@ -7,6 +7,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -244,7 +245,7 @@ func (s *installTestSuite) TestInstall_EndToEnd() {
 	}()
 
 	pluginsDir := s.T().TempDir()
-	result, err := Install(Options{Name: "fake-bot", PluginsDir: pluginsDir})
+	result, err := Install(context.Background(), Options{Name: "fake-bot", PluginsDir: pluginsDir})
 
 	s.Require().NoError(err)
 	s.Equal("v1.1.0", result.Tag)
@@ -260,7 +261,7 @@ func (s *installTestSuite) TestInstall_EndToEnd() {
 	s.Require().NoError(err)
 
 	// A second install without --force must refuse to overwrite.
-	_, err = Install(Options{Name: "fake-bot", PluginsDir: pluginsDir})
+	_, err = Install(context.Background(), Options{Name: "fake-bot", PluginsDir: pluginsDir})
 	s.Require().Error(err)
 	s.Contains(err.Error(), "refusing to overwrite")
 }
@@ -282,7 +283,7 @@ func (s *installTestSuite) TestInstall_RequireSignatureFailsClosed() {
 	registryURL = registryServer.URL
 	defer func() { registryURL = originalRegistryURL }()
 
-	_, err := Install(Options{Name: "fake-bot", PluginsDir: s.T().TempDir(), RequireSignature: true})
+	_, err := Install(context.Background(), Options{Name: "fake-bot", PluginsDir: s.T().TempDir(), RequireSignature: true})
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "does not publish a signed release artifact")

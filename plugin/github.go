@@ -63,7 +63,7 @@ func newGitHubClient() (*api.RESTClient, error) {
 // version resolves to the newest release. A repository with no releases, or
 // a pinned version that isn't a published release, is a clear error rather
 // than falling back to a branch.
-func resolveTag(client *api.RESTClient, owner, repo, version string) (string, error) {
+func resolveTag(ctx context.Context, client *api.RESTClient, owner, repo, version string) (string, error) {
 	path := fmt.Sprintf("%s/repos/%s/%s/releases/latest", githubAPIBaseURL, owner, repo)
 	if version != "" {
 		path = fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", githubAPIBaseURL, owner, repo, version)
@@ -72,7 +72,7 @@ func resolveTag(client *api.RESTClient, owner, repo, version string) (string, er
 	var release struct {
 		TagName string `json:"tag_name"`
 	}
-	if err := client.Do(http.MethodGet, path, nil, &release); err != nil {
+	if err := client.DoWithContext(ctx, http.MethodGet, path, nil, &release); err != nil {
 		var httpErr *api.HTTPError
 		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
 			if version != "" {
@@ -88,8 +88,8 @@ func resolveTag(client *api.RESTClient, owner, repo, version string) (string, er
 // downloadTarball downloads the source archive for owner/repo at tag into
 // destFile. GitHub plugin releases publish no release assets, so the source
 // tarball is the only artifact that can be fetched at a given tag.
-func downloadTarball(client *api.RESTClient, owner, repo, tag, destFile string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), githubTimeout)
+func downloadTarball(ctx context.Context, client *api.RESTClient, owner, repo, tag, destFile string) error {
+	ctx, cancel := context.WithTimeout(ctx, githubTimeout)
 	defer cancel()
 
 	path := fmt.Sprintf("%s/repos/%s/%s/tarball/%s", githubAPIBaseURL, owner, repo, tag)
@@ -101,19 +101,16 @@ func downloadTarball(client *api.RESTClient, owner, repo, tag, destFile string) 
 
 	out, err := os.Create(destFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("creating %s for %s/%s@%s: %w", destFile, owner, repo, tag, err)
 	}
-	defer out.Close()
 
-	written, err := io.Copy(out, io.LimitReader(resp.Body, maxTarballBytes+1))
-	if err != nil {
+	written, copyErr := io.Copy(out, io.LimitReader(resp.Body, maxTarballBytes+1))
+	closeErr := out.Close()
+	if err := errors.Join(copyErr, closeErr); err != nil {
 		return fmt.Errorf("writing %s/%s@%s: %w", owner, repo, tag, err)
 	}
 	if written > maxTarballBytes {
 		return fmt.Errorf("downloading %s/%s@%s: archive exceeds maximum size of %d bytes", owner, repo, tag, maxTarballBytes)
-	}
-	if err := out.Close(); err != nil {
-		return fmt.Errorf("writing %s/%s@%s: %w", owner, repo, tag, err)
 	}
 	return nil
 }

@@ -4,6 +4,7 @@
 package plugin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -65,7 +66,7 @@ func (s *registryTestSuite) stubRegistry(status int, body string) func() {
 func (s *registryTestSuite) TestResolvePlugin_ExactMatch() {
 	defer s.stubRegistry(http.StatusOK, fixtureRegistry)()
 
-	entry, err := ResolvePlugin("fake-bot")
+	entry, err := ResolvePlugin(context.Background(), "fake-bot")
 
 	s.Require().NoError(err)
 	s.Equal("https://github.com/coreruleset/fake-bot-plugin", entry.Repository)
@@ -78,7 +79,7 @@ func (s *registryTestSuite) TestResolvePlugin_ExactMatch() {
 func (s *registryTestSuite) TestResolvePlugin_UnknownWithNearMatches() {
 	defer s.stubRegistry(http.StatusOK, fixtureRegistry)()
 
-	_, err := ResolvePlugin("oauth2")
+	_, err := ResolvePlugin(context.Background(), "oauth2")
 
 	s.Require().Error(err)
 	var unknownErr *UnknownPluginError
@@ -90,7 +91,7 @@ func (s *registryTestSuite) TestResolvePlugin_UnknownWithNearMatches() {
 func (s *registryTestSuite) TestResolvePlugin_UnknownWithNoMatches() {
 	defer s.stubRegistry(http.StatusOK, fixtureRegistry)()
 
-	_, err := ResolvePlugin("totally-unrelated-name")
+	_, err := ResolvePlugin(context.Background(), "totally-unrelated-name")
 
 	s.Require().Error(err)
 	var unknownErr *UnknownPluginError
@@ -102,7 +103,7 @@ func (s *registryTestSuite) TestResolvePlugin_UnknownWithNoMatches() {
 func (s *registryTestSuite) TestResolvePlugin_RegistryUnavailable() {
 	defer s.stubRegistry(http.StatusInternalServerError, "")()
 
-	_, err := ResolvePlugin("fake-bot")
+	_, err := ResolvePlugin(context.Background(), "fake-bot")
 
 	s.Require().Error(err)
 }

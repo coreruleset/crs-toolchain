@@ -6,6 +6,7 @@ package plugin
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -68,8 +69,9 @@ type record struct {
 
 // Install resolves, downloads, and installs a plugin as described in
 // options. It never overwrites existing files unless options.Force is set.
-func Install(options Options) (*Result, error) {
-	entry, err := ResolvePlugin(options.Name)
+// The install is abandoned as soon as ctx is canceled.
+func Install(ctx context.Context, options Options) (*Result, error) {
+	entry, err := ResolvePlugin(ctx, options.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +92,7 @@ func Install(options Options) (*Result, error) {
 		return nil, err
 	}
 
-	tag, err := resolveTag(client, owner, repo, options.Version)
+	tag, err := resolveTag(ctx, client, owner, repo, options.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +104,7 @@ func Install(options Options) (*Result, error) {
 	defer os.RemoveAll(tmpDir)
 
 	tarballPath := filepath.Join(tmpDir, "plugin.tar.gz")
-	if err := downloadTarball(client, owner, repo, tag, tarballPath); err != nil {
+	if err := downloadTarball(ctx, client, owner, repo, tag, tarballPath); err != nil {
 		return nil, err
 	}
 
