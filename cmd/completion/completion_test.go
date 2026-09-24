@@ -33,3 +33,29 @@ func (s *completionTestSuite) TestCompletion_BashShell() {
 	s.Len(args, 1)
 	s.Equal("bash", args[0])
 }
+
+func (s *completionTestSuite) TestCompletion_Args() {
+	for _, tt := range []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{"accepts bash", []string{"bash"}, false},
+		{"accepts zsh", []string{"zsh"}, false},
+		{"accepts fish", []string{"fish"}, false},
+		{"accepts powershell", []string{"powershell"}, false},
+		{"rejects an unsupported shell", []string{"badshell"}, true},
+		{"rejects a misspelled shell", []string{"zshell"}, true},
+		{"rejects no arguments", []string{}, true},
+		{"rejects more than one shell", []string{"bash", "zsh"}, true},
+	} {
+		s.Run(tt.name, func() {
+			err := New().ValidateArgs(tt.args)
+			if tt.wantErr {
+				s.Error(err)
+			} else {
+				s.NoError(err)
+			}
+		})
+	}
+}

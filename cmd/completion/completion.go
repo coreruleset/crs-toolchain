@@ -23,7 +23,7 @@ func createCompletionCommand() *cobra.Command {
 		Long:                  "Completion files allow you to repeatedly press tab key to show completion for all supported commands",
 		DisableFlagsInUseLine: true,
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
-		Args:                  cobra.MatchAll(cobra.ExactArgs(1)),
+		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			switch args[0] {
