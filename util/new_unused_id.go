@@ -14,7 +14,10 @@ import (
 )
 
 var rangeRegex = regexp.MustCompile(`^[0-9]{3}$`)
-var ruleIdRegex = regexp.MustCompile(`\bid:\s*\\?['"]?(\d{6})`)
+
+// ruleIdRegex matches the `id` action: it follows a quote or a comma, or starts
+// a (possibly commented-out) line. An `id:` in operator or message text doesn't.
+var ruleIdRegex = regexp.MustCompile(`(?m)(?:^\s*#?\s*|["',])id:\s*\\?['"]?(\d{6})`)
 
 // NewUnusedId returns the ID for a new rule in the range of a 3-digit prefix
 // (e.g., "942" for 942000-942999): the next multiple of 10 above the highest

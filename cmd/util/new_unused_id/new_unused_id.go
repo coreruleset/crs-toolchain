@@ -31,8 +31,8 @@ range was removed, its ID is handed out again.`,
 			if err != nil {
 				return err
 			}
-			fmt.Println(id)
-			return nil
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), id)
+			return err
 		},
 	}
 }

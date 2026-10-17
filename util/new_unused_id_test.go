@@ -67,14 +67,22 @@ SecRule ARGS "@rx b" "id:941100,phase:2,ctl:ruleRemoveById=942600"
 	s.Equal("941110", id)
 }
 
+func (s *newUnusedIdTestSuite) TestIgnoresIdInOperatorAndMessage() {
+	s.writeFile("rules/REQUEST-942-APPLICATION-ATTACK-SQLI.conf", `SecRule ARGS "@rx id:942990" "id:942100,phase:2,msg:'see id:942980'"`)
+	id, err := NewUnusedId("942", s.ctxt)
+	s.Require().NoError(err)
+	s.Equal("942110", id)
+}
+
 func (s *newUnusedIdTestSuite) TestIdFormats() {
 	s.writeFile("rules/REQUEST-930-APPLICATION-ATTACK-LFI.conf", "SecRule A \"@rx a\" \"id: 930100\"\n"+
 		"SecRule A \"@rx a\" \"id:'930110'\"\n"+
 		"SecRule A \"@rx a\" \"id:\\\"930120\\\"\"\n"+
-		"SecRule A \"@rx a\" \\\n    \"id:930130,\\\n    phase:1\"\n")
+		"SecRule A \"@rx a\" \\\n    \"id:930130,\\\n    phase:1\"\n"+
+		"SecRule A \"@rx a\" \\\n    \"phase:1,\\\n    id:930140\"\n")
 	id, err := NewUnusedId("930", s.ctxt)
 	s.Require().NoError(err)
-	s.Equal("930140", id)
+	s.Equal("930150", id)
 }
 
 func (s *newUnusedIdTestSuite) TestSetupAndExampleFiles() {
