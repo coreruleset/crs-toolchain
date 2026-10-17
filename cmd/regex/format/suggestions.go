@@ -95,8 +95,18 @@ func lineSuggestions(lineNumber int, line string) []suggestion {
 	if strings.HasPrefix(line[g.start:], "(?:") {
 		bodyStart = g.start + 3
 	}
+	alternatives := splitAt(line, bodyStart, g.end-1, g.pipes)
+	// A group of single tokens, such as `(?:\W|^)`, is an idiom; expanding it
+	// only repeats the rest of the line.
+	allTokens := true
+	for _, alternative := range alternatives {
+		allTokens = allTokens && isToken(alternative)
+	}
+	if allTokens {
+		return nil
+	}
 	var expanded []string
-	for _, alternative := range splitAt(line, bodyStart, g.end-1, g.pipes) {
+	for _, alternative := range alternatives {
 		expanded = append(expanded, line[:g.start]+alternative+line[g.end:])
 	}
 	return []suggestion{{lineNumber, "the assembler can factor this group; write one line per alternative:" + listLines(expanded)}}
@@ -232,6 +242,22 @@ func expandable(line string, g group) bool {
 		}
 	}
 	return true
+}
+
+// isToken reports whether s is a single character, escape, character class
+// or definition.
+func isToken(s string) bool {
+	switch {
+	case len(s) == 1:
+		return true
+	case len(s) == 2 && s[0] == '\\':
+		return true
+	case strings.HasPrefix(s, "["):
+		return classEnd(s, 0) == len(s)-1
+	case strings.HasPrefix(s, "{{"):
+		return strings.Index(s, "}}") == len(s)-2
+	}
+	return false
 }
 
 func isOutermost(g group, groups []group) bool {

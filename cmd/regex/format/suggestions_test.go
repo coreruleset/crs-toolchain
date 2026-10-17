@@ -41,9 +41,10 @@ func TestFindSuggestions(t *testing.T) {
 	}{
 		{"one alternative per line", "##!> assemble\n  foo\n  bar(?:baz)?\n##!<", nil},
 		{"top-level alternation", "##!> assemble\n  foo|bar\n##!<", []string{"2: alternatives belong on separate lines:\n  foo\n  bar"}},
-		{"hand-factored group", "##!> assemble\n  a(?:b|c)d\n##!<", []string{"2: the assembler can factor this group; write one line per alternative:\n  abd\n  acd"}},
+		{"hand-factored group", "##!> assemble\n  a(?:bb|c)d\n##!<", []string{"2: the assembler can factor this group; write one line per alternative:\n  abbd\n  acd"}},
 		{"quantified group", "##!> assemble\n  a(?:b|c)?d\n  a(?:b|c){2}d\n##!<", nil},
-		{"definition after group", "##!> assemble\n  (?:b|c){{d}}\n##!<", []string{"2: the assembler can factor this group; write one line per alternative:\n  b{{d}}\n  c{{d}}"}},
+		{"definition after group", "##!> assemble\n  (?:bb|cc){{d}}\n##!<", []string{"2: the assembler can factor this group; write one line per alternative:\n  bb{{d}}\n  cc{{d}}"}},
+		{"group of single tokens", "##!> assemble\n  (?:\\W|^)data:\n  (?:[<=>]|{{quotes}}|a)b\n##!<", nil},
 		{"lookahead", "##!> assemble\n  a(?=b|c)\n##!<", nil},
 		{"two groups", "##!> assemble\n  (?:a|b)(?:c|d)\n##!<", nil},
 		{"pipes that are not alternations", `##!> assemble
