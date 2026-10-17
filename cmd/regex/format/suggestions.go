@@ -91,11 +91,7 @@ func lineSuggestions(lineNumber int, line string) []suggestion {
 	if !expandable(line, g) {
 		return nil
 	}
-	bodyStart := g.start + 1
-	if strings.HasPrefix(line[g.start:], "(?:") {
-		bodyStart = g.start + 3
-	}
-	alternatives := splitAt(line, bodyStart, g.end-1, g.pipes)
+	alternatives := splitAt(line, g.start+3, g.end-1, g.pipes)
 	// A group of single tokens, such as `(?:\W|^)`, is an idiom; expanding it
 	// only repeats the rest of the line.
 	allTokens := true
@@ -230,9 +226,10 @@ func classEnd(line string, start int) int {
 }
 
 // expandable reports whether a group can be distributed over its
-// alternatives: a plain or non-capturing group without a quantifier.
+// alternatives: a non-capturing group without a quantifier. Expanding a
+// capturing group would change what the rule captures.
 func expandable(line string, g group) bool {
-	if line[g.start+1] == '?' && !strings.HasPrefix(line[g.start:], "(?:") {
+	if !strings.HasPrefix(line[g.start:], "(?:") {
 		return false
 	}
 	if g.end < len(line) {

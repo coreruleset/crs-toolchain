@@ -45,6 +45,7 @@ func TestFindSuggestions(t *testing.T) {
 		{"quantified group", "##!> assemble\n  a(?:b|c)?d\n  a(?:b|c){2}d\n##!<", nil},
 		{"definition after group", "##!> assemble\n  (?:bb|cc){{d}}\n##!<", []string{"2: the assembler can factor this group; write one line per alternative:\n  bb{{d}}\n  cc{{d}}"}},
 		{"group of single tokens", "##!> assemble\n  (?:\\W|^)data:\n  (?:[<=>]|{{quotes}}|a)b\n##!<", nil},
+		{"capturing group", "##!> assemble\n  a(bb|cc)d\n##!<", nil},
 		{"lookahead", "##!> assemble\n  a(?=b|c)\n##!<", nil},
 		{"two groups", "##!> assemble\n  (?:a|b)(?:c|d)\n##!<", nil},
 		{"pipes that are not alternations", `##!> assemble

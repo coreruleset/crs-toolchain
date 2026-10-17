@@ -194,7 +194,11 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool, cmdC
 	for _, s := range findSuggestions(lines) {
 		message := fmt.Sprintf("%s:%d: %s", filename, s.line, s.message)
 		if cmdContext.OuterContext.Output == internal.GitHub {
-			fmt.Printf("::warning ::%s\n", githubEscaper.Replace(message))
+			annotationFile, err := filepath.Rel(ctxt.RootContext().RootDir(), filePath)
+			if err != nil {
+				annotationFile = filePath
+			}
+			fmt.Printf("::warning file=%s,line=%d::%s\n", filepath.ToSlash(annotationFile), s.line, githubEscaper.Replace(s.message))
 		} else {
 			logger.Warn().Msg(message)
 		}
