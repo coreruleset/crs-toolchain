@@ -43,7 +43,7 @@ var suffixRegex = regex.SuffixRegex
 var flagsRegex = regex.FlagsRegex
 var assembleOutputRegex = regex.AssembleOutputRegex
 
-// githubEscaper escapes the data of a GitHub workflow command. Patterns are full of `%`.
+// githubEscaper escapes strings for output in a GitHub workflow.
 var githubEscaper = strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A")
 
 func New(cmdContext *regexInternal.CommandContext) *cobra.Command {
@@ -192,7 +192,6 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool, cmdC
 	}
 
 	for _, s := range findSuggestions(lines) {
-		message := fmt.Sprintf("%s:%d: %s", filename, s.line, s.message)
 		if cmdContext.OuterContext.Output == internal.GitHub {
 			annotationFile, err := filepath.Rel(ctxt.RootContext().RootDir(), filePath)
 			if err != nil {
@@ -200,7 +199,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool, cmdC
 			}
 			fmt.Printf("::warning file=%s,line=%d::%s\n", filepath.ToSlash(annotationFile), s.line, githubEscaper.Replace(s.message))
 		} else {
-			logger.Warn().Msg(message)
+			logger.Warn().Msgf("%s:%d: %s", filename, s.line, s.message)
 		}
 	}
 

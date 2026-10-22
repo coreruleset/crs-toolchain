@@ -54,6 +54,8 @@ func TestFindSuggestions(t *testing.T) {
   []|]d
   [^]|]e
   [[:alpha:]|]f
+  [a\]|b]g
+  [^\]|]h
 ##!<`, nil},
 		{"duplicate", "##!> assemble\n  foo\n  bar\n  foo\n##!<", []string{"4: duplicate of line 2"}},
 		{"duplicate across output marker", "##!> assemble\n  foo\n  ##!=>\n  foo\n##!<", nil},

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/coreruleset/crs-toolchain/v2/regex"
 )
 
 // Groups shorter than this are not worth a definition.
@@ -15,11 +17,6 @@ const minDefinitionLength = 20
 type suggestion struct {
 	line    int
 	message string
-}
-
-type group struct {
-	start, end int   // line[start:end] is the group, parentheses included
-	pipes      []int // positions of the `|` directly inside the group
 }
 
 // findSuggestions inspects the lines of every assemble block and suggests
@@ -69,41 +66,41 @@ func findSuggestions(lines []string) []suggestion {
 }
 
 func lineSuggestions(lineNumber int, line string) []suggestion {
-	topPipes, groups, ok := scanGroups(line)
+	topPipes, groups, ok := regex.ScanGroups(line)
 	if !ok {
 		return nil
 	}
 
 	if len(topPipes) > 0 {
-		return []suggestion{{lineNumber, "alternatives belong on separate lines:" + listLines(splitAt(line, 0, len(line), topPipes))}}
+		return []suggestion{{lineNumber, "alternatives belong on separate lines:" + listLines(regex.SplitAt(line, 0, len(line), topPipes))}}
 	}
 
-	var alternations []group
-	for _, g := range groups {
-		if isOutermost(g, groups) && len(g.pipes) > 0 {
-			alternations = append(alternations, g)
+	var alternations []regex.Group
+	for _, group := range groups {
+		if group.IsOutermost(groups) && len(group.Pipes) > 0 {
+			alternations = append(alternations, group)
 		}
 	}
 	if len(alternations) != 1 {
 		return nil
 	}
-	g := alternations[0]
-	if !expandable(line, g) {
+	alternation := alternations[0]
+	if !alternation.Expandable(line) {
 		return nil
 	}
-	alternatives := splitAt(line, g.start+3, g.end-1, g.pipes)
+	alternatives := alternation.Alternatives(line)
 	// A group of single tokens, such as `(?:\W|^)`, is an idiom; expanding it
 	// only repeats the rest of the line.
 	allTokens := true
 	for _, alternative := range alternatives {
-		allTokens = allTokens && isToken(alternative)
+		allTokens = allTokens && regex.IsToken(alternative)
 	}
 	if allTokens {
 		return nil
 	}
 	var expanded []string
 	for _, alternative := range alternatives {
-		expanded = append(expanded, line[:g.start]+alternative+line[g.end:])
+		expanded = append(expanded, line[:alternation.Start]+alternative+line[alternation.End:])
 	}
 	return []suggestion{{lineNumber, "the assembler can factor this group; write one line per alternative:" + listLines(expanded)}}
 }
@@ -124,12 +121,12 @@ func blockSuggestions(lines []string, block []int) []suggestion {
 		}
 		firstSeen[line] = i + 1
 
-		_, groups, ok := scanGroups(line)
+		_, groups, ok := regex.ScanGroups(line)
 		if !ok {
 			continue
 		}
-		for _, g := range groups {
-			text := line[g.start:g.end]
+		for _, group := range groups {
+			text := line[group.Start:group.End]
 			if len(text) < minDefinitionLength {
 				continue
 			}
@@ -155,124 +152,6 @@ func blockSuggestions(lines []string, block []int) []suggestion {
 		})
 	}
 	return suggestions
-}
-
-// scanGroups finds the `|` at the top level of a line and every parenthesized
-// group in it. It skips escapes, character classes and `{{definitions}}`.
-// Returns false if the parentheses don't balance.
-func scanGroups(line string) (topPipes []int, groups []group, ok bool) {
-	var open []group
-	for i := 0; i < len(line); i++ {
-		switch {
-		case line[i] == '\\':
-			i++
-		case line[i] == '[':
-			i = classEnd(line, i)
-			if i < 0 {
-				return nil, nil, false
-			}
-		case strings.HasPrefix(line[i:], "{{"):
-			end := strings.Index(line[i:], "}}")
-			if end < 0 {
-				return nil, nil, false
-			}
-			i += end + 1
-		case line[i] == '(':
-			open = append(open, group{start: i})
-		case line[i] == ')':
-			if len(open) == 0 {
-				return nil, nil, false
-			}
-			g := open[len(open)-1]
-			open = open[:len(open)-1]
-			g.end = i + 1
-			groups = append(groups, g)
-		case line[i] == '|':
-			if len(open) == 0 {
-				topPipes = append(topPipes, i)
-			} else {
-				open[len(open)-1].pipes = append(open[len(open)-1].pipes, i)
-			}
-		}
-	}
-	return topPipes, groups, len(open) == 0
-}
-
-// classEnd returns the index of the `]` closing the character class that
-// starts at line[start], or -1.
-func classEnd(line string, start int) int {
-	i := start + 1
-	if i < len(line) && line[i] == '^' {
-		i++
-	}
-	if i < len(line) && line[i] == ']' {
-		i++
-	}
-	for ; i < len(line); i++ {
-		switch {
-		case line[i] == '\\':
-			i++
-		case strings.HasPrefix(line[i:], "[:"):
-			end := strings.Index(line[i:], ":]")
-			if end < 0 {
-				return -1
-			}
-			i += end + 1
-		case line[i] == ']':
-			return i
-		}
-	}
-	return -1
-}
-
-// expandable reports whether a group can be distributed over its
-// alternatives: a non-capturing group without a quantifier. Expanding a
-// capturing group would change what the rule captures.
-func expandable(line string, g group) bool {
-	if !strings.HasPrefix(line[g.start:], "(?:") {
-		return false
-	}
-	if g.end < len(line) {
-		next := line[g.end]
-		if next == '?' || next == '*' || next == '+' || (next == '{' && !strings.HasPrefix(line[g.end:], "{{")) {
-			return false
-		}
-	}
-	return true
-}
-
-// isToken reports whether s is a single character, escape, character class
-// or definition.
-func isToken(s string) bool {
-	switch {
-	case len(s) == 1:
-		return true
-	case len(s) == 2 && s[0] == '\\':
-		return true
-	case strings.HasPrefix(s, "["):
-		return classEnd(s, 0) == len(s)-1
-	case strings.HasPrefix(s, "{{"):
-		return strings.Index(s, "}}") == len(s)-2
-	}
-	return false
-}
-
-func isOutermost(g group, groups []group) bool {
-	for _, other := range groups {
-		if other.start < g.start && g.end < other.end {
-			return false
-		}
-	}
-	return true
-}
-
-func splitAt(line string, start, end int, pipes []int) []string {
-	var parts []string
-	for _, pipe := range pipes {
-		parts = append(parts, line[start:pipe])
-		start = pipe + 1
-	}
-	return append(parts, line[start:end])
 }
 
 func containedIn(text string, others []string) bool {
