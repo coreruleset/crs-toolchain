@@ -105,6 +105,9 @@ crs-toolchain util renumber-tests 932100 --check
 
 # Renumber all tests
 crs-toolchain util renumber-tests --all
+
+# Print the ID for a new rule in REQUEST-942 (next multiple of 10 above the highest in use)
+crs-toolchain util new-unused-id 942
 ```
 
 ### Generate commands
