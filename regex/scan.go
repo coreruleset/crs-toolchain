@@ -12,12 +12,19 @@ type Group struct {
 }
 
 // ScanGroups finds the `|` at the top level of a line and every parenthesized
-// group in it. It skips escapes, character classes and `{{definitions}}`.
+// group in it. It skips escapes, `\Q...\E` literals, character classes and `{{definitions}}`.
 // Returns false if the parentheses don't balance.
 func ScanGroups(line string) (topPipes []int, groups []Group, ok bool) {
 	var open []Group
 	for i := 0; i < len(line); i++ {
 		switch {
+		case strings.HasPrefix(line[i:], `\Q`):
+			// \Q...\E is literal text; without \E it runs to the end of the line
+			end := strings.Index(line[i+2:], `\E`)
+			if end < 0 {
+				return topPipes, groups, len(open) == 0
+			}
+			i += 2 + end + 1
 		case line[i] == '\\':
 			i++
 		case line[i] == '[':

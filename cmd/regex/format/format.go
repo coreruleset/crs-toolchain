@@ -46,6 +46,10 @@ var assembleOutputRegex = regex.AssembleOutputRegex
 // githubEscaper escapes strings for output in a GitHub workflow.
 var githubEscaper = strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A")
 
+// githubPropertyEscaper escapes strings for use as a property (such as file=) of a
+// GitHub workflow command, where `:` and `,` also delimit values.
+var githubPropertyEscaper = strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C")
+
 func New(cmdContext *regexInternal.CommandContext) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "format [RULE_ID | INCLUDE_NAME]",
@@ -197,7 +201,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool, cmdC
 			if err != nil {
 				annotationFile = filePath
 			}
-			fmt.Printf("::warning file=%s,line=%d::%s\n", filepath.ToSlash(annotationFile), s.line, githubEscaper.Replace(s.message))
+			fmt.Printf("::warning file=%s,line=%d::%s\n", githubPropertyEscaper.Replace(filepath.ToSlash(annotationFile)), s.line, githubEscaper.Replace(s.message))
 		} else {
 			logger.Warn().Msgf("%s:%d: %s", filename, s.line, s.message)
 		}

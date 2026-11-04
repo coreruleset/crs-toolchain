@@ -45,6 +45,7 @@ func TestFindSuggestions(t *testing.T) {
 		{"quantified group", "##!> assemble\n  a(?:b|c)?d\n  a(?:b|c){2}d\n##!<", nil},
 		{"definition after group", "##!> assemble\n  (?:bb|cc){{d}}\n##!<", []string{"2: the assembler can factor this group; write one line per alternative:\n  bb{{d}}\n  cc{{d}}"}},
 		{"group of single tokens", "##!> assemble\n  (?:\\W|^)data:\n  (?:[<=>]|{{quotes}}|a)b\n##!<", nil},
+		{"quoted literal", "##!> assemble\n  \\Qfoo|bar\\E\n##!<", nil},
 		{"capturing group", "##!> assemble\n  a(bb|cc)d\n##!<", nil},
 		{"lookahead", "##!> assemble\n  a(?=b|c)\n##!<", nil},
 		{"two groups", "##!> assemble\n  (?:a|b)(?:c|d)\n##!<", nil},
@@ -75,4 +76,8 @@ func TestFindSuggestions(t *testing.T) {
 
 func TestGithubEscaper(t *testing.T) {
 	assert.Equal(t, "%2525c0%0A  %250a", githubEscaper.Replace("%25c0\n  %0a"))
+}
+
+func TestGithubPropertyEscaper(t *testing.T) {
+	assert.Equal(t, "a%2Cb%3Ac%25%0Ad", githubPropertyEscaper.Replace("a,b:c%\nd"))
 }

@@ -33,12 +33,19 @@ func (s *scanTestSuite) TestScanGroups_Nested() {
 }
 
 func (s *scanTestSuite) TestScanGroups_SkipsEscapesClassesAndDefinitions() {
-	for _, line := range []string{`a\|b`, `a\(b`, `[|(]c`, `[]|]d`, `[^]|]e`, `[[:alpha:]|]f`, `[a\]|b]g`, `[\]|]h`, `[^\]|]i`, `{{a|b}}k`} {
+	for _, line := range []string{`a\|b`, `a\(b`, `[|(]c`, `[]|]d`, `[^]|]e`, `[[:alpha:]|]f`, `[a\]|b]g`, `[\]|]h`, `[^\]|]i`, `{{a|b}}k`, `\Qfoo|bar(\Em`, `\Qfoo|bar`, `\Q\E`} {
 		topPipes, groups, ok := ScanGroups(line)
 		s.True(ok, line)
 		s.Empty(topPipes, line)
 		s.Empty(groups, line)
 	}
+}
+
+func (s *scanTestSuite) TestScanGroups_QuotedLiteral() {
+	topPipes, groups, ok := ScanGroups(`\Qa|b\E|c`)
+	s.True(ok)
+	s.Equal([]int{7}, topPipes)
+	s.Empty(groups)
 }
 
 func (s *scanTestSuite) TestScanGroups_Unbalanced() {
