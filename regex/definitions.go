@@ -49,9 +49,19 @@ var ProcessorEndRegex = regexp.MustCompile(`^##!<`)
 // The name is captured in group 1.
 var AssembleInputRegex = regexp.MustCompile(`^\s*##!=<\s*(.*)$`)
 
-// AssembleOutputRegex matches an output line of the assemble processor (##!=> <name>).
-// The name is captured in group 1, the optional output in group 2.
+// AssembleOutputRegex matches a concatenation-boundary line of the assemble
+// processor (##!=>). It flushes the pending alternation lines so the next
+// block concatenates instead of merging into the same alternation.
+// Any trailing content is captured in group 1; a non-empty match is invalid
+// and must be rejected by the caller, since a boundary marker takes no
+// identifier. Use AssembleRetrieveRegex (##!=@ <name>) to splice in a
+// previously stored block.
 var AssembleOutputRegex = regexp.MustCompile(`^\s*##!=>\s*(.*)$`)
+
+// AssembleRetrieveRegex matches a retrieve line of the assemble processor
+// (##!=@ <name>), splicing in a block previously stored with ##!=< <name>.
+// The name is captured in group 1.
+var AssembleRetrieveRegex = regexp.MustCompile(`^\s*##!=@\s*(\S+)\s*$`)
 
 // RuleRxRegex matches a full SecRule line with @rx.
 // Everything up to the start of the regular expression is captured in group 1,

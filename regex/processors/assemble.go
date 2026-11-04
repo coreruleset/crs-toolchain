@@ -13,11 +13,6 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/regex"
 )
 
-const (
-	AssembleInput  string = `^\s*##!=<\s*(.*)$`
-	AssembleOutput string = `^\s*##!=>\s*(.*)$`
-)
-
 type Assemble struct {
 	proc   *Processor
 	output strings.Builder
@@ -41,17 +36,25 @@ func (a *Assemble) ProcessLine(line string) error {
 		return nil
 	}
 
-	match = regex.AssembleOutputRegex.FindStringSubmatch(line)
+	match = regex.AssembleRetrieveRegex.FindStringSubmatch(line)
 	if len(match) > 0 {
 		identifier := match[1]
 		if err := a.append(identifier); err != nil {
-			var message string
-			if identifier != "" {
-				message = fmt.Sprintf("Failed to append output with name %s", identifier)
-			} else {
-				message = "Failed to append output of previous block"
-			}
-			logger.Error().Err(err).Msg(message)
+			logger.Error().Err(err).Msgf("Failed to retrieve stored output with name %s", identifier)
+			return err
+		}
+		return nil
+	}
+
+	match = regex.AssembleOutputRegex.FindStringSubmatch(line)
+	if len(match) > 0 {
+		if identifier := strings.TrimSpace(match[1]); identifier != "" {
+			err := fmt.Errorf("'##!=>' no longer accepts an identifier; use '##!=@ %s' to insert a stored block", identifier)
+			logger.Error().Err(err).Msgf("Invalid output marker: %s", line)
+			return err
+		}
+		if err := a.append(""); err != nil {
+			logger.Error().Err(err).Msg("Failed to append output of previous block")
 			return err
 		}
 	} else {

@@ -144,7 +144,7 @@ func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
 	s.writeDataFile("123456.ra", `            ##!> assemble
     		line
 	   ##!> assemble
-	               ##!=> output
+	               ##!=@ output
 		##!=< input
 			##!> assemble
 				line2
@@ -164,7 +164,7 @@ func (s *formatTestSuite) TestFormat_IndentsNestedAssembleBlocks() {
 ##!> assemble
   line
   ##!> assemble
-    ##!=> output
+    ##!=@ output
     ##!=< input
     ##!> assemble
       line2
