@@ -14,6 +14,7 @@ type Context struct {
 	includeFilesDirectory        string
 	excludeFilesDirectory        string
 	regressionTestFilesDirectory string
+	pluginsDirectory             string
 	configuration                *configuration.Configuration
 }
 
@@ -30,6 +31,7 @@ func NewWithConfiguration(rootDir string, configuration *configuration.Configura
 		includeFilesDirectory:        rootDir + "/regex-assembly/include",
 		excludeFilesDirectory:        rootDir + "/regex-assembly/exclude",
 		regressionTestFilesDirectory: rootDir + "/tests/regression/tests",
+		pluginsDirectory:             rootDir + "/plugins",
 		configuration:                configuration,
 	}
 }
@@ -62,6 +64,11 @@ func (ctx *Context) RulesDir() string {
 // RegressionTestsDir returns the 'tests' directory of regression tests.
 func (ctx *Context) RegressionTestsDir() string {
 	return ctx.regressionTestFilesDirectory
+}
+
+// PluginsDir returns the 'plugins' directory.
+func (ctx *Context) PluginsDir() string {
+	return ctx.pluginsDirectory
 }
 
 func (ctx *Context) Configuration() *configuration.Configuration {
