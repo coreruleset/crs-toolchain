@@ -20,9 +20,17 @@ import (
 	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
 
+const flagsClass = "[-misU]+"
+
 // Create the processor stack
 var processorStack ProcessorStack
 var processor processors.IProcessor
+
+// The flag grammar understood by the assembler. Matches flags that apply to the
+// rest of the current group, e.g., `(?i)`, or to a subexpression, e.g., `(?i:`.
+var flagsStartRegexp = regexp.MustCompile(`\(\?(` + flagsClass + `)\)`)
+var flagGroupStartRegexp = regexp.MustCompile(`\(\?(` + flagsClass + `):`)
+var leadingFlagsRegexp = regexp.MustCompile(`^(?:\(\?` + flagsClass + `\))+`)
 
 // NewAssembler creates a new Operator based on context.
 func NewAssembler(ctx *processors.Context) *Operator {
@@ -108,16 +116,45 @@ func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 	return a.complete(assembleParser)
 }
 
-func (a *Operator) complete(assembleParser *parser.Parser) (string, error) {
-	logger.Trace().Msgf("** completing using: %v\n", a.lines)
+// extractPrefixesAndFlags joins the prefixes and builds the flags prefix, e.g., `(?is)`,
+// from the flags directives and the leading flags of the prefixes. Leading flags are
+// removed from the returned prefixes because they apply to the entire expression and
+// must not be subject to the assembly cleanup. Only flags that are allowed in a flags
+// directive are accepted.
+func (a *Operator) extractPrefixesAndFlags(assembleParser *parser.Parser) (string, string, error) {
+	prefixes := strings.Join(assembleParser.Prefixes, "")
+	prefixFlags := leadingFlagsRegexp.FindString(prefixes)
+	prefixes = strings.TrimPrefix(prefixes, prefixFlags)
+	flagSet := make(map[rune]bool, len(assembleParser.Flags))
+	for flag := range assembleParser.Flags {
+		flagSet[flag] = true
+	}
+	for _, match := range flagsStartRegexp.FindAllStringSubmatch(prefixFlags, -1) {
+		for _, flag := range match[1] {
+			if !parser.FlagIsAllowed(flag) {
+				return "", "", fmt.Errorf("flag '%s' is not supported in prefix flags %q", string(flag), prefixFlags)
+			}
+			flagSet[flag] = true
+		}
+	}
+
 	flagsPrefix := ""
-	if len(assembleParser.Flags) > 0 {
-		flags := make([]string, 0, len(assembleParser.Flags))
-		for flag := range assembleParser.Flags {
+	if len(flagSet) > 0 {
+		flags := make([]string, 0, len(flagSet))
+		for flag := range flagSet {
 			flags = append(flags, string(flag))
 		}
 		sort.Strings(flags)
 		flagsPrefix = "(?" + strings.Join(flags, "") + ")"
+	}
+	return prefixes, flagsPrefix, nil
+}
+
+func (a *Operator) complete(assembleParser *parser.Parser) (string, error) {
+	logger.Trace().Msgf("** completing using: %v\n", a.lines)
+	prefixes, flagsPrefix, err := a.extractPrefixesAndFlags(assembleParser)
+	if err != nil {
+		return "", err
 	}
 
 	logger.Trace().Msg("Final alternation pass")
@@ -130,7 +167,6 @@ func (a *Operator) complete(assembleParser *parser.Parser) (string, error) {
 	if len(assembleParser.Prefixes) > 0 && len(assembleParser.Suffixes) > 0 && len(result) > 0 {
 		result = "(?:" + result + ")"
 	}
-	prefixes := strings.Join(assembleParser.Prefixes, "")
 	suffixes := strings.Join(assembleParser.Suffixes, "")
 	result = prefixes + result + suffixes
 
@@ -290,25 +326,53 @@ func (a *Operator) useHexEscapes(input string) string {
 	return sb.String()
 }
 
-// The Go regexp/syntax library will convert insert flags when it encounters
+// The Go regexp/syntax library will insert flags when it encounters
 // meta characters that could be ambiguous, such as `^`, `$`, `.`.
-// Remove both flags for the current context, e.g., `...(?m)...`, and flag groups
-// applied to subexpressions, e.g., `...(?m:...)...`
+// These are `m` (for `^`, `$`) and `-s` (for `.`). Remove those flags for the
+// current context, e.g., `...(?m)...`, and for flag groups applied to
+// subexpressions, e.g., `...(?m:...)...`. Flags written by the user, such as
+// `i` or `s`, must be retained, so groups are only removed when no
+// flags remain.
 func (o *Operator) dontUseFlagsForMetaCharacters(input string) string {
-	result := input
-	flagsStartRegexp := regexp.MustCompile(`\(\?[-misU]+\)`)
-	result = flagsStartRegexp.ReplaceAllLiteralString(result, "")
+	result := flagsStartRegexp.ReplaceAllStringFunc(input, func(group string) string {
+		flags := removeGeneratedFlags(group[2 : len(group)-1])
+		if flags == "" {
+			return ""
+		}
+		return "(?" + flags + ")"
+	})
 
-	flagGroupStartRegexp := regexp.MustCompile(`\(\?[-misU]+:`)
+	searchStart := 0
 	for {
-		location := flagGroupStartRegexp.FindStringIndex(result)
-		if len(location) > 0 {
-			result = o.removeGroup(result, location[0], location[1], false)
-		} else {
+		location := flagGroupStartRegexp.FindStringSubmatchIndex(result[searchStart:])
+		if location == nil {
 			break
+		}
+		groupStart := searchStart + location[0]
+		bodyStart := searchStart + location[1]
+		flags := removeGeneratedFlags(result[searchStart+location[2] : searchStart+location[3]])
+		if flags == "" {
+			result = o.removeGroup(result, groupStart, bodyStart, false)
+			searchStart = groupStart
+		} else {
+			result = result[:groupStart] + "(?" + flags + ":" + result[bodyStart:]
+			searchStart = groupStart + len(flags) + 3
 		}
 	}
 	return result
+}
+
+// Removes the flags that regexp/syntax generates (`m` and `-s`, plus the
+// redundant `-m`) from a flag specification such as `ims` or `m-s`.
+// Returns an empty string if no flags remain.
+func removeGeneratedFlags(flags string) string {
+	on, off, _ := strings.Cut(flags, "-")
+	on = strings.ReplaceAll(on, "m", "")
+	off = strings.NewReplacer("m", "", "s", "").Replace(off)
+	if off != "" {
+		return on + "-" + off
+	}
+	return on
 }
 
 // Remove groups like `...(?-s:...)...`.
