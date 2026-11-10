@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/itchyny/rassemble-go"
-
 	"github.com/coreruleset/crs-toolchain/v2/regex"
 	"github.com/coreruleset/crs-toolchain/v2/utils"
 )
@@ -117,7 +115,7 @@ func (c *CmdLine) ProcessLine(line string) error {
 
 // Complete runs finalization steps of the processor
 func (c *CmdLine) Complete() ([]string, error) {
-	assembly, err := rassemble.Join(c.proc.lines)
+	assembly, err := Join(c.proc.lines)
 	if err != nil {
 		return nil, err
 	}

@@ -13,8 +13,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/itchyny/rassemble-go"
-
 	"github.com/coreruleset/crs-toolchain/v2/regex"
 	"github.com/coreruleset/crs-toolchain/v2/regex/parser"
 	"github.com/coreruleset/crs-toolchain/v2/regex/processors"
@@ -187,7 +185,7 @@ func (a *Operator) runFinalPass() (string, error) {
 // pass to possibly simplify groups and concatenations.
 func (a *Operator) runSimplificationAssembly(input string) string {
 	logger.Trace().Msgf("Simplifying regex %s\n", input)
-	result, err := rassemble.Join([]string{input})
+	result, err := processors.Join([]string{input})
 	logger.Trace().Msgf("=> Simplified to %s\n", result)
 	if err != nil {
 		logger.Fatal().Err(err).Str("regex", input).Msg("Failed to simplify regex")
