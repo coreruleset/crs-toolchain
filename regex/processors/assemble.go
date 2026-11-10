@@ -146,12 +146,23 @@ func (a *Assemble) append(identifier string) error {
 	return nil
 }
 
+// Join wraps rassemble.Join. Since rassemble-go v0.1.3 patterns are parsed in
+// one-line mode, which prints `^` as `\A`. Prefixing `(?m)` restores the
+// previous output; the resulting `(?m:...)` flag groups are stripped later.
+func Join(patterns []string) (string, error) {
+	prefixed := make([]string, len(patterns))
+	for i, p := range patterns {
+		prefixed[i] = "(?m)" + p
+	}
+	return rassemble.Join(prefixed)
+}
+
 func (a *Assemble) runAssemble() (regex string, err error) {
 	if len(a.proc.lines) == 0 {
 		return "", nil
 	}
 
-	regex, err = rassemble.Join(a.proc.lines)
+	regex, err = Join(a.proc.lines)
 	if err != nil {
 		return "", err
 	}

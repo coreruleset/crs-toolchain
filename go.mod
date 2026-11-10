@@ -15,7 +15,7 @@ require (
 	github.com/go-git/go-git/v5 v5.19.2
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-getter/v2 v2.2.3
-	github.com/itchyny/rassemble-go v0.1.2
+	github.com/itchyny/rassemble-go v0.1.3
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
 )
 
