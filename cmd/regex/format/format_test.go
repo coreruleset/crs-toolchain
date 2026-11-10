@@ -643,6 +643,23 @@ func (s *formatTestSuite) TestIgnoreCaseFlagWithUppercase_IgnoreShortHands() {
 	s.Require().NoError(err)
 }
 
+func (s *formatTestSuite) TestCheck_SuggestionsDoNotFail() {
+	out := &bytes.Buffer{}
+	log := zerolog.New(out)
+	logger = log.With().Str("component", "parser-test").Logger()
+
+	s.writeDataFile("123456.ra", RegexAssemblyStandardHeader+`
+##!> assemble
+  (?:foo|bar)baz
+##!<
+`)
+	s.cmd.SetArgs([]string{"-c", "123456"})
+
+	_, err := s.cmd.ExecuteC()
+	s.Require().NoError(err)
+	s.Contains(out.String(), "123456.ra:5: the assembler can factor this group")
+}
+
 func (s *formatTestSuite) writeDataFile(filename string, contents string) {
 	err := os.WriteFile(path.Join(s.dataDir, filename), []byte(contents), fs.ModePerm)
 	s.Require().NoError(err)
