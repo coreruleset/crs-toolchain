@@ -293,6 +293,9 @@ func (s *specialCommentsTestSuite) TestPrefixFlagsAreMergedWithFlagsDirective() 
 		{contents: "##!+ i\n##!^ (?s)\\r\\n\na", expected: `(?is)\r\na`},
 		{contents: "##!+ i\n##!^ (?i)abc\ndef", expected: `(?i)abcdef`},
 		{contents: "##!^ (?i)(?s)abc\ndef", expected: `(?is)abcdef`},
+		{contents: "##!^ (?i-s)abc\ndef", expected: `(?i)abcdef`},
+		{contents: "##!+ is\n##!^ (?-s)abc\ndef", expected: `(?i)abcdef`},
+		{contents: "##!^ (?s)(?-s)abc\ndef", expected: `abcdef`},
 	}
 
 	for _, test := range tests {

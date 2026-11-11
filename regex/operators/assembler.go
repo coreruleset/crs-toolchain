@@ -120,7 +120,7 @@ func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 // from the flags directives and the leading flags of the prefixes. Leading flags are
 // removed from the returned prefixes because they apply to the entire expression and
 // must not be subject to the assembly cleanup. Only flags that are allowed in a flags
-// directive are accepted.
+// directive are accepted, and groups may unset flags, e.g., `(?i-s)`.
 func (a *Operator) extractPrefixesAndFlags(assembleParser *parser.Parser) (string, string, error) {
 	prefixes := strings.Join(assembleParser.Prefixes, "")
 	prefixFlags := leadingFlagsRegexp.FindString(prefixes)
@@ -130,11 +130,21 @@ func (a *Operator) extractPrefixesAndFlags(assembleParser *parser.Parser) (strin
 		flagSet[flag] = true
 	}
 	for _, match := range flagsStartRegexp.FindAllStringSubmatch(prefixFlags, -1) {
-		for _, flag := range match[1] {
+		// Groups apply in order, e.g., `(?i-s)` sets `i` and unsets `s`.
+		set, unset, hasUnset := strings.Cut(match[1], "-")
+		if strings.Contains(unset, "-") || (hasUnset && unset == "") {
+			return "", "", fmt.Errorf("invalid prefix flags %q", prefixFlags)
+		}
+		for _, flag := range set + unset {
 			if !parser.FlagIsAllowed(flag) {
 				return "", "", fmt.Errorf("flag '%s' is not supported in prefix flags %q", string(flag), prefixFlags)
 			}
+		}
+		for _, flag := range set {
 			flagSet[flag] = true
+		}
+		for _, flag := range unset {
+			delete(flagSet, flag)
 		}
 	}
 
