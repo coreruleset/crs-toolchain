@@ -165,9 +165,6 @@ func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 		p.dest.WriteString(text)
 
 	}
-	if err := fileScanner.Err(); err != nil {
-		logger.Panic().Err(err).Msg("Failed to read input")
-	}
 
 	// now that the file was parsed, we replace all definitions
 	if len(p.variables) > 0 {

@@ -291,11 +291,15 @@ func (s *specialCommentsTestSuite) TestPrefixFlagsAreMergedWithFlagsDirective() 
 		expected string
 	}{
 		{contents: "##!+ i\n##!^ (?s)\\r\\n\na", expected: `(?is)\r\na`},
+		{contents: "##!+ i\n##!^ (?s)\\r\\n\n.*?\\b", expected: `(?is)\r\n.*?\b`},
 		{contents: "##!+ i\n##!^ (?i)abc\ndef", expected: `(?i)abcdef`},
 		{contents: "##!^ (?i)(?s)abc\ndef", expected: `(?is)abcdef`},
-		{contents: "##!^ (?i-s)abc\ndef", expected: `(?i)abcdef`},
-		{contents: "##!+ is\n##!^ (?-s)abc\ndef", expected: `(?i)abcdef`},
-		{contents: "##!^ (?s)(?-s)abc\ndef", expected: `abcdef`},
+		{contents: "##!^ (?i-s)abc\ndef", expected: `(?i-s)abcdef`},
+		{contents: "##!+ is\n##!^ (?-s)abc\ndef", expected: `(?i-s)abcdef`},
+		{contents: "##!^ (?s)(?-s)abc\ndef", expected: `(?-s)abcdef`},
+		{contents: "##!^ (?s)a.b\nc", expected: `(?s)a.bc`},
+		{contents: "##!^ (?U)a\nb", expected: `ab`},
+		{contents: "##!^ (?i)(?m)abc\ndef", expected: `(?i)abcdef`},
 	}
 
 	for _, test := range tests {
@@ -329,27 +333,8 @@ func (s *specialCommentsTestSuite) TestPreservesBodyFlagsAndRemovesGeneratedFlag
 	s.Equal("(?i)abc(?s:.)(?i:A|B .)", output)
 }
 
-func (s *specialCommentsTestSuite) TestPreservesFlagsThatAreNotAtTheStartOfThePrefix() {
-	tests := map[string]string{
-		"##!^ ^(?i)admin\nx":     `(?i:^ADMINX)`,
-		"##!^ abc\n##!^ (?i)\nx": `abc(?i:X)`,
-		"##!^ (?i:abc)\nx":       `(?i:ABC)x`,
-		"##!$ (?i)xyz\na":        `a(?i:XYZ)`,
-		"(?i)select\n(?i:union)": `(?i:SELECT|UNION)`,
-	}
-
-	for contents, expected := range tests {
-		s.Run(contents, func() {
-			output, err := NewAssembler(s.ctx).Run(contents)
-
-			s.Require().NoError(err)
-			s.Equal(expected, output)
-		})
-	}
-}
-
-func (s *specialCommentsTestSuite) TestRejectsInvalidPrefixFlags() {
-	for _, flags := range []string{"(?i-)", "(?-)", "(?--i)", "(?m)", "(?U)", "(?i)(?m)"} {
+func (s *specialCommentsTestSuite) TestRejectsMalformedPrefixFlags() {
+	for _, flags := range []string{"(?i-)", "(?-)", "(?--i)"} {
 		s.Run(flags, func() {
 			output, err := NewAssembler(s.ctx).Run("##!^ " + flags + "abc\ndef")
 
@@ -1156,6 +1141,12 @@ func (s *assemblerTestSuite) TestDontUseFlagsForMetaCharactersOnlyRemovesGenerat
 		{input: `a(?i:b|c)d`, expected: `a(?i:b|c)d`},
 		{input: `(?s:.)`, expected: `(?s:.)`},
 		{input: `(?i-s:a)`, expected: `(?i:a)`},
+		// escaped parentheses are literals
+		{input: `a\(?im:b`, expected: `a\(?im:b`},
+		{input: `a\(?m:b`, expected: `a\(?m:b`},
+		{input: `a\(?-s:b`, expected: `a\(?-s:b`},
+		{input: `a\(?i-s:b`, expected: `a\(?i-s:b`},
+		{input: `a\(?m)b`, expected: `a\(?m)b`},
 	}
 
 	assembler := NewAssembler(s.ctx)

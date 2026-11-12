@@ -30,7 +30,6 @@ var processor processors.IProcessor
 // rest of the current group, e.g., `(?i)`, or to a subexpression, e.g., `(?i:`.
 var flagsStartRegexp = regexp.MustCompile(`\(\?(` + flagsClass + `)\)`)
 var flagGroupStartRegexp = regexp.MustCompile(`\(\?(` + flagsClass + `):`)
-var leadingFlagsRegexp = regexp.MustCompile(`^(?:\(\?` + flagsClass + `\))+`)
 
 // NewAssembler creates a new Operator based on context.
 func NewAssembler(ctx *processors.Context) *Operator {
@@ -119,50 +118,66 @@ func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 // extractPrefixesAndFlags joins the prefixes and builds the flags prefix, e.g., `(?is)`,
 // from the flags directives and the leading flags of the prefixes. Leading flags are
 // removed from the returned prefixes because they apply to the entire expression and
-// must not be subject to the assembly cleanup. Only flags that are allowed in a flags
-// directive are accepted, and groups may unset flags, e.g., `(?i-s)`.
-func (a *Operator) extractPrefixesAndFlags(assembleParser *parser.Parser) (string, string, error) {
+// must not be subject to the assembly cleanup. Groups may unset flags, e.g., `(?i-s)`,
+// and the last operation on a flag wins. Flags that are not allowed in a flags directive
+// are ignored with a warning.
+func extractPrefixesAndFlags(assembleParser *parser.Parser) (string, string, error) {
 	prefixes := strings.Join(assembleParser.Prefixes, "")
-	prefixFlags := leadingFlagsRegexp.FindString(prefixes)
-	prefixes = strings.TrimPrefix(prefixes, prefixFlags)
-	flagSet := make(map[rune]bool, len(assembleParser.Flags))
+	state := make(map[rune]bool, len(assembleParser.Flags))
 	for flag := range assembleParser.Flags {
-		flagSet[flag] = true
+		state[flag] = true
 	}
-	for _, match := range flagsStartRegexp.FindAllStringSubmatch(prefixFlags, -1) {
-		// Groups apply in order, e.g., `(?i-s)` sets `i` and unsets `s`.
-		set, unset, hasUnset := strings.Cut(match[1], "-")
-		if strings.Contains(unset, "-") || (hasUnset && unset == "") {
-			return "", "", fmt.Errorf("invalid prefix flags %q", prefixFlags)
+	for {
+		location := flagsStartRegexp.FindStringSubmatchIndex(prefixes)
+		if location == nil || location[0] != 0 {
+			break
 		}
-		for _, flag := range set + unset {
-			if !parser.FlagIsAllowed(flag) {
-				return "", "", fmt.Errorf("flag '%s' is not supported in prefix flags %q", string(flag), prefixFlags)
-			}
+		group := prefixes[location[2]:location[3]]
+		prefixes = prefixes[location[1]:]
+		set, unset, hasUnset := strings.Cut(group, "-")
+		if strings.Contains(unset, "-") || (hasUnset && unset == "") {
+			return "", "", fmt.Errorf("invalid prefix flags %q", "(?"+group+")")
 		}
 		for _, flag := range set {
-			flagSet[flag] = true
+			applyPrefixFlag(state, flag, true)
 		}
 		for _, flag := range unset {
-			delete(flagSet, flag)
+			applyPrefixFlag(state, flag, false)
 		}
 	}
 
-	flagsPrefix := ""
-	if len(flagSet) > 0 {
-		flags := make([]string, 0, len(flagSet))
-		for flag := range flagSet {
-			flags = append(flags, string(flag))
+	var on, off []string
+	for flag, enabled := range state {
+		if enabled {
+			on = append(on, string(flag))
+		} else {
+			off = append(off, string(flag))
 		}
-		sort.Strings(flags)
-		flagsPrefix = "(?" + strings.Join(flags, "") + ")"
+	}
+	sort.Strings(on)
+	sort.Strings(off)
+	flagsPrefix := ""
+	if len(on) > 0 || len(off) > 0 {
+		flagsPrefix = "(?" + strings.Join(on, "")
+		if len(off) > 0 {
+			flagsPrefix += "-" + strings.Join(off, "")
+		}
+		flagsPrefix += ")"
 	}
 	return prefixes, flagsPrefix, nil
 }
 
+func applyPrefixFlag(state map[rune]bool, flag rune, enabled bool) {
+	if !parser.FlagIsAllowed(flag) {
+		logger.Warn().Msgf("flag '%s' is not supported in prefix flags, ignoring", string(flag))
+		return
+	}
+	state[flag] = enabled
+}
+
 func (a *Operator) complete(assembleParser *parser.Parser) (string, error) {
 	logger.Trace().Msgf("** completing using: %v\n", a.lines)
-	prefixes, flagsPrefix, err := a.extractPrefixesAndFlags(assembleParser)
+	prefixes, flagsPrefix, err := extractPrefixesAndFlags(assembleParser)
 	if err != nil {
 		return "", err
 	}
@@ -344,13 +359,20 @@ func (a *Operator) useHexEscapes(input string) string {
 // `i` or `s`, must be retained, so groups are only removed when no
 // flags remain.
 func (o *Operator) dontUseFlagsForMetaCharacters(input string) string {
-	result := flagsStartRegexp.ReplaceAllStringFunc(input, func(group string) string {
-		flags := removeGeneratedFlags(group[2 : len(group)-1])
-		if flags == "" {
-			return ""
+	var sb strings.Builder
+	last := 0
+	for _, location := range flagsStartRegexp.FindAllStringSubmatchIndex(input, -1) {
+		if utils.IsEscaped(input, location[0]) {
+			continue
 		}
-		return "(?" + flags + ")"
-	})
+		sb.WriteString(input[last:location[0]])
+		if flags := removeGeneratedFlags(input[location[2]:location[3]]); flags != "" {
+			sb.WriteString("(?" + flags + ")")
+		}
+		last = location[1]
+	}
+	sb.WriteString(input[last:])
+	result := sb.String()
 
 	searchStart := 0
 	for {
@@ -360,6 +382,10 @@ func (o *Operator) dontUseFlagsForMetaCharacters(input string) string {
 		}
 		groupStart := searchStart + location[0]
 		bodyStart := searchStart + location[1]
+		if utils.IsEscaped(result, groupStart) {
+			searchStart = bodyStart
+			continue
+		}
 		flags := removeGeneratedFlags(result[searchStart+location[2] : searchStart+location[3]])
 		if flags == "" {
 			result = o.removeGroup(result, groupStart, bodyStart, false)
