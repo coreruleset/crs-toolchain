@@ -143,7 +143,7 @@ func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 			}
 		case flags:
 			for _, flag := range parsedLine.flags {
-				if flagIsAllowed(flag) {
+				if FlagIsAllowed(flag) {
 					p.Flags[flag] = true
 				} else {
 					logger.Panic().Msgf("flag '%s' is not supported", string(flag))
@@ -355,7 +355,9 @@ func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Bu
 	return src
 }
 
-func flagIsAllowed(flag rune) bool {
+// FlagIsAllowed reports whether `flag` may be used in a flags (`##!+`) directive
+// or at the start of a prefix (`##!^`) directive.
+func FlagIsAllowed(flag rune) bool {
 	allowed := false
 	switch flag {
 	case 'i', 's':
