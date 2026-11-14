@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -91,6 +92,26 @@ func (s *formatTestSuite) TestFormat_Dash() {
 
 	s.EqualError(err, "invalid argument '-'")
 
+}
+
+func (s *formatTestSuite) TestFormat_KeepsLongLines() {
+	line := strings.Repeat("a", 100*1024)
+	s.writeDataFile("123456.ra", line)
+	s.cmd.SetArgs([]string{"123456"})
+	_, err := s.cmd.ExecuteC()
+	s.Require().NoError(err)
+
+	s.Equal(RegexAssemblyStandardHeader+"\n"+line+"\n", s.readDataFile("123456.ra"))
+}
+
+func (s *formatTestSuite) TestFormat_DoesNotWriteFileWithLineTooLong() {
+	contents := strings.Repeat("a", 2*1024*1024)
+	s.writeDataFile("123456.ra", contents)
+	s.cmd.SetArgs([]string{"123456"})
+	_, err := s.cmd.ExecuteC()
+	s.Require().Error(err)
+
+	s.Equal(contents, s.readDataFile("123456.ra"))
 }
 
 func (s *formatTestSuite) TestFormat_TrimsTabs() {

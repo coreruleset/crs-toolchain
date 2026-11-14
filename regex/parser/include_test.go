@@ -4,6 +4,7 @@
 package parser
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -64,6 +65,34 @@ func (s *parserIncludeTestSuite) TestParserInclude_FromFile() {
 	expected := bytes.NewBufferString("This data comes from the include file.\n")
 
 	s.Equal(expected.String(), actual.String())
+}
+
+func (s *parserIncludeTestSuite) TestParserInclude_ReportsLineTooLong() {
+	s.writeDataFile(strings.Repeat("a", 2*MaxLineSize)+"\n", "data\n")
+	parser := NewParser(s.ctx, s.reader)
+
+	parser.Parse(false)
+
+	s.Require().ErrorIs(parser.Err(), bufio.ErrTooLong)
+}
+
+func (s *parserIncludeTestSuite) TestParserInclude_ReportsMissingFile() {
+	parser := NewParser(s.ctx, strings.NewReader("##!> include does-not-exist\n"))
+
+	parser.Parse(false)
+
+	s.Require().ErrorIs(parser.Err(), os.ErrNotExist)
+}
+
+func (s *parserIncludeTestSuite) TestParserInclude_AcceptsLongLine() {
+	line := strings.Repeat("a", 100*1024)
+	s.writeDataFile(line+"\n", "data\n")
+	parser := NewParser(s.ctx, s.reader)
+
+	actual := parser.Parse(false)
+
+	s.Require().NoError(parser.Err())
+	s.Equal(line+"\ndata\n", actual.String())
 }
 
 func (s *parserIncludeTestSuite) TestParserInclude_Prefixes() {

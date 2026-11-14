@@ -4,11 +4,13 @@
 package parser
 
 import (
+	"bufio"
 	"fmt"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -84,6 +86,33 @@ a*b|include3`, s.excludeDir)
 	actual := parser.Parse(false)
 
 	s.Equal("leave me alone\n", actual.String())
+}
+
+func (s *parserIncludeExceptTestSuite) TestIncludeExcept_ReportsLineTooLongInExclude() {
+	includePath := s.writeFile("include1\n", s.includeDir)
+	excludePath := s.writeFile(strings.Repeat("a", 2*MaxLineSize)+"\n", s.excludeDir)
+	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " ", excludePath), s.assemblyDir)
+	assemblyFile, err := os.Open(assemblyPath)
+	s.Require().NoError(err)
+	defer assemblyFile.Close()
+
+	parser := NewParser(s.ctx, assemblyFile)
+	parser.Parse(false)
+
+	s.Require().ErrorIs(parser.Err(), bufio.ErrTooLong)
+}
+
+func (s *parserIncludeExceptTestSuite) TestIncludeExcept_ReportsMissingExclude() {
+	includePath := s.writeFile("include1\n", s.includeDir)
+	assemblyPath := s.writeFile(fmt.Sprint("##!> include-except ", includePath, " does-not-exist"), s.assemblyDir)
+	assemblyFile, err := os.Open(assemblyPath)
+	s.Require().NoError(err)
+	defer assemblyFile.Close()
+
+	parser := NewParser(s.ctx, assemblyFile)
+	parser.Parse(false)
+
+	s.Require().ErrorIs(parser.Err(), os.ErrNotExist)
 }
 
 func (s *parserIncludeExceptTestSuite) TestIncludeExcept_EmptyLinesRemoved() {

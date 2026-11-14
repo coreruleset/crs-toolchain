@@ -188,6 +188,7 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool, cmdC
 	logger.Trace().Msg("Successfully validated input")
 
 	scanner := bufio.NewScanner(parsedBytesBuffer)
+	scanner.Buffer(nil, parser.MaxLineSize)
 	lines := []string{}
 
 	indent := 0
@@ -198,6 +199,9 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool, cmdC
 			logger.Error().Err(err).Msgf("failed to format %s", filename)
 		}
 		lines = append(lines, string(line))
+	}
+	if err = scanner.Err(); err != nil {
+		return fmt.Errorf("scanning formatted content of %s: %w", filePath, err)
 	}
 
 	for _, s := range findSuggestions(lines) {
