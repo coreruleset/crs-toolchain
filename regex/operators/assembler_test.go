@@ -4,7 +4,10 @@
 package operators
 
 import (
+	"bufio"
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -294,12 +297,10 @@ func (s *specialCommentsTestSuite) TestPrefixFlagsAreMergedWithFlagsDirective() 
 		{contents: "##!+ i\n##!^ (?s)\\r\\n\n.*?\\b", expected: `(?is)\r\n.*?\b`},
 		{contents: "##!+ i\n##!^ (?i)abc\ndef", expected: `(?i)abcdef`},
 		{contents: "##!^ (?i)(?s)abc\ndef", expected: `(?is)abcdef`},
-		{contents: "##!^ (?i-s)abc\ndef", expected: `(?i-s)abcdef`},
-		{contents: "##!+ is\n##!^ (?-s)abc\ndef", expected: `(?i-s)abcdef`},
-		{contents: "##!^ (?s)(?-s)abc\ndef", expected: `(?-s)abcdef`},
+		{contents: "##!^ (?i-s)abc\ndef", expected: `(?i)abcdef`},
+		{contents: "##!+ is\n##!^ (?-s)abc\ndef", expected: `(?i)abcdef`},
+		{contents: "##!^ (?s)(?-s)abc\ndef", expected: `abcdef`},
 		{contents: "##!^ (?s)a.b\nc", expected: `(?s)a.bc`},
-		{contents: "##!^ (?U)a\nb", expected: `ab`},
-		{contents: "##!^ (?i)(?m)abc\ndef", expected: `(?i)abcdef`},
 	}
 
 	for _, test := range tests {
@@ -334,7 +335,7 @@ func (s *specialCommentsTestSuite) TestPreservesBodyFlagsAndRemovesGeneratedFlag
 }
 
 func (s *specialCommentsTestSuite) TestRejectsMalformedPrefixFlags() {
-	for _, flags := range []string{"(?i-)", "(?-)", "(?--i)"} {
+	for _, flags := range []string{"(?i-)", "(?-)", "(?--i)", "(?U)", "(?m)", "(?i)(?m)", "(?i-U)"} {
 		s.Run(flags, func() {
 			output, err := NewAssembler(s.ctx).Run("##!^ " + flags + "abc\ndef")
 
@@ -342,6 +343,72 @@ func (s *specialCommentsTestSuite) TestRejectsMalformedPrefixFlags() {
 			s.Empty(output)
 		})
 	}
+}
+
+func (s *specialCommentsTestSuite) TestRejectsNegatingHoistedPrefixFlags() {
+	tests := []string{
+		"##!^ (?i)a\n(?-i:abc)",
+		"##!^ (?i)a\n(?-i)B",
+		"##!^ (?i)ab\n##!$ (?-i)c\nx",
+		"##!^ (?i)a\n##!$ (?-i:X)\nfoo",
+		"##!^ (?s)x\n(?-s:a.b)",
+		"##!^ (?s)a\nb(?-s:.)",
+		"##!+ s\n(?i-s:a.b)",
+		"##!^ (?i)a\n##!^ (?-i)b\nc",
+	}
+
+	for _, contents := range tests {
+		s.Run(contents, func() {
+			output, err := NewAssembler(s.ctx).Run(contents)
+
+			s.Require().Error(err)
+			s.Empty(output)
+		})
+	}
+}
+
+func (s *specialCommentsTestSuite) TestAllowsUnrelatedFlagGroupsWithPrefixFlags() {
+	tests := []struct {
+		contents string
+		expected string
+		matches  string
+		misses   string
+	}{
+		{"##!^ (?s)x\n(?i:abc)", `(?s)x(?i:ABC)`, "xABC", "xabd"},
+		{"##!^ (?i)x\n(?-s:a.b)", `(?i)xa.b`, "XA-B", "XA\nB"},
+		{"##!^ (?s)x\na.b", `(?s)xa.b`, "xa\nb", "xab"},
+		{"##!^ (?s)\\r\\n.*?\\b\nDATA", `(?s)\r\n.*?\bDATA`, "\r\n\nDATA", "\r\nXDAT"},
+		{"##!^ ^(?i)admin\nx", `(?i:^ADMINX)`, "ADMINX", "ADMIN"},
+	}
+
+	for _, test := range tests {
+		s.Run(test.contents, func() {
+			output, err := NewAssembler(s.ctx).Run(test.contents)
+
+			s.Require().NoError(err)
+			s.Equal(test.expected, output)
+			s.Regexp(regexp.MustCompile(output), test.matches)
+			s.NotRegexp(regexp.MustCompile(output), test.misses)
+		})
+	}
+}
+
+func (s *specialCommentsTestSuite) TestHandlesLinesLongerThanScannerDefault() {
+	line := strings.Repeat("a", 100*1024)
+
+	output, err := NewAssembler(s.ctx).Run(line)
+
+	s.Require().NoError(err)
+	s.Equal(line, output)
+}
+
+func (s *specialCommentsTestSuite) TestReportsLinesTooLongToRead() {
+	line := strings.Repeat("a", 2*1024*1024)
+
+	output, err := NewAssembler(s.ctx).Run(line)
+
+	s.Require().ErrorIs(err, bufio.ErrTooLong)
+	s.Empty(output)
 }
 
 func (s *specialCommentsTestSuite) TestHandlesSuffixComment() {

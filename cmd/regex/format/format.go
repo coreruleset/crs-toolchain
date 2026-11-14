@@ -171,6 +171,11 @@ func processFile(filePath string, ctxt *processors.Context, checkOnly bool, cmdC
 
 	raParser := parser.NewParser(ctxt, file)
 	parsedBytesBuffer := raParser.Parse(true)
+	if err = raParser.Err(); err != nil {
+		_ = file.Close()
+		logger.Error().Err(err).Msgf("failed to parse file %s", filePath)
+		return err
+	}
 	if err = file.Close(); err != nil {
 		logger.Error().Err(err).Msgf("file already closed %s", filePath)
 		return err

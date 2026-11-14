@@ -29,6 +29,7 @@ var processor processors.IProcessor
 // The flag grammar understood by the assembler. Matches flags that apply to the
 // rest of the current group, e.g., `(?i)`, or to a subexpression, e.g., `(?i:`.
 var flagsStartRegexp = regexp.MustCompile(`\(\?(` + flagsClass + `)\)`)
+var flagsGroupRegexp = regexp.MustCompile(`\(\?(` + flagsClass + `)[:)]`)
 var flagGroupStartRegexp = regexp.MustCompile(`\(\?(` + flagsClass + `):`)
 
 // NewAssembler creates a new Operator based on context.
@@ -48,6 +49,9 @@ func (a *Operator) Run(input string) (string, error) {
 	logger.Trace().Msg("Starting assembler")
 	assembleParser := parser.NewParser(a.ctx, strings.NewReader(input))
 	lines := assembleParser.Parse(false)
+	if err := assembleParser.Err(); err != nil {
+		return "", err
+	}
 	logger.Trace().Msgf("Parsed lines: %v", lines)
 	logger.Trace().Msg("Validating input")
 	if err := validation.ValidateAll(bytes.NewReader(lines.Bytes())); err != nil {
@@ -67,6 +71,8 @@ func (a *Operator) Run(input string) (string, error) {
 
 func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) (string, error) {
 	fileScanner := bufio.NewScanner(bytes.NewReader(input.Bytes()))
+	// definitions are expanded in the input, so lines can be longer than the scanner default
+	fileScanner.Buffer(nil, max(bufio.MaxScanTokenSize, input.Len()+1))
 	processor = processors.NewAssemble(a.ctx)
 	processorStack.push(processor)
 
@@ -95,6 +101,10 @@ func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 		}
 	}
 
+	if err := fileScanner.Err(); err != nil {
+		return "", fmt.Errorf("failed to read assembly input: %w", err)
+	}
+
 	processor, err := processorStack.top()
 	if err != nil {
 		logger.Error().Err(err).Msg("Mismatched end marker, processor stack is empty")
@@ -112,15 +122,16 @@ func (a *Operator) assemble(assembleParser *parser.Parser, input *bytes.Buffer) 
 		logger.Error().Err(err).Msg("Failed to remove assembler processor.")
 		return "", err
 	}
-	return a.complete(assembleParser)
+	return a.complete(assembleParser, input.String())
 }
 
 // extractPrefixesAndFlags joins the prefixes and builds the flags prefix, e.g., `(?is)`,
 // from the flags directives and the leading flags of the prefixes. Leading flags are
 // removed from the returned prefixes because they apply to the entire expression and
 // must not be subject to the assembly cleanup. Groups may unset flags, e.g., `(?i-s)`,
-// and the last operation on a flag wins. Flags that are not allowed in a flags directive
-// are ignored with a warning.
+// and the last operation on a flag wins. Since the flags prefix is always the first
+// token of the expression, flags that are off are not part of it. Flags that are not
+// allowed in a flags directive are rejected.
 func extractPrefixesAndFlags(assembleParser *parser.Parser) (string, string, error) {
 	prefixes := strings.Join(assembleParser.Prefixes, "")
 	state := make(map[rune]bool, len(assembleParser.Flags))
@@ -138,46 +149,63 @@ func extractPrefixesAndFlags(assembleParser *parser.Parser) (string, string, err
 		if strings.Contains(unset, "-") || (hasUnset && unset == "") {
 			return "", "", fmt.Errorf("invalid prefix flags %q", "(?"+group+")")
 		}
+		for _, flag := range set + unset {
+			if !parser.FlagIsAllowed(flag) {
+				return "", "", fmt.Errorf("flag '%s' is not supported in prefix flags", string(flag))
+			}
+		}
 		for _, flag := range set {
-			applyPrefixFlag(state, flag, true)
+			state[flag] = true
 		}
 		for _, flag := range unset {
-			applyPrefixFlag(state, flag, false)
+			delete(state, flag)
 		}
 	}
 
-	var on, off []string
-	for flag, enabled := range state {
-		if enabled {
-			on = append(on, string(flag))
-		} else {
-			off = append(off, string(flag))
-		}
+	flags := make([]string, 0, len(state))
+	for flag := range state {
+		flags = append(flags, string(flag))
 	}
-	sort.Strings(on)
-	sort.Strings(off)
+	sort.Strings(flags)
 	flagsPrefix := ""
-	if len(on) > 0 || len(off) > 0 {
-		flagsPrefix = "(?" + strings.Join(on, "")
-		if len(off) > 0 {
-			flagsPrefix += "-" + strings.Join(off, "")
-		}
-		flagsPrefix += ")"
+	if len(flags) > 0 {
+		flagsPrefix = "(?" + strings.Join(flags, "") + ")"
 	}
 	return prefixes, flagsPrefix, nil
 }
 
-func applyPrefixFlag(state map[rune]bool, flag rune, enabled bool) {
-	if !parser.FlagIsAllowed(flag) {
-		logger.Warn().Msgf("flag '%s' is not supported in prefix flags, ignoring", string(flag))
-		return
+// The flags prefix is applied to the finished expression, after `regexp/syntax` has
+// normalized the individual parts. A group in the source that turns off a flag of the
+// flags prefix, e.g., `(?-s:.)`, cannot be told apart from the groups that
+// `regexp/syntax` generates and would silently be dropped, widening the match.
+func rejectNegatedPrefixFlags(flagsPrefix string, texts ...string) error {
+	if flagsPrefix == "" {
+		return nil
 	}
-	state[flag] = enabled
+	for _, text := range texts {
+		for _, location := range flagsGroupRegexp.FindAllStringSubmatchIndex(text, -1) {
+			if utils.IsEscaped(text, location[0]) {
+				continue
+			}
+			_, unset, _ := strings.Cut(text[location[2]:location[3]], "-")
+			for _, flag := range unset {
+				if strings.ContainsRune(flagsPrefix, flag) {
+					return fmt.Errorf("flag '%s' is enabled for the entire expression by the flags or prefix directives and cannot be disabled by %q", string(flag), text[location[0]:location[1]])
+				}
+			}
+		}
+	}
+	return nil
 }
 
-func (a *Operator) complete(assembleParser *parser.Parser) (string, error) {
+func (a *Operator) complete(assembleParser *parser.Parser, source string) (string, error) {
 	logger.Trace().Msgf("** completing using: %v\n", a.lines)
 	prefixes, flagsPrefix, err := extractPrefixesAndFlags(assembleParser)
+	if err != nil {
+		return "", err
+	}
+	suffixes := strings.Join(assembleParser.Suffixes, "")
+	err = rejectNegatedPrefixFlags(flagsPrefix, prefixes, suffixes, source)
 	if err != nil {
 		return "", err
 	}
@@ -192,7 +220,6 @@ func (a *Operator) complete(assembleParser *parser.Parser) (string, error) {
 	if len(assembleParser.Prefixes) > 0 && len(assembleParser.Suffixes) > 0 && len(result) > 0 {
 		result = "(?:" + result + ")"
 	}
-	suffixes := strings.Join(assembleParser.Suffixes, "")
 	result = prefixes + result + suffixes
 
 	if len(result) > 0 {
@@ -367,7 +394,9 @@ func (o *Operator) dontUseFlagsForMetaCharacters(input string) string {
 		}
 		sb.WriteString(input[last:location[0]])
 		if flags := removeGeneratedFlags(input[location[2]:location[3]]); flags != "" {
-			sb.WriteString("(?" + flags + ")")
+			sb.WriteString("(?")
+			sb.WriteString(flags)
+			sb.WriteRune(')')
 		}
 		last = location[1]
 	}

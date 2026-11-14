@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -58,7 +59,11 @@ type Parser struct {
 	Prefixes  []string
 	Suffixes  []string
 	patterns  map[string]*regexp.Regexp
+	err       error
 }
+
+// maxLineSize is the longest line that the parser accepts.
+const maxLineSize = 1024 * 1024
 
 // ParsedLine will store the results of parsing the line. `parsedType` will discriminate how you read the results:
 // if the type is `include`, then the result map will store the file name in the "include" key. The definition type
@@ -98,9 +103,18 @@ func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 	return p
 }
 
+// Err returns the error that stopped `Parse` from reading its input, if any,
+// e.g., because a line is too long. The buffer returned by `Parse` is incomplete
+// if `Err` is not `nil`.
+func (p *Parser) Err() error {
+	return p.err
+}
+
 // Parse does the parsing and returns a buffer with all the bytes to process.
+// Check `Err` after parsing to find out whether all of the input was read.
 func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 	fileScanner := bufio.NewScanner(p.src)
+	fileScanner.Buffer(nil, maxLineSize)
 	var text string
 
 	for fileScanner.Scan() {
@@ -164,6 +178,11 @@ func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 		// err is always nil
 		p.dest.WriteString(text)
 
+	}
+
+	if err := fileScanner.Err(); err != nil {
+		p.err = fmt.Errorf("failed to read input: %w", err)
+		return p.dest
 	}
 
 	// now that the file was parsed, we replace all definitions
@@ -275,6 +294,9 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 		newP.variables = definitions
 	}
 	out := newP.Parse(false)
+	if err = newP.Err(); err != nil {
+		logger.Fatal().Err(err).Msgf("error parsing file: %v", filePath)
+	}
 	newOut, err := mergePrefixesSuffixes(newP, out)
 	if err != nil {
 		logger.Fatal().Msgf("error parsing file: %v", err.Error())
