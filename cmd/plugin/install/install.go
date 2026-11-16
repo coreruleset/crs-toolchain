@@ -15,6 +15,14 @@ import (
 
 var logger = log.With().Str("component", "cmd.plugin.install").Logger()
 
+// Flag names, shared with tests so they can't drift through typos.
+const (
+	PluginsDirFlag       = "plugins-dir"
+	VersionFlag          = "version"
+	ForceFlag            = "force"
+	RequireSignatureFlag = "require-signature"
+)
+
 var (
 	pluginsDir       string
 	version          string
@@ -58,13 +66,13 @@ Existing files are never overwritten unless --force is given.`,
 }
 
 func buildFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&pluginsDir, "plugins-dir", "",
+	cmd.Flags().StringVar(&pluginsDir, PluginsDirFlag, "",
 		"Target directory to install into. Defaults to '<CRS_ROOT>/plugins'.")
-	cmd.Flags().StringVar(&version, "version", "",
+	cmd.Flags().StringVar(&version, VersionFlag, "",
 		"Release tag to install. Defaults to the newest release.")
-	cmd.Flags().BoolVar(&force, "force", false,
+	cmd.Flags().BoolVar(&force, ForceFlag, false,
 		"Overwrite files already present in the target directory.")
-	cmd.Flags().BoolVar(&requireSignature, "require-signature", false,
+	cmd.Flags().BoolVar(&requireSignature, RequireSignatureFlag, false,
 		"Fail unless the release is signed. No registered plugin publishes signed releases yet, "+
 			"so this always fails today.")
 }

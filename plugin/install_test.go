@@ -90,6 +90,57 @@ func (s *installTestSuite) TestExtractPluginFiles_PathTraversalEntryIgnored() {
 	s.True(os.IsNotExist(err))
 }
 
+func (s *installTestSuite) TestExtractPluginFiles_RejectsLinks() {
+	tarballPath := filepath.Join(s.T().TempDir(), "plugin.tar.gz")
+
+	var buf bytes.Buffer
+	gzWriter := gzip.NewWriter(&buf)
+	tarWriter := tar.NewWriter(gzWriter)
+	for _, header := range []*tar.Header{
+		{Name: "repo-abc123/plugins/evil-symlink.conf", Typeflag: tar.TypeSymlink, Linkname: "/etc/passwd"},
+		{Name: "repo-abc123/plugins/evil-relsymlink.conf", Typeflag: tar.TypeSymlink, Linkname: "../../outside.conf"},
+		{Name: "repo-abc123/plugins/evil-hardlink.conf", Typeflag: tar.TypeLink, Linkname: "repo-abc123/plugins/safe.conf"},
+	} {
+		header.Mode = 0o777
+		s.Require().NoError(tarWriter.WriteHeader(header))
+	}
+	content := "safe content"
+	s.Require().NoError(tarWriter.WriteHeader(&tar.Header{
+		Name: "repo-abc123/plugins/safe.conf", Typeflag: tar.TypeReg, Mode: 0o644, Size: int64(len(content)),
+	}))
+	_, err := tarWriter.Write([]byte(content))
+	s.Require().NoError(err)
+	s.Require().NoError(tarWriter.Close())
+	s.Require().NoError(gzWriter.Close())
+	s.Require().NoError(os.WriteFile(tarballPath, buf.Bytes(), 0o644))
+
+	destDir := filepath.Join(s.T().TempDir(), "extracted")
+	relPaths, err := extractPluginFiles(tarballPath, destDir)
+
+	s.Require().NoError(err)
+	s.Equal([]string{"safe.conf"}, relPaths)
+
+	for _, name := range []string{"evil-symlink.conf", "evil-relsymlink.conf", "evil-hardlink.conf"} {
+		_, statErr := os.Lstat(filepath.Join(destDir, name))
+		s.True(os.IsNotExist(statErr), "%s must not be extracted", name)
+	}
+}
+
+func (s *installTestSuite) TestRecordInstall_RejectsSymlinkedRecordsFile() {
+	pluginsDir := s.T().TempDir()
+	victim := filepath.Join(s.T().TempDir(), "victim.json")
+	s.Require().NoError(os.WriteFile(victim, []byte("{}"), 0o644))
+	s.Require().NoError(os.Symlink(victim, filepath.Join(pluginsDir, recordsFileName)))
+
+	err := recordInstall(pluginsDir, "some-plugin", record{})
+
+	s.Require().Error(err)
+	s.Contains(err.Error(), "symlink")
+	content, err := os.ReadFile(victim)
+	s.Require().NoError(err)
+	s.Equal("{}", string(content))
+}
+
 func (s *installTestSuite) TestExtractPluginFiles_RejectsReservedRecordsPath() {
 	tarballPath := filepath.Join(s.T().TempDir(), "plugin.tar.gz")
 	s.buildTarball(tarballPath, map[string]string{
