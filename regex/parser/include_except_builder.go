@@ -6,6 +6,7 @@ package parser
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -33,7 +34,10 @@ func (h inclusionLineSlice) Swap(i, j int) {
 }
 
 func buildIncludeString(parser *Parser, parsedLine ParsedLine) (string, error) {
-	content, _ := parseFile(parser, parsedLine.includeFileName, nil)
+	content, _, err := parseFile(parser, parsedLine.includeFileName, nil)
+	if err != nil {
+		return "", err
+	}
 	return replaceSuffixes(content, parsedLine.suffixReplacements)
 }
 
@@ -43,8 +47,13 @@ func buildIncludeExceptString(parser *Parser, parsedLine ParsedLine) (string, er
 	// 2. remove exclusions from the map
 	// 3. put the inclusionLines back into an array, still out of order
 	// 4. build the resulting string by sorting the array and joining the lines
-	includeMap, definitions := buildinclusionLineMap(parser, parsedLine.includeFileName)
-	removeExclusions(parser, parsedLine.excludeFileNames, includeMap, definitions)
+	includeMap, definitions, err := buildinclusionLineMap(parser, parsedLine.includeFileName)
+	if err != nil {
+		return "", err
+	}
+	if err = removeExclusions(parser, parsedLine.excludeFileNames, includeMap, definitions); err != nil {
+		return "", err
+	}
 
 	inclusionLines := make(inclusionLineSlice, 0, len(includeMap))
 	for _, value := range includeMap {
@@ -62,6 +71,7 @@ func replaceSuffixes(inputLines *bytes.Buffer, suffixReplacements map[string]str
 
 	var sb strings.Builder
 	scanner := bufio.NewScanner(inputLines)
+	scanner.Buffer(nil, MaxLineSize)
 	skipRegex := regexp.MustCompile(`^(?:##!|\s*$)`)
 	for scanner.Scan() {
 		entry := scanner.Text()
@@ -77,25 +87,40 @@ func replaceSuffixes(inputLines *bytes.Buffer, suffixReplacements map[string]str
 		sb.WriteString(entry)
 		sb.WriteRune('\n')
 	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("failed to read include content: %w", err)
+	}
 	return sb.String(), nil
 }
 
-func removeExclusions(parser *Parser, excludeFileNames []string, includeMap map[string]inclusionLine, definitions map[string]string) {
+func removeExclusions(parser *Parser, excludeFileNames []string, includeMap map[string]inclusionLine, definitions map[string]string) error {
 	for _, fileName := range excludeFileNames {
 		logger.Debug().Msgf("Processing exclusions from %s", fileName)
-		excludeContent, _ := parseFile(parser, fileName, definitions)
+		excludeContent, _, err := parseFile(parser, fileName, definitions)
+		if err != nil {
+			return err
+		}
 		scanner := bufio.NewScanner(excludeContent)
+		scanner.Buffer(nil, MaxLineSize)
 		for scanner.Scan() {
 			exclusion := scanner.Text()
 			delete(includeMap, exclusion)
 			logger.Debug().Msgf("Excluded entry from include file: %s", exclusion)
 		}
+		if err = scanner.Err(); err != nil {
+			return fmt.Errorf("failed to read exclusions from %s: %w", fileName, err)
+		}
 	}
+	return nil
 }
 
-func buildinclusionLineMap(parser *Parser, includeFileName string) (inclusionLineMap, map[string]string) {
-	includeContent, definitions := parseFile(parser, includeFileName, nil)
+func buildinclusionLineMap(parser *Parser, includeFileName string) (inclusionLineMap, map[string]string, error) {
+	includeContent, definitions, err := parseFile(parser, includeFileName, nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	includeScanner := bufio.NewScanner(includeContent)
+	includeScanner.Buffer(nil, MaxLineSize)
 	includeMap := make(inclusionLineMap, 100)
 	index := 0
 	for includeScanner.Scan() {
@@ -103,7 +128,10 @@ func buildinclusionLineMap(parser *Parser, includeFileName string) (inclusionLin
 		includeMap[entry] = inclusionLine{entry, index}
 		index++
 	}
-	return includeMap, definitions
+	if err = includeScanner.Err(); err != nil {
+		return nil, nil, fmt.Errorf("failed to read include file %s: %w", includeFileName, err)
+	}
+	return includeMap, definitions, nil
 }
 
 func stringFromInclusionLines(inclusionLines inclusionLineSlice) string {

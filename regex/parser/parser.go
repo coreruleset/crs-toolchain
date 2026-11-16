@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -58,7 +59,11 @@ type Parser struct {
 	Prefixes  []string
 	Suffixes  []string
 	patterns  map[string]*regexp.Regexp
+	err       error
 }
+
+// MaxLineSize is the longest line, in bytes, that the parser accepts.
+const MaxLineSize = 1024 * 1024
 
 // ParsedLine will store the results of parsing the line. `parsedType` will discriminate how you read the results:
 // if the type is `include`, then the result map will store the file name in the "include" key. The definition type
@@ -98,9 +103,18 @@ func NewParser(ctx *processors.Context, reader io.Reader) *Parser {
 	return p
 }
 
+// Err returns the error that stopped `Parse` from reading its input, if any,
+// e.g., because a line is too long. The buffer returned by `Parse` is incomplete
+// if `Err` is not `nil`.
+func (p *Parser) Err() error {
+	return p.err
+}
+
 // Parse does the parsing and returns a buffer with all the bytes to process.
+// Check `Err` after parsing to find out whether all of the input was read.
 func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 	fileScanner := bufio.NewScanner(p.src)
+	fileScanner.Buffer(nil, MaxLineSize)
 	var text string
 
 	for fileScanner.Scan() {
@@ -129,7 +143,8 @@ func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 				var err error
 				text, err = buildIncludeString(p, parsedLine)
 				if err != nil {
-					logger.Panic().Err(err).Msg("Failed to parse `include` directive")
+					p.err = fmt.Errorf("failed to parse `include` directive: %w", err)
+					return p.dest
 				}
 			}
 		case includeExcept:
@@ -138,12 +153,13 @@ func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 				var err error
 				text, err = buildIncludeExceptString(p, parsedLine)
 				if err != nil {
-					logger.Panic().Err(err).Msg("Failed to parse `include-except` directive")
+					p.err = fmt.Errorf("failed to parse `include-except` directive: %w", err)
+					return p.dest
 				}
 			}
 		case flags:
 			for _, flag := range parsedLine.flags {
-				if flagIsAllowed(flag) {
+				if FlagIsAllowed(flag) {
 					p.Flags[flag] = true
 				} else {
 					logger.Panic().Msgf("flag '%s' is not supported", string(flag))
@@ -164,6 +180,11 @@ func (p *Parser) Parse(formatOnly bool) *bytes.Buffer {
 		// err is always nil
 		p.dest.WriteString(text)
 
+	}
+
+	if err := fileScanner.Err(); err != nil {
+		p.err = fmt.Errorf("failed to read input: %w", err)
+		return p.dest
 	}
 
 	// now that the file was parsed, we replace all definitions
@@ -246,7 +267,7 @@ func splitArgs(input string) []string {
 }
 
 // parseFile does just a new call to the Parser on the named file. It will use the context to find files that have relative filenames.
-func parseFile(rootParser *Parser, filename string, definitions map[string]string) (*bytes.Buffer, map[string]string) {
+func parseFile(rootParser *Parser, filename string, definitions map[string]string) (*bytes.Buffer, map[string]string, error) {
 	logger.Debug().Msgf("reading file: %v", filename)
 	if path.Ext(filename) != ".ra" {
 		filename += ".ra"
@@ -268,19 +289,23 @@ func parseFile(rootParser *Parser, filename string, definitions map[string]strin
 		}
 	}
 	if err != nil {
-		logger.Fatal().Msgf("cannot open file for parsing: %v", err.Error())
+		return nil, nil, fmt.Errorf("cannot open file for parsing: %w", err)
 	}
+	defer readFile.Close()
 	newP := NewParser(rootParser.ctx, bufio.NewReader(readFile))
 	if definitions != nil {
 		newP.variables = definitions
 	}
 	out := newP.Parse(false)
+	if err = newP.Err(); err != nil {
+		return nil, nil, fmt.Errorf("error parsing file %s: %w", filePath, err)
+	}
 	newOut, err := mergePrefixesSuffixes(newP, out)
 	if err != nil {
-		logger.Fatal().Msgf("error parsing file: %v", err.Error())
+		return nil, nil, fmt.Errorf("error parsing file %s: %w", filePath, err)
 	}
 	logger.Trace().Msg(newOut.String())
-	return newOut, newP.variables
+	return newOut, newP.variables, nil
 }
 
 // Merge prefixes, and suffixes from include files into another parser.
@@ -307,7 +332,7 @@ func mergePrefixesSuffixes(source *Parser, out *bytes.Buffer) (*bytes.Buffer, er
 		newOut.WriteString("\n##!=>\n")
 	}
 	if _, err := out.WriteTo(newOut); err != nil {
-		logger.Fatal().Err(err).Msg("failed to copy output to new buffer")
+		return nil, fmt.Errorf("failed to copy output to new buffer: %w", err)
 	}
 
 	sawNewLine := false
@@ -355,7 +380,9 @@ func expandDefinitions(src *bytes.Buffer, variables map[string]string) *bytes.Bu
 	return src
 }
 
-func flagIsAllowed(flag rune) bool {
+// FlagIsAllowed reports whether `flag` may be used in a flags (`##!+`) directive
+// or at the start of a prefix (`##!^`) directive.
+func FlagIsAllowed(flag rune) bool {
 	allowed := false
 	switch flag {
 	case 'i', 's':
