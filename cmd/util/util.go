@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreruleset/crs-toolchain/v2/cmd/internal"
 	fpFinder "github.com/coreruleset/crs-toolchain/v2/cmd/util/fp_finder"
+	newUnusedId "github.com/coreruleset/crs-toolchain/v2/cmd/util/new_unused_id"
 	renumberTests "github.com/coreruleset/crs-toolchain/v2/cmd/util/renumber_tests"
 	selfUpdate "github.com/coreruleset/crs-toolchain/v2/cmd/util/self_update"
 )
@@ -21,6 +22,7 @@ func New(cmdContext *internal.CommandContext) *cobra.Command {
 
 	cmd.AddCommand(
 		fpFinder.New(cmdContext),
+		newUnusedId.New(cmdContext),
 		renumberTests.New(cmdContext),
 		selfUpdate.New())
 
