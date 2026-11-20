@@ -766,7 +766,7 @@ ab
 ##!=< myinput
 ##!<
 ##!> assemble
-##!=> myinput
+##!=@ myinput
 ##!<
 `
 	assembler := NewAssembler(s.ctx)
@@ -860,14 +860,14 @@ func (s *assemblerTestSuite) TestAssemble_ConcatenatingWithStoredInput() {
 %2f
 %5c
 ##!=< slashes
-##!=> slashes
+##!=@ slashes
 
 ##! dot patterns
 \.
 \.%00
 \.%01
 ##!=>
-##!=> slashes
+##!=@ slashes
 ##!<
 `
 	assembler := NewAssembler(s.ctx)
@@ -887,7 +887,7 @@ cd
 ##!<
 
 ##!> assemble
-##!=> globalinput1
+##!=@ globalinput1
 ##!<
 `
 	assembler := NewAssembler(s.ctx)
@@ -905,7 +905,7 @@ ab
 cd
 ##!=< globalinput2
     ##!> assemble
-    ##!=> globalinput2
+    ##!=@ globalinput2
     ##!<
 ##!<
 `
@@ -924,7 +924,7 @@ ab
 cd
   ##!=< globalinput
   ##!<
-##!=> globalinput
+##!=@ globalinput
 ##!<
 `
 	assembler := NewAssembler(s.ctx)
@@ -938,7 +938,7 @@ cd
 
 func (s *assemblerTestSuite) TestAssemble_ConcatenatingFailsWhenInputUnknown() {
 	contents := `##!> assemble
-##!=> unknown
+##!=@ unknown
 ##!<
 `
 	assembler := NewAssembler(s.ctx)
@@ -946,6 +946,19 @@ func (s *assemblerTestSuite) TestAssemble_ConcatenatingFailsWhenInputUnknown() {
 	_, err := assembler.Run(contents)
 	s.EqualError(err, "no entry in the stash for name 'unknown'")
 
+}
+
+func (s *assemblerTestSuite) TestAssemble_OutputMarkerRejectsIdentifier() {
+	contents := `##!> assemble
+ab
+##!=< stored
+##!=> stored
+##!<
+`
+	assembler := NewAssembler(s.ctx)
+
+	_, err := assembler.Run(contents)
+	s.EqualError(err, "'##!=>' no longer accepts an identifier; use '##!=@ stored' to insert a stored block")
 }
 func (s *assemblerTestSuite) TestAssemble_StoringAlternationAndConcatenation() {
 	contents := `##!> assemble
@@ -958,7 +971,7 @@ d
   ##!=< input
   ##!<
   ##!<
-##!=> input
+##!=@ input
 `
 	assembler := NewAssembler(s.ctx)
 
@@ -976,7 +989,7 @@ a
 b
   ##!=< input
   ##!<
-##!=> input
+##!=@ input
 `
 	assembler := NewAssembler(s.ctx)
 
@@ -1146,14 +1159,14 @@ func (s *assemblerTestSuite) TestAssemble_ComplexAppendWithAlternation() {
   ##!=>
 
   ##!> assemble
-    ##!=> js-prop-start
+    ##!=@ js-prop-start
     ##!> assemble
-	##!=> process-funcs
+	##!=@ process-funcs
     ##!<
     ##!> assemble
-      ##!=> process-props
+      ##!=@ process-props
     ##!<
-    ##!=> js-prop-finish
+    ##!=@ js-prop-finish
   ##!<
 ##!<`
 	assembler := NewAssembler(s.ctx)
